@@ -1,0 +1,27 @@
+# LH 공고문(PDF)을 매일 읽어 일정 · 주요 정보를 사이트에 반영합니다.
+# 저장소 Settings → Secrets and variables → Actions 에 두 값을 넣어주세요.
+#   SUPABASE_URL               예: https://abcdefgh.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY  Supabase → Project Settings → API → service_role (절대 사이트 파일에 넣지 마세요)
+name: LH 공고문 읽기
+on:
+  schedule:
+    - cron: "37 22 * * *"   # 한국 07:37 (목록 수집 07:13 이후)
+  workflow_dispatch: {}      # Actions 탭에서 "Run workflow"로 바로 실행
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: PDF 도구 설치
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+      - name: 공고문 읽기
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node supabase/scripts/read-notices.mjs

@@ -1,0 +1,1076 @@
+(function () {
+  "use strict";
+  var S = window.SITE;
+  var main = document.getElementById("main");
+  if (!S || !main) return;
+  var page = main.dataset.page;
+  var API = window.API || { enabled: false };
+  var LIVE = API.enabled;
+  async function boot() {
+  if (LIVE) { try { await API.init(); } catch (e) {} }
+
+  /* ── helpers ── */
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function n(x) { return Number(x || 0).toLocaleString("ko-KR"); }
+  function el(id) { return document.getElementById(id); }
+  function arr(x) { return Array.isArray(x) ? x : []; }
+  function uniq(a) { return a.filter(function (v, i) { return a.indexOf(v) === i; }); }
+  function eok(won) {
+    var man = Math.round((won || 0) / 10000);
+    if (man >= 10000) { var e = Math.floor(man / 10000), r = man % 10000; return e + "억" + (r ? " " + n(r) + "만" : "") + "원"; }
+    return n(man) + "만원";
+  }
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  function safeUrl(u) { return /^(https?:)?\/\//i.test(u) || /^[\w\-./#]+$/.test(u) ? u : "#"; }
+  function empty(title, desc) { return '<div class="empty"><b>' + esc(title) + "</b>" + (desc ? "<span>" + esc(desc) + "</span>" : "") + "</div>"; }
+  function head(title, right) { return '<div class="sec-head"><h2>' + title + "</h2>" + (right || "") + "</div>"; }
+  function more(href, label) { return '<a class="more" href="' + href + '">' + (label || "더보기") + " →</a>"; }
+  function tagClass(cat) { return cat === "필독" || cat === "진행" ? "tag hot" : cat === "예정" ? "tag off" : "tag"; }
+  function pct(a, b) { return b ? a / b * 100 : 0; }
+
+  /* ── 배치표 → 세대 목록 ── */
+  var UNITS = [], UNIT = {};
+  arr(S.layout).forEach(function (d) {
+    arr(d.lines).forEach(function (l, li) {
+      for (var f = l[1]; f <= l[2]; f++) {
+        var u = { id: d.dong + "-" + (f * 100 + li + 1), dong: d.dong, ho: f * 100 + li + 1, floor: f, line: li + 1, type: l[0] };
+        UNITS.push(u); UNIT[u.id] = u;
+      }
+    });
+  });
+  function siteAgreed() { var o = {}; arr(S.agreedUnits).forEach(function (id) { if (UNIT[id]) o[id] = 1; }); return o; }
+  var AGREED = siteAgreed();
+  var T = S.totalUnits || UNITS.length, NEED = Math.floor(T / 2) + 1;
+  var LIVE_AGREED = null;
+  function agreedCount() { return LIVE_AGREED != null ? LIVE_AGREED : Object.keys(AGREED).length; }
+
+  /* ── 메뉴 ── */
+  var GROUPS = [
+    { name: "소식", items: [["notice.html", "공지사항", "notice", "협의회 · LH 안내"], ["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
+    { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["gallery.html", "사진관", "gallery", "현장과 주변 모습"]] },
+    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회계"], ["consent.html", "위임동의서 제출", "consent", "로그인 후 바로 반영"], ["agreement.html", "위임동의 현황판", "agreement", "동·호수별 한눈에"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
+    { name: "커뮤니티", items: [["board.html", "자유게시판", "board", "입주예정자 이야기"], ["links.html", "카페 · 바로가기", "links", "가입 · 인증 안내"]] },
+    { name: "입주 준비", items: [["calculator.html", "납부 · 취득세 계산기", "calculator", "회차별 금액"], ["checklist.html", "사전점검", "checklist", "공간별 체크리스트"], ["documents.html", "자료실", "documents", "공고문 · 정리 자료"], ["faq.html", "자주 묻는 질문", "faq", "FAQ"]] }
+  ];
+  var myGroup = GROUPS.filter(function (g) { return g.items.some(function (x) { return x[2] === page; }); })[0];
+  var HEAD = {
+    login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의, 게시판, 투표에 참여할 수 있습니다."],
+    account: ["MY PAGE", "내 정보", "가입 상태와 위임동의 내역을 확인합니다."],
+    consent: ["CONSENT", "위임동의서", "승인된 회원이 제출하면 위임동의 현황판에 바로 반영됩니다."],
+    privacy: ["PRIVACY", "개인정보처리방침", "협의회가 어떤 정보를 왜 받고, 언제 지우는지 안내합니다."],
+    admin: ["ADMIN", "운영진", "가입 승인, 위임동의 명단, 투표 · 민원을 관리합니다."],
+    notice: ["NOTICE", "공지사항", "협의회와 LH의 안내를 모았습니다."],
+    schedule: ["SCHEDULE", "주요 일정", "청약부터 입주까지의 흐름입니다. 확정되지 않은 일정은 확정되는 대로 갱신합니다."],
+    news: ["MEDIA", "언론보도", "고양창릉 S-4블록 관련 언론 보도입니다."],
+    floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
+    progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
+    gallery: ["PHOTO", "우리 단지 사진관", "현장과 주변 모습을 기록합니다."],
+    association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH와 관계 기관에 전달하는 자발적 모임입니다."],
+    agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수 배치표에 위임동의를 받은 세대를 표시합니다. 칸을 누르면 세대 정보가 보입니다."],
+    participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
+    board: ["COMMUNITY", "자유게시판", "입주예정자끼리 정보와 이야기를 나눕니다."],
+    links: ["LINKS", "카페 · 바로가기", "공식 카페와 자주 쓰는 기관 사이트입니다."],
+    calculator: ["CALCULATOR", "분양대금 · 취득세 계산기", "분양가와 옵션 금액을 넣으면 회차별 납부액과 예상 취득세를 계산합니다."],
+    checklist: ["PRE-INSPECTION", "사전점검 체크리스트", "사전점검 날 공간별로 확인할 항목입니다. 체크한 내용은 이 기기에만 저장됩니다."],
+    documents: ["ARCHIVE", "자료실", "공고문 원문과 협의회가 정리한 자료입니다."],
+    faq: ["FAQ", "자주 묻는 질문", "협의회, 계약, 대출, 입주에 관한 질문을 정리했습니다."]
+  };
+
+  /* ── header ── */
+  function cur(x) { return x[2] === page ? ' aria-current="page"' : ""; }
+  var header = document.createElement("header");
+  header.className = "top";
+  header.innerHTML =
+    '<div class="wrap bar"><a class="brand" href="index.html" aria-label="' + esc(S.name) + ' 홈"><span class="seal" aria-hidden="true">창릉<br>S4</span><span class="brand-name"><b>창릉 S-4</b><span>입주예정자협의회</span></span></a>' +
+    '<nav class="gnb" aria-label="주 메뉴">' + GROUPS.map(function (g, gi) {
+      return '<div class="grp"><button type="button" aria-expanded="false" aria-controls="gp' + gi + '"' + (g === myGroup ? ' aria-current="true"' : "") + ">" + g.name + '</button><div class="panel" id="gp' + gi + '">' +
+        g.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "<small>" + x[3] + "</small></a>"; }).join("") + "</div></div>";
+    }).join("") + "</nav>" +
+    (!LIVE ? '<a class="acct" id="acctLink" href="login.html">로그인</a>' : "") +
+    (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isMember ? "" : " · 승인 대기") : "가입 마무리") : "로그인") + "</a>" : "") +
+    '<a class="btn solid head-cta" href="' + (LIVE ? "consent.html" : "agreement.html") + '">' + (LIVE ? "위임동의서 제출" : "위임동의 현황") + "</a>" +
+    '<button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="drawer">메뉴</button></div>' +
+    '<nav class="wrap drawer" id="drawer" aria-label="전체 메뉴" hidden>' + (!LIVE ? '<a class="btn solid" href="login.html" style="justify-content:center">로그인 · 회원가입</a>' : "") + (LIVE ? '<a class="btn' + (API.loggedIn ? "" : " solid") + '" href="' + (API.loggedIn ? "account.html" : "login.html") + '" style="justify-content:center">' + (API.loggedIn ? "내 정보" : "로그인 · 회원가입") + "</a>" : "") + GROUPS.map(function (g) {
+      return "<div><h4>" + g.name + '</h4><div class="dl">' + g.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "</a>"; }).join("") + "</div></div>";
+    }).join("") + "</nav>";
+  document.body.insertBefore(header, document.body.firstChild);
+  el("menuBtn").addEventListener("click", function () {
+    var d = el("drawer"); d.hidden = !d.hidden;
+    this.setAttribute("aria-expanded", d.hidden ? "false" : "true");
+    this.textContent = d.hidden ? "메뉴" : "닫기";
+  });
+  var grps = header.querySelectorAll(".grp");
+  function closeAll() { grps.forEach(function (o) { o.classList.remove("open"); o.querySelector("button").setAttribute("aria-expanded", "false"); }); }
+  grps.forEach(function (g) {
+    g.querySelector("button").addEventListener("click", function () {
+      var open = !g.classList.contains("open"); closeAll();
+      if (open) { g.classList.add("open"); this.setAttribute("aria-expanded", "true"); }
+    });
+  });
+  document.addEventListener("click", function (e) { if (!e.target.closest(".grp")) closeAll(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { var a = document.activeElement; if (a && a.closest && a.closest(".grp")) a.blur(); closeAll(); } });
+
+  /* ── banner ── */
+  if (S.banner && store("hide:" + S.banner.id) !== new Date().toDateString()) {
+    var bn = document.createElement("div");
+    bn.className = "banner";
+    bn.innerHTML = '<div class="wrap"><span>' + esc(S.banner.text) + (S.banner.link ? ' <a href="' + esc(safeUrl(S.banner.link)) + '">' + esc(S.banner.linkText || "자세히") + " →</a>" : "") + '</span><button type="button" id="bnClose">오늘 하루 보지 않기</button></div>';
+    header.after(bn);
+    el("bnClose").addEventListener("click", function () { store("hide:" + S.banner.id, new Date().toDateString()); bn.remove(); });
+  }
+
+  /* ── footer ── */
+  var foot = document.createElement("footer");
+  foot.className = "foot";
+  foot.innerHTML = '<div class="wrap sitemap">' + GROUPS.map(function (g) { return "<div><b>" + g.name + "</b>" + g.items.map(function (x) { return '<a href="' + x[0] + '">' + x[1] + "</a>"; }).join("") + "</div>"; }).join("") + "</div>" +
+    '<div class="wrap"><span>' + esc(S.name) + " · 최종 갱신 " + esc(S.updated) + '</span><a href="privacy.html">개인정보처리방침</a><button type="button" class="linkbtn" id="shareBtn">사이트 주소 복사</button><span>입주예정자가 자발적으로 운영하는 사이트이며 LH의 공식 사이트가 아닙니다.</span></div>';
+  document.body.appendChild(foot);
+  el("shareBtn").addEventListener("click", function () {
+    var btn = this, url = location.href.split("#")[0];
+    var fail = function () { btn.textContent = url; btn.classList.add("sel"); };
+    try { navigator.clipboard.writeText(url).then(function () { btn.textContent = "주소를 복사했습니다"; }, fail); } catch (e) { fail(); }
+  });
+
+  /* ── page head ── */
+  if (HEAD[page]) {
+    var h = HEAD[page], ph = document.createElement("section");
+    var sub = myGroup && myGroup.items.length > 1 ? '<nav class="subnav" aria-label="' + myGroup.name + ' 메뉴">' + myGroup.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "</a>"; }).join("") + "</nav>" : "";
+    ph.className = "page-head" + (sub ? "" : " solo");
+    ph.innerHTML = '<div class="wrap"><div class="eyebrow">' + (myGroup ? myGroup.name + " · " : "") + h[0] + "</div><h1>" + h[1] + "</h1><p>" + h[2] + "</p>" + sub + "</div>";
+    main.insertBefore(ph, main.firstChild);
+  }
+  var C = el("content");
+
+  /* ── shared pieces ── */
+  function chips(id, cats, label) {
+    return '<div class="chips" id="' + id + '" role="group" aria-label="' + label + '">' +
+      ["전체"].concat(cats).map(function (c, i) { return '<button type="button" class="chip" data-cat="' + esc(c) + '" aria-pressed="' + (i === 0) + '">' + esc(c) + "</button>"; }).join("") + "</div>";
+  }
+  function bindChips(id, onPick) {
+    var box = el(id); if (!box) return;
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest(".chip"); if (!b) return;
+      box.querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      onPick(b.dataset.cat);
+    });
+  }
+  function filterBy(listId, sel) { return function (c) { el(listId).querySelectorAll(sel).forEach(function (d) { d.hidden = c !== "전체" && d.dataset.cat !== c; }); }; }
+
+  function noticeRows(list) {
+    if (!list.length) return empty("아직 공지가 없습니다", "");
+    return '<ul class="list">' + list.map(function (x) {
+      return '<li><span class="' + tagClass(x.cat) + '">' + esc(x.cat) + '</span><span class="t"><a href="notice.html#' + esc(x.id) + '">' + esc(x.title) + '</a></span><span class="d num">' + esc(String(x.date).slice(5)) + "</span></li>";
+    }).join("") + "</ul>";
+  }
+  function timeline(list) {
+    if (!list.length) return empty("등록된 일정이 없습니다", "");
+    return '<ol class="tl">' + list.map(function (x) {
+      return '<li class="' + esc(x.state || "") + '"><span class="when">' + esc(x.when) + '</span><span class="dot"></span><span class="what"><b>' + esc(x.title) + (x.auto ? ' <span class="tag auto">자동</span>' : "") + "</b>" + (x.desc ? "<span>" + (x.auto && x.src ? '<a href="' + esc(safeUrl(x.src)) + '" target="_blank" rel="noopener">' + esc(x.desc) + "</a>" : esc(x.desc)) + "</span>" : "") + "</span></li>";
+    }).join("") + "</ol>";
+  }
+  function agreeMeter(compact) {
+    var a = agreedCount(), p = pct(a, T);
+    return '<div class="meter"><div class="row"><span>위임동의 세대</span><b class="num">' + n(a) + ' <small class="muted">/ ' + n(T) + "</small></b></div>" +
+      '<div class="bar-track"><i style="width:' + p.toFixed(1) + '%"></i><span class="goal" style="left:' + pct(NEED, T).toFixed(1) + '%"></span></div>' +
+      "<small>" + (a ? "목표 과반(" + n(NEED) + "세대)까지 " + n(Math.max(0, NEED - a)) + "세대" + (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "") : (compact ? "위임동의 접수 전입니다" : "위임동의 접수 전입니다. 세로선이 목표인 과반(" + n(NEED) + "세대)입니다.")) + "</small></div>";
+  }
+  function progressMeter() {
+    var p = S.progress || {};
+    if (p.overall == null) return '<div class="meter"><div class="row"><span>전체 공정률</span><b class="num">—</b></div><div class="bar-track water"><i style="width:0%"></i></div><small>LH 공정 보고가 나오면 갱신합니다</small></div>';
+    return '<div class="meter"><div class="row"><span>전체 공정률</span><b class="num">' + p.overall + '%</b></div><div class="bar-track water"><i style="width:' + Math.min(100, p.overall) + '%"></i></div><small>' + esc(p.asOf) + "</small></div>";
+  }
+  function phaseList() {
+    var ph = arr((S.progress || {}).phases);
+    if (!ph.length) return "";
+    return '<ul class="list">' + ph.map(function (x) { return '<li><span class="' + tagClass(x.status) + '">' + esc(x.status) + '</span><span class="t">' + esc(x.name) + '</span><span class="d"></span></li>'; }).join("") + "</ul>";
+  }
+  function areaBars() {
+    var A = arr(S.areas), max = Math.max.apply(null, A.map(function (a) { return a.units; }).concat([1]));
+    return '<div class="types">' + A.map(function (a) {
+      return '<div class="type"><span class="lab">' + esc(a.area) + '</span><span class="track"><i style="width:' + pct(a.units, max).toFixed(1) + '%"></i></span><span class="v">' + n(a.units) + "</span></div>";
+    }).join("") + "</div>";
+  }
+  function tile(x) {
+    var inner = "<b>" + esc(x.title) + "</b><span>" + esc(x.desc) + (x.url ? "" : " · 개설 후 연결") + "</span>";
+    return x.url ? '<a class="tile" href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + inner + "</a>" : '<div class="tile pending">' + inner + "</div>";
+  }
+  function newsRows(list) {
+    if (!list.length) return empty("등록된 기사가 없습니다", "");
+    return '<ul class="list news">' + list.map(function (x) {
+      return '<li><span class="src">' + esc(x.src) + '<br><span class="num">' + esc(x.date) + '</span></span><span class="t"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a><p>" + esc(x.desc) + "</p></span></li>";
+    }).join("") + "</ul>";
+  }
+  function complexTable(rows) { return '<div class="tablebox"><table class="spec kv">' + rows.map(function (r) { return "<tr><th>" + esc(r[0]) + "</th><td>" + esc(r[1]) + "</td></tr>"; }).join("") + "</table></div>"; }
+  function openHash() {
+    var id = decodeURIComponent(location.hash.slice(1)); if (!id) return;
+    var d = document.getElementById(id);
+    if (d && d.tagName === "DETAILS") { d.open = true; setTimeout(function () { d.scrollIntoView({ block: "center" }); }, 0); }
+  }
+
+  /* ── pages ── */
+  var R = {};
+
+  R.home = async function () {
+    var dd = "", ddl = "입주 예정 " + esc(S.moveInText || "");
+    if (S.moveInDate) {
+      var diff = Math.ceil((new Date(S.moveInDate + "T00:00:00+09:00") - new Date()) / 86400000);
+      dd = diff > 0 ? "D-" + n(diff) : "입주"; ddl = esc(S.moveInText || S.moveInDate) + " 입주 예정";
+    }
+    var ridge = '<svg class="ridge" viewBox="0 0 1200 170" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path class="r1" d="M0 92 Q120 30 260 74 Q380 112 500 66 Q640 14 780 64 Q900 104 1020 58 Q1110 26 1200 48 V170 H0Z"/>' +
+      '<path class="r2" d="M0 122 Q160 70 330 108 Q470 138 610 100 Q760 62 900 104 Q1040 140 1200 96 V170 H0Z"/>' +
+      '<path class="r3" d="M0 148 Q220 112 440 140 Q640 164 840 136 Q1020 114 1200 136 V170 H0Z"/>' +
+      '<path class="w" d="M-10 160 Q60 152 130 160 T270 160 T410 160 T550 160 T690 160 T830 160 T970 160 T1110 160 T1250 160"/></svg>';
+    var upcoming = (await mergedSchedule()).filter(function (x) { return x.state !== "done"; }).slice(0, 4);
+    main.innerHTML =
+      '<section class="hero"><div class="wrap hero-grid"><div>' +
+      '<div class="eyebrow">고양창릉 공공주택지구 · LH 공공분양</div>' +
+      "<h1>창릉 S-4<small>입주예정자협의회</small></h1>" +
+      '<p class="lead">창릉천 물길과 서오릉 숲 사이, ' + n(T) + '세대가 함께 만들어갈 새 동네입니다. 공지와 일정, 공사 진행과 위임동의 현황을 이곳에서 확인하세요.</p>' +
+      '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="consent.html">위임동의서 제출</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') : '<a class="btn solid" href="links.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
+      '<aside class="status" aria-label="단지 현황"><div class="top"><div><b class="num">' + dd + "</b></div><span>" + ddl + "<br>16개 동 · " + n(T) + "세대</span></div>" +
+      agreeMeter(true) + progressMeter() +
+      '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
+      "</div>" + ridge + "</section>" +
+
+      '<section class="band"><div class="wrap two"><div>' + head("공지사항", more("notice.html")) + noticeRows(arr(S.notices).slice(0, 5)) + "</div>" +
+      "<div>" + head("다가오는 일정", more("schedule.html", "전체 일정")) + timeline(upcoming) + "</div></div></section>" +
+
+      '<div id="homeNews"></div>' +
+      '<section class="band first"><div class="wrap">' + head("처음 오셨나요?", '<span class="note">3단계면 협의회 활동에 참여할 수 있습니다</span>') +
+      '<ol class="steps steps-row">' +
+      (LIVE ? '<li><div><b><a href="login.html#signup">회원가입</a></b><span>아이디를 만들고 동·호수와 계약서 사진을 올립니다.</span></div></li>' +
+        "<li><div><b>운영진 승인</b><span>계약서를 확인하면 승인됩니다. 사진은 확인 후 바로 삭제합니다.</span></div></li>" +
+        '<li><div><b><a href="consent.html">위임동의서 제출</a></b><span>제출하면 현황판에 바로 반영됩니다.</span></div></li>'
+      : "<li><div><b>공식 카페 가입</b><span>카페 · 바로가기 메뉴에서 카페에 가입합니다.</span></div></li>" +
+        "<li><div><b>계약자 인증 · 등업</b><span>동·호수와 이름만 보이게 가린 계약서를 올립니다.</span></div></li>" +
+        "<li><div><b>위임동의서 제출</b><span>선택 사항입니다. 모일수록 협상력이 커집니다.</span></div></li>") +
+      "</ol></div></section>" +
+
+      '<section class="band"><div class="wrap">' + head("자주 찾는 메뉴") + '<div class="shortcuts">' +
+      '<a class="shortcut" href="calculator.html"><span class="k">CALC</span><b>납부 계산기</b><span>회차별 금액과 예상 취득세</span></a>' +
+      '<a class="shortcut" href="floorplan.html"><span class="k">59 · 74 · 84</span><b>단지 · 평면</b><span>7개 타입 공급 정보</span></a>' +
+      '<a class="shortcut" href="agreement.html"><span class="k">' + arr(S.layout).length + '개 동</span><b>위임동의 현황판</b><span>동·호수별로 한눈에</span></a>' +
+      '<a class="shortcut" href="checklist.html"><span class="k">' + arr(S.checklist).reduce(function (s, g) { return s + arr(g.items).length; }, 0) + '항목</span><b>사전점검</b><span>공간별 체크리스트</span></a>' +
+      "</div></div></section>";
+  };
+
+  async function homeNews() {
+    if (!LIVE || page !== "home") return;
+    try {
+      var L = await API.news(null, 4); if (!L.length) return;
+      el("homeNews").innerHTML = '<section class="band"><div class="wrap">' + head("새 소식", more("news.html", "전체 기사") ) + autoRows(L) + "</div></section>";
+    } catch (e) {}
+  }
+  R.notice = async function () {
+    var L = arr(S.notices), lh = await lhItems();
+    var lhBlock = LIVE ? "<div>" + head("LH 공고", '<span class="note">LH 청약플러스에서 매일 자동으로 가져옵니다</span>') + (lh.length ? autoRows(lh) : empty("아직 수집된 LH 공고가 없습니다", "고양창릉 관련 공고가 올라오면 자동으로 표시됩니다.")) + "</div>" : "";
+    if (!L.length) { C.innerHTML = empty("아직 공지가 없습니다", "새 공지가 올라오면 이곳에 표시됩니다.") + lhBlock; return; }
+    var cats = uniq(L.map(function (x) { return x.cat; }));
+    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nCats", cats, "분류") + '<span class="muted small">총 ' + L.length + "건</span></div>" +
+      '<div class="rows" id="nList">' + L.map(function (x) {
+        return '<details class="row" id="' + esc(x.id) + '" data-cat="' + esc(x.cat) + '"><summary><span class="' + tagClass(x.cat) + '">' + esc(x.cat) + '</span><span class="t">' + esc(x.title) + '</span><span class="d num">' + esc(x.date) + '</span></summary><p class="body">' + esc(x.body) + "</p></details>";
+      }).join("") + "</div></div>" + lhBlock;
+    bindChips("nCats", filterBy("nList", "details"));
+    openHash();
+    window.addEventListener("hashchange", openHash);
+  };
+
+  R.schedule = async function () {
+    var t0 = arr(S.types)[0], lhs = "";
+    if (LIVE) {
+      try {
+        var L = (await lhItems()).filter(function (x) { return x.extra && x.extra.s4 && arr(x.extra.tables).some(function (t) { return t.key === "dsSplScdl"; }); });
+        if (L.length) lhs = "<div>" + head("LH 공식 일정 (S-4)", '<span class="note">LH 공고에서 매일 자동으로 가져옵니다</span>') + L.slice(0, 3).map(function (x) {
+          return '<div class="lh-sched"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener"><b>' + esc(x.title) + "</b></a>" + lhTables(x, "dsSplScdl") + "</div>";
+        }).join("") + "</div>";
+      } catch (e) { lhs = ""; }
+    }
+    var merged = await mergedSchedule(), hasAuto = merged.some(function (x) { return x.auto; });
+    C.innerHTML = '<div class="two"><div>' + head("전체 일정", '<span class="note">' + (hasAuto ? "LH 공고문에서 읽은 날짜를 자동 반영" : "모집공고 기준") + "</span>") + timeline(merged) + "</div>" +
+      "<div>" + head("분양대금 납부 구조") + '<div class="tablebox"><table class="spec"><thead><tr><th>회차</th><th class="r">비율</th><th>시기</th></tr></thead><tbody>' +
+      '<tr><td>계약금</td><td class="r num">10%</td><td>계약 시 (2026.11.16–19)</td></tr>' +
+      [1, 2, 3, 4, 5, 6].map(function (i) { return "<tr><td>중도금 " + i + '회</td><td class="r num">10%</td><td>공사 기간 중 (계약서 기준)</td></tr>'; }).join("") +
+      '<tr><td>잔금</td><td class="r num">30%</td><td>입주지정기간</td></tr></tbody></table></div>' +
+      (t0 ? '<p class="muted small">' + esc(t0.type) + " 최고가 " + eok(t0.maxPrice) + " 기준 회차당 약 " + eok(t0.maxPrice * 0.1) + '입니다. <a href="calculator.html">계산기에서 내 금액으로 보기 →</a></p>' : "") +
+      "</div></div>" + lhs;
+  };
+
+  function lhTables(x, only) {
+    var ex = x.extra || {}, T = arr(ex.tables).filter(function (t) { return !only || t.key === only; });
+    return T.map(function (t) {
+      return '<div class="lh-table"><h4>' + esc(t.title) + '</h4><div class="tablebox"><table class="spec"><thead><tr>' + arr(t.columns).map(function (c) { return "<th>" + esc(c.label) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+        arr(t.rows).map(function (r) { return "<tr>" + arr(r).map(function (v) { var m = String(v).match(/^0*(\d{2,3})\.0+([A-Z]{0,3})$/); return "<td>" + esc(m ? m[1] + m[2] : v) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>";
+    }).join("");
+  }
+  function lhDetail(x) {
+    var ex = x.extra || {}, A = arr(ex.attachments);
+    if (!arr(ex.tables).length && !A.length) return "";
+    return '<details class="lh-detail"><summary>공고 상세 보기 · 일정 · 공급 정보' + (A.length ? " · 첨부 " + A.length : "") + "</summary>" + lhTables(x) +
+      (A.length ? '<div class="lh-table"><h4>첨부파일</h4><ul class="attach">' + A.map(function (f) { return '<li><a href="' + esc(safeUrl(f.url)) + '" target="_blank" rel="noopener">' + esc(f.name) + "</a>" + (f.kind ? ' <span class="muted small">' + esc(f.kind) + "</span>" : "") + "</li>"; }).join("") + "</ul></div>" : "") +
+      (ex.detail_at ? '<p class="muted small">LH 공공데이터 기준 · ' + fmtTime(ex.detail_at) + " 갱신</p>" : "") + "</details>";
+  }
+  /* LH 공고문에서 읽은 일정 → 사이트 일정 */
+  var LH_CACHE = null;
+  async function lhItems() { if (!LIVE) return []; if (!LH_CACHE) { try { LH_CACHE = await API.news("lh", 30); } catch (e) { LH_CACHE = []; } } return LH_CACHE; }
+  function canon(t) { return String(t || "").replace(/\(.*?\)|\s/g, ""); }
+  function todayKST() { var d = new Date(Date.now() + 9 * 3600e3); return d.toISOString().slice(0, 10); }
+  function whenOf(e) { var f = function (s) { return s.replace(/-/g, "."); }; return e.month ? f(e.start) : f(e.start) + (e.end ? "–" + (e.end.slice(0, 4) === e.start.slice(0, 4) ? f(e.end.slice(5)) : f(e.end)) : ""); }
+  function stateOf(e) {
+    var t = todayKST(), soon = new Date(Date.now() + 9 * 3600e3 + 14 * 864e5).toISOString().slice(0, 10), last = e.end || e.start;
+    if (last.length === 7) last += "-31";
+    if (last < t) return "done";
+    if (e.start <= soon) return "now";
+    return "";
+  }
+  async function parsedEvents() {
+    var by = {}, L = (await lhItems()).filter(function (x) { return x.extra && x.extra.s4 && x.parsed && arr(x.parsed.events).length; });
+    L.sort(function (a, b) { return String(a.parsed.parsed_at) < String(b.parsed.parsed_at) ? -1 : 1; });
+    L.forEach(function (x) { arr(x.parsed.events).forEach(function (e) { by[canon(e.label)] = { when: whenOf(e), title: e.label, desc: "LH 공고문 자동 반영 · " + (e.file || x.title), state: stateOf(e), start: e.start, auto: true, src: x.url }; }); });
+    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+  }
+  async function mergedSchedule() {
+    var auto = await parsedEvents();
+    if (!auto.length) return arr(S.schedule);
+    var keys = auto.map(function (e) { return canon(e.title); });
+    var rest = arr(S.schedule).filter(function (s) { var c = canon(s.title); return !keys.some(function (k) { return c === k || c.indexOf(k) === 0; }); });
+    var autoStarts = auto.map(function (e) { return e.start; });
+    var dated = rest.filter(function (s) { return /^20\d{2}/.test(s.when); }).map(function (s) { return Object.assign({ start: s.when.replace(/\./g, "-").slice(0, 10) }, s); })
+      .filter(function (s) { return autoStarts.indexOf(s.start) < 0; });   // 같은 날 시작하는 일정은 공고문 쪽만 남김
+    var undated = rest.filter(function (s) { return !/^20\d{2}/.test(s.when); });
+    var all = dated.concat(auto).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+    var cut = todayKST().slice(0, 4) + "-12-31";
+    return all.filter(function (x) { return x.start <= cut; }).concat(undated).concat(all.filter(function (x) { return x.start > cut; }));
+  }
+  function parsedBlock(x) {
+    var P = x.parsed; if (!P || (!arr(P.events).length && !arr(P.facts).length)) return "";
+    return '<div class="lh-parsed"><div class="eyebrow">공고문 자동 요약</div>' +
+      (arr(P.events).length ? '<div class="tablebox"><table class="spec"><thead><tr><th>일정</th><th>날짜</th><th>공고문 원문</th></tr></thead><tbody>' + P.events.map(function (e) { return "<tr><td>" + esc(e.label) + '</td><td class="num">' + esc(whenOf(e)) + '</td><td class="muted small">' + esc(e.evidence) + "</td></tr>"; }).join("") + "</tbody></table></div>" : "") +
+      (arr(P.facts).length ? '<ul class="facts">' + P.facts.map(function (f) { return "<li><b>" + esc(f.label) + "</b> " + esc(f.text) + "</li>"; }).join("") + "</ul>" : "") +
+      '<p class="muted small">' + esc(arr(P.files).map(function (f) { return f.name; }).join(", ")) + "에서 자동으로 읽었습니다 · " + fmtTime(P.parsed_at) + ". 정확한 내용은 공고문 원문을 확인하세요.</p></div>";
+  }
+  function autoRows(list) {
+    return '<ul class="list news">' + list.map(function (x) {
+      var d = x.published_at ? fmtDate(x.published_at) : "";
+      return '<li><span class="src">' + esc(x.source) + '<br><span class="num">' + esc(d) + '</span></span><span class="t"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a>" +
+        '<p><span class="tag' + (x.topic === "S-4" || (x.extra && x.extra.s4) ? " hot" : "") + '">' + esc(x.kind === "lh" ? (x.extra && x.extra.status ? x.extra.status : "LH 공고") : x.topic === "S-4" ? "S-4" : "창릉") + "</span>" + (x.kind === "lh" && x.extra && x.extra.closes ? ' <span class="muted small">마감 ' + esc(x.extra.closes) + "</span>" : "") + "</p>" + (x.kind === "lh" ? parsedBlock(x) + lhDetail(x) : "") + "</span></li>";
+    }).join("") + "</ul>";
+  }
+  R.news = async function () {
+    var L = arr(S.news), auto = [];
+    if (LIVE) { try { auto = await API.news("news"); } catch (e) { auto = []; } }
+    var known = {}; L.forEach(function (x) { known[x.url] = 1; });
+    auto = auto.filter(function (x) { return !known[x.url]; });
+    C.innerHTML = (LIVE ? "<div>" + head("자동 수집 기사", '<span class="note">매일 아침 구글 뉴스에서 "창릉" 관련 기사를 모읍니다 · 제목과 링크만</span>') +
+        '<div class="toolbar">' + chips("nwTopic", ["S-4", "창릉"], "주제") + "</div>" +
+        (auto.length ? '<div id="nwList">' + autoRows(auto) + "</div>" : empty("아직 수집된 기사가 없습니다", "매일 아침 7시쯤 새 기사를 찾습니다.")) + "</div>" : "") +
+      "<div>" + head(LIVE ? "주요 보도 (협의회 정리)" : "언론 보도", '<span class="note">' + L.length + "건 · 최신순</span>") + newsRows(L) + "</div>";
+    if (LIVE && auto.length) bindChips("nwTopic", function (t) {
+      el("nwList").innerHTML = autoRows(t === "전체" ? auto : auto.filter(function (x) { return x.topic === t; }));
+    });
+  };
+
+  R.floorplan = function () {
+    var cnt = {}; UNITS.forEach(function (u) { cnt[u.type] = (cnt[u.type] || 0) + 1; });
+    var cards = arr(S.types).map(function (t) {
+      return '<div class="ftype"><div class="code">' + esc(t.type) + "</div>" +
+        "<dl><dt>전용면적</dt><dd>" + esc(t.area) + "</dd><dt>공급면적</dt><dd>" + Number(t.supply).toFixed(2) + "㎡</dd>" +
+        "<dt>최고 분양가</dt><dd>" + eok(t.maxPrice) + "</dd>" + (cnt[t.type] ? "<dt>배치표 세대</dt><dd>" + n(cnt[t.type]) + "</dd>" : "") + "</dl></div>";
+    }).join("");
+    C.innerHTML = "<div>" + head("주택형 7개", '<a class="more" href="https://apply.lh.or.kr" target="_blank" rel="noopener">평면도 원본 (LH 청약플러스) →</a>') + '<div class="ftypes">' + cards + "</div>" +
+      '<p class="muted small" style="margin-top:12px">최고 분양가는 모집공고의 주택형별 최고가입니다. 층과 동에 따라 낮아집니다. 배치표 세대는 동·호수 배치표에서 센 값입니다.</p></div>' +
+      '<div class="two"><div>' + head("면적별 세대수", '<span class="note">모집공고 기준</span>') + areaBars() + "</div><div>" + head("단지 개요") + complexTable(arr(S.complex)) + "</div></div>";
+  };
+
+  R.progress = function () {
+    var p = S.progress || {}, M = arr(S.progressMonthly), logs = arr(p.logs), chart;
+    if (M.length) {
+      var W = 560, H = 200, pl = 36, pb = 28, pt = 16;
+      var maxR = Math.max(10, Math.ceil(Math.max.apply(null, M.map(function (m) { return m.rate; })) / 5) * 5);
+      var bw = (W - pl - 12) / M.length, y = function (v) { return pt + (H - pt - pb) * (1 - v / maxR); };
+      var grid = [0, maxR / 2, maxR].map(function (v) { return '<line x1="' + pl + '" x2="' + (W - 4) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="g"/><text x="' + (pl - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + "%</text>"; }).join("");
+      var bars = M.map(function (m, i) {
+        var x = pl + i * bw + bw * 0.2, w = bw * 0.6, last = i === M.length - 1;
+        return '<rect x="' + x + '" y="' + y(m.rate) + '" width="' + w + '" height="' + (y(0) - y(m.rate)) + '" rx="3" class="' + (last ? "b last" : "b") + '"/>' +
+          '<text x="' + (x + w / 2) + '" y="' + (y(m.rate) - 5) + '" text-anchor="middle" class="' + (last ? "v last" : "v") + '">' + m.rate + "</text>" +
+          '<text x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(String(m.ym).slice(2)) + "</text>";
+      }).join("");
+      chart = '<div class="tablebox"><svg class="chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="월별 누적 공정률">' + grid + bars + "</svg></div>" +
+        '<div class="tablebox"><table class="spec"><thead><tr><th>월</th><th class="r">누적 공정률</th><th class="r">증감</th></tr></thead><tbody>' +
+        M.slice().reverse().map(function (m, i, a) { var prev = a[i + 1]; return '<tr><td class="num">' + esc(m.ym) + '</td><td class="r num">' + m.rate + '%</td><td class="r num">' + (prev ? "+" + (m.rate - prev.rate).toFixed(1) + "%p" : "-") + "</td></tr>"; }).join("") + "</tbody></table></div>";
+    } else chart = empty("아직 공정 보고가 없습니다", "LH 공정률이 공개되면 월별로 기록합니다. 시공사는 요진건설산업(주)입니다.");
+    C.innerHTML = "<div>" + head("월별 공정률", '<span class="note">LH 공정 보고 기준 누적</span>') + chart + "</div>" +
+      ((p.overall == null && !arr(p.phases).length) ? "<div>" : '<div class="two"><div>' + head("공정 단계") + progressMeter() + phaseList() + "</div>") +
+      "<div>" + head("현장 방문 기록") + (logs.length ? '<ol class="tl">' + logs.map(function (l, i) {
+        return '<li class="' + (i === 0 ? "now" : "done") + '"><span class="when">' + esc(l.date) + '</span><span class="dot"></span><span class="what"><b>' + esc(l.title) + "</b><span>" + esc(l.text) + "</span></span></li>";
+      }).join("") + "</ol>" : empty("아직 현장 방문 기록이 없습니다", "협의회 현장 방문 후 기록을 올립니다.")) + "</div></div>";
+  };
+
+  R.gallery = function () {
+    var L = arr(S.gallery);
+    if (!L.length) { C.innerHTML = empty("아직 등록된 사진이 없습니다", "현장 방문 사진이 모이면 이곳에 올립니다."); return; }
+    var cats = uniq(L.map(function (g) { return g.cat; }));
+    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("gCats", cats, "분류") + "</div>" +
+      '<div class="gallery" id="gList">' + L.map(function (g) {
+        var img = g.src ? '<img src="' + esc(safeUrl(g.src)) + '" alt="' + esc(g.title) + '" loading="lazy">' : '<div class="img"><span>' + esc(g.cat) + "</span></div>";
+        return '<figure class="ph" data-cat="' + esc(g.cat) + '">' + img + "<figcaption>" + esc(g.title) + "<small>" + esc(g.date) + "</small></figcaption></figure>";
+      }).join("") + "</div></div>";
+    bindChips("gCats", filterBy("gList", "figure"));
+  };
+
+  R.association = function () {
+    var o = S.org || {}, g = S.greeting, ac = S.accounting || { rows: [] }, rows = arr(ac.rows);
+    var tin = 0, tout = 0; rows.forEach(function (r) { tin += r.in || 0; tout += r.out || 0; });
+    function role(r, cls) { return '<div class="role ' + (cls || "") + '"><b>' + esc(r.role) + "</b><span>" + esc(r.name) + "</span></div>"; }
+    C.innerHTML =
+      (g && g.text ? '<div class="greeting"><div class="eyebrow">인사말</div><p class="content">' + esc(g.text) + '</p><p class="muted small">— ' + esc(g.from) + "</p></div>" : "") +
+      '<div class="two"><div>' + head("위임동의 현황", more("agreement.html", "동·호수별 현황판")) + agreeMeter() + (LIVE ? '<p class="cta-row" style="margin:0 0 12px"><a class="btn solid" href="consent.html">위임동의서 제출</a></p>' : "") +
+      '<p class="muted">협의회는 법적 권한이 있는 단체가 아닌 자발적 모임입니다. 그래서 위임 세대 수가 곧 대표성입니다. 위임이 모일수록 LH와의 협의에서 목소리가 커집니다.</p></div>' +
+      "<div>" + head("위임동의 절차") + '<ol class="steps">' +
+      "<li><div><b>회원가입</b><span>아이디를 만들고 동·호수와 계약서 첫 장 사진을 올립니다. 한 세대에는 한 계정만 승인됩니다.</span></div></li>" +
+      "<li><div><b>운영진 승인</b><span>운영진이 계약서로 입주예정자인지 확인합니다. 사진은 확인 후 바로 삭제합니다.</span></div></li>" +
+      '<li><div><b>위임동의서 제출</b><span><a href="consent.html">위임동의서</a>에 계약자 성명을 적고 동의합니다. 주민등록번호는 받지 않습니다.</span></div></li>' +
+      "<li><div><b>자동 반영</b><span>제출 즉시 위임동의 현황판에 반영됩니다. 언제든 철회할 수 있습니다.</span></div></li>" +
+      "</ol></div></div>" +
+      (o.head ? "<div>" + head("조직 구성(안)", '<span class="note">운영진 선출 전</span>') +
+        '<div class="org">' + role(o.head, "head") + '<span class="link-line"></span><div class="lvl">' + arr(o.officers).map(function (r) { return role(r); }).join("") + '</div><span class="link-line"></span><div class="lvl">' + arr(o.teams).map(function (r) { return role(r); }).join("") + "</div>" +
+        '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1인" }) + "</div></div></div>" : "") +
+      "<div>" + head("운영 원칙(안)") + '<div class="three"><div><h3>투명한 운영</h3><p class="muted">회의록과 회계 내역을 공개합니다. 회비는 전체 투표 없이 걷지 않습니다.</p></div>' +
+      '<div><h3>현장 중심 활동</h3><p class="muted">정기 현장 방문으로 공정과 품질을 확인하고, 하자 우려 사항을 LH에 공식 전달합니다.</p></div>' +
+      '<div><h3>개인정보 최소 수집</h3><p class="muted">동·호수와 성명 외 정보는 받지 않으며, 인증 자료는 확인 후 삭제합니다.</p></div></div></div>' +
+      "<div>" + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
+      (rows.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>날짜</th><th>항목</th><th class="r">수입</th><th class="r">지출</th><th>비고</th></tr></thead><tbody>' +
+        rows.map(function (r) { return '<tr><td class="num">' + esc(r.date) + "</td><td>" + esc(r.item) + '</td><td class="r num">' + n(r.in) + '</td><td class="r num">' + n(r.out) + "</td><td>" + esc(r.by) + "</td></tr>"; }).join("") +
+        '<tr class="total"><td colspan="2">합계</td><td class="r num">' + n(tin) + '</td><td class="r num">' + n(tout) + "</td><td></td></tr></tbody></table></div>"
+        : empty("수입 · 지출 내역이 없습니다", "협의회는 현재 회비를 걷지 않습니다.")) +
+      (ac.note ? '<p class="muted small">' + esc(ac.note) + "</p>" : "") + "</div>";
+  };
+
+  /* ── 회원 상태 안내 ── */
+  function gate(need) {
+    // need: "member" | "login"
+    if (!LIVE) return '<div class="empty"><b>로그인이 필요합니다</b><span>입주예정자 인증을 거친 회원만 이용할 수 있습니다. (미리보기: 서버 연결 후 동작)</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="login.html">로그인</a><a class="btn" href="login.html#signup">회원가입</a></p></div>';
+    if (!API.loggedIn) return '<div class="empty"><b>로그인이 필요합니다</b><span>입주예정자 인증을 거친 회원만 이용할 수 있습니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="login.html">로그인</a><a class="btn" href="login.html#signup">회원가입</a></p></div>';
+    if (need === "login") return "";
+    var p = API.profile;
+    if (!p) return '<div class="empty"><b>가입을 마무리해 주세요</b><span>계약서 사진이 아직 등록되지 않았습니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="login.html#signup">가입 마무리</a></p></div>';
+    if (p.status === "pending") return '<div class="empty"><b>승인 대기 중입니다</b><span>운영진이 계약서를 확인하고 있습니다. 승인되면 바로 이용할 수 있습니다.</span></div>';
+    if (p.status === "rejected") return '<div class="empty"><b>가입이 반려되었습니다</b><span>' + esc(p.reject_reason || "") + '</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="account.html">재신청하기</a></p></div>';
+    return "";
+  }
+  function busy(btn, on, label) { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.l = btn.textContent; btn.textContent = label || "처리 중…"; } else if (btn.dataset.l) btn.textContent = btn.dataset.l; }
+  function say(id, msg, bad) { var m = el(id); if (!m) return; m.hidden = !msg; m.textContent = msg || ""; m.classList.toggle("bad", !!bad); }
+  function fmtDate(s) { if (!s) return ""; var d = new Date(s); return d.getFullYear() + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + ("0" + d.getDate()).slice(-2); }
+  function fmtTime(s) { var d = new Date(s); return fmtDate(s) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+  function unitLabel(id) { var u = UNIT[id]; return u ? u.dong + "동 " + u.ho + "호 (" + u.type + ")" : id; }
+  function unitPicker(prefix, current) {
+    var dongs = arr(S.layout).map(function (d) { return d.dong; });
+    return '<div class="two" style="gap:12px"><div class="field"><label for="' + prefix + 'Dong">동</label><select id="' + prefix + 'Dong" required><option value="">동 선택</option>' +
+      dongs.map(function (d) { return '<option value="' + d + '">' + d + "동</option>"; }).join("") + '</select></div>' +
+      '<div class="field"><label for="' + prefix + 'Ho">호수</label><select id="' + prefix + 'Ho" required disabled><option value="">먼저 동을 고르세요</option></select></div></div>';
+  }
+  function bindUnitPicker(prefix, current) {
+    var D = el(prefix + "Dong"), H = el(prefix + "Ho");
+    function fill() {
+      var d = Number(D.value);
+      var list = UNITS.filter(function (u) { return u.dong === d; }).sort(function (a, b) { return a.floor - b.floor || a.line - b.line; });
+      H.innerHTML = '<option value="">호수 선택</option>' + list.map(function (u) { return '<option value="' + u.id + '">' + u.ho + "호 · " + u.type + "</option>"; }).join("");
+      H.disabled = !list.length;
+    }
+    D.addEventListener("change", fill);
+    if (current && UNIT[current]) { D.value = String(UNIT[current].dong); fill(); H.value = current; }
+  }
+  var PRIVACY_SIGNUP = "수집 항목: 동 · 호수(아이디), 계약서 사진\n목적: 입주예정자 여부 확인과 1세대 1계정 관리\n보유 기간: 계약서 사진은 운영진 확인 후 즉시 삭제, 나머지는 탈퇴 또는 협의회 해산 시까지\n동의하지 않을 수 있으나, 이 경우 가입할 수 없습니다.";
+
+  /* ── 위임동의 현황판 ── */
+  R.agreement = async function () {
+    if (!UNITS.length) { C.innerHTML = empty("배치표가 없습니다", "data.js의 layout에 동별 라인을 넣어주세요."); return; }
+    var TYPES = uniq(UNITS.map(function (u) { return u.type; })).sort(), filt = "전체", stats = null, canSee = true, myUnit = null;
+    if (LIVE) {
+      stats = await API.stats();
+      canSee = API.isMember || API.isAdmin;
+      AGREED = {};
+      if (canSee) arr(await API.agreedUnits()).forEach(function (id) { AGREED[id] = 1; });
+      myUnit = API.isMember ? API.profile.unit_id : null;
+    }
+    var sDong = {}; arr(stats).forEach(function (r) { sDong[r.dong] = r; });
+    var liveTotal = stats ? stats.reduce(function (s, r) { return s + r.agreed; }, 0) : null;
+
+    C.innerHTML =
+      '<div class="ag-summary" id="agSum"></div>' +
+      (LIVE && !canSee ? '<div class="notice-box">동별 집계는 누구나 볼 수 있습니다. 세대별 현황은 승인된 회원에게만 보입니다. <a href="login.html">로그인</a></div>' : "") +
+      (LIVE && API.isMember ? '<div class="notice-box' + (AGREED[myUnit] ? " good" : "") + '">' + (AGREED[myUnit] ? "우리 세대(" + esc(unitLabel(myUnit)) + ")는 위임동의를 마쳤습니다." : '우리 세대(' + esc(unitLabel(myUnit)) + ')는 아직 위임동의 전입니다. <a href="consent.html">위임동의서 제출 →</a>') + "</div>" : "") +
+      (canSee ? '<div class="toolbar">' + chips("agTypes", TYPES, "타입") +
+        '<form class="find" id="agFind" role="search"><label for="agQ" class="small muted">세대 찾기</label><input id="agQ" placeholder="예: 403-1803" autocomplete="off"><button class="btn" type="submit">찾기</button></form></div>' +
+        '<div class="legend small"><span><i class="sw on"></i>위임동의 완료</span><span><i class="sw off"></i>미제출</span><span><i class="sw none"></i>필로티 · 비주거</span>' + (myUnit ? '<span><i class="sw mine"></i>우리 세대</span>' : "") + "</div>" : "") +
+      '<div class="dongs' + (canSee ? "" : " compact") + '" id="agDongs"></div>' +
+      '<div class="panel ag-info" id="agInfo" hidden></div>' +
+      (canSee ? "<div>" + head("타입별 현황") + '<div class="tablebox"><table class="spec"><thead><tr><th>타입</th><th class="r">세대</th><th class="r">동의</th><th class="r">동의율</th><th style="width:40%"><span class="sr">막대</span></th></tr></thead><tbody id="agTypeTbl"></tbody></table></div></div>' : "") +
+      '<p class="muted small">' + esc(S.layoutNote || "") + " 배치표 집계 " + n(UNITS.length) + "세대, 공고 " + n(T) + "세대.</p>" +
+      (LIVE ? "" : '<p class="muted small">회원 기능이 연결되면 승인된 회원이 낸 위임동의서가 이 화면에 자동으로 반영됩니다.</p>');
+
+    function render() {
+      var a = liveTotal != null && !canSee ? liveTotal : Object.keys(AGREED).length, byDong = {}, byType = {};
+      UNITS.forEach(function (u) {
+        var on = !!AGREED[u.id];
+        (byDong[u.dong] = byDong[u.dong] || [0, 0])[1]++; if (on) byDong[u.dong][0]++;
+        (byType[u.type] = byType[u.type] || [0, 0])[1]++; if (on) byType[u.type][0]++;
+      });
+      if (!canSee) Object.keys(sDong).forEach(function (d) { byDong[d] = [sDong[d].agreed, sDong[d].total]; });
+      var p = pct(a, T);
+      el("agSum").innerHTML =
+        '<div class="big"><b class="num">' + n(a) + '</b><span class="muted"> / ' + n(T) + "세대</span></div>" +
+        '<div class="meter" style="margin:0;flex:1;min-width:240px"><div class="row"><span>전체 동의율</span><b class="num">' + p.toFixed(1) + '%</b></div>' +
+        '<div class="bar-track"><i style="width:' + Math.min(100, p).toFixed(1) + '%"></i><span class="goal" style="left:' + pct(NEED, T).toFixed(1) + '%"></span></div>' +
+        "<small>" + (a >= NEED ? "목표 과반(" + n(NEED) + "세대)을 넘었습니다" : "목표 과반(" + n(NEED) + "세대)까지 " + n(NEED - a) + "세대") + (LIVE ? " · 실시간" : (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "")) + "</small></div>";
+
+      el("agDongs").innerHTML = arr(S.layout).map(function (d) {
+        var st = byDong[d.dong] || [0, 0], dp = pct(st[0], st[1]);
+        var top = '<header><h3>' + d.dong + '동</h3><span class="num">' + st[0] + "/" + st[1] + " · " + dp.toFixed(0) + "%</span></header>" + '<div class="mini"><i style="width:' + dp.toFixed(1) + '%"></i></div>';
+        if (!canSee) return '<section class="dong" aria-label="' + d.dong + '동">' + top + "</section>";
+        var maxF = Math.max.apply(null, d.lines.map(function (l) { return l[2]; })), cells = "";
+        for (var f = maxF; f >= 1; f--) {
+          cells += '<span class="fl num">' + (f % 5 === 0 || f === 1 ? f : "") + "</span>";
+          d.lines.forEach(function (l, li) {
+            var ho = f * 100 + li + 1, id = d.dong + "-" + ho, dim = filt !== "전체" && l[0] !== filt;
+            if (f < l[1] || f > l[2]) cells += '<span class="c' + (f < l[1] ? " none" : " sky") + (dim ? " dim" : "") + '"></span>';
+            else cells += '<button type="button" class="c ' + (AGREED[id] ? "on" : "off") + (id === myUnit ? " mine" : "") + (dim ? " dim" : "") + '" data-id="' + id + '" title="' + d.dong + "동 " + ho + '호" aria-label="' + d.dong + "동 " + ho + "호 " + l[0] + (AGREED[id] ? " 위임동의 완료" : " 미제출") + '"></button>';
+          });
+        }
+        var footer = '<span class="fl"></span>' + d.lines.map(function (l) { return '<span class="tp t' + l[0].slice(0, 2) + (filt !== "전체" && l[0] !== filt ? " dim" : "") + '">' + l[0] + "</span>"; }).join("");
+        return '<section class="dong" aria-label="' + d.dong + '동">' + top + '<div class="grid" style="grid-template-columns:18px repeat(' + d.lines.length + ',1fr)">' + cells + footer + "</div></section>";
+      }).join("");
+
+      if (canSee) el("agTypeTbl").innerHTML = TYPES.map(function (t) {
+        var s = byType[t], q = pct(s[0], s[1]);
+        return "<tr><td>" + t + '</td><td class="r num">' + n(s[1]) + '</td><td class="r num">' + n(s[0]) + '</td><td class="r num">' + q.toFixed(1) + '%</td><td><div class="bar-track" style="margin:0"><i style="width:' + q.toFixed(1) + '%"></i></div></td></tr>';
+      }).join("");
+    }
+    var selected = null;
+    function info(id) {
+      var u = UNIT[id]; if (!u) return false;
+      selected = id; var b = el("agInfo"); b.hidden = false;
+      b.innerHTML = '<div class="row-info"><b>' + u.dong + "동 " + u.ho + "호</b><span>" + u.type + " · " + u.floor + '층</span><span class="tag' + (AGREED[id] ? "" : " off") + '">' + (AGREED[id] ? "위임동의 완료" : "미제출") + '</span><button type="button" class="linkbtn" id="agInfoClose">닫기</button></div>';
+      el("agInfoClose").addEventListener("click", function () { b.hidden = true; selected = null; C.querySelectorAll(".c.sel").forEach(function (x) { x.classList.remove("sel"); }); });
+      C.querySelectorAll(".c.sel").forEach(function (x) { x.classList.remove("sel"); });
+      var c = C.querySelector('.c[data-id="' + id + '"]'); if (c) c.classList.add("sel");
+      return true;
+    }
+    render();
+    if (!canSee) return;
+    el("agDongs").addEventListener("click", function (e) { var c = e.target.closest("button.c"); if (c) info(c.dataset.id); });
+    bindChips("agTypes", function (t) { filt = t; render(); if (selected) info(selected); });
+    el("agFind").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var m = el("agQ").value.match(/(\d{3})\D*(\d{3,4})/), id = m ? m[1] + "-" + Number(m[2]) : "";
+      if (info(id)) { var c = C.querySelector('.c[data-id="' + id + '"]'); if (c) c.scrollIntoView({ block: "center" }); }
+      else { var b = el("agInfo"); b.hidden = false; b.textContent = "해당 세대를 찾지 못했습니다. 401-1401처럼 동과 호수를 입력하세요."; }
+    });
+  };
+
+  /* ── 단체민원 · 투표 ── */
+  R.participate = async function () {
+    var CP = LIVE ? await API.campaigns() : arr(S.campaigns), PL = LIVE ? await API.polls() : arr(S.polls);
+    var stCls = { "의견 모집": "tag hot", "접수 완료": "tag", "답변 완료": "tag off" };
+    var pollGate = LIVE ? gate("member") : "";
+    C.innerHTML = "<div>" + head("단체민원", CP.length ? '<span class="note">1세대 1참여 · 참여 세대 수 기준</span>' : "") +
+      (CP.length ? '<div class="camps">' + CP.map(function (c) {
+        var q = Math.min(100, pct(c.joined, T)), canJoin = LIVE && API.isMember && c.status === "의견 모집" && !c.mine;
+        return '<article class="camp"><div class="camp-top"><span class="' + (stCls[c.status] || "tag") + '">' + esc(c.status) + '</span><span class="muted small">대상 · ' + esc(c.target || c.to) + "</span></div>" +
+          "<h3>" + esc(c.title) + '</h3><p class="muted">' + esc(c.description || c.desc) + "</p>" +
+          '<div class="bar-track"><i style="width:' + q.toFixed(1) + '%"></i></div><div class="camp-foot"><span class="num">' + n(c.joined) + "세대 참여 · " + q.toFixed(0) + "%</span>" +
+          (c.mine ? '<span class="tag">참여함</span>' : canJoin ? '<button type="button" class="btn join" data-id="' + c.id + '">참여하기</button>' : "") + "</div></article>";
+      }).join("") + "</div>" : empty("진행 중인 단체민원이 없습니다", "민원 제안은 게시판에 남겨주세요.")) +
+      (LIVE && !API.isMember && CP.some(function (c) { return c.status === "의견 모집"; }) ? '<p class="muted small">참여는 승인된 회원만 할 수 있습니다. <a href="login.html">로그인</a></p>' : "") +
+      '<p class="notice-box" id="pMsg" role="status" hidden></p></div>' +
+      "<div>" + head("투표", '<span class="note">1세대 1표</span>') +
+      (pollGate ? pollGate : PL.length ? '<div class="two">' + PL.map(function (p) {
+        var votes = p.votes || arr(p.options).map(function (o) { return o.v || 0; }), labels = arr(p.options).map(function (o) { return typeof o === "string" ? o : o.t; });
+        var tot = votes.reduce(function (s, v) { return s + v; }, 0), voted = p.mine != null, can = LIVE && API.isMember && !voted && !p.closed;
+        return '<div class="panel poll"><h3 style="font-size:19px">' + esc(p.question || p.q) + '</h3><p class="muted small" style="margin:4px 0 14px">' + (p.closed ? "마감됨" : "마감 " + esc(p.ends_at ? fmtDate(p.ends_at) : p.ends)) + " · " + n(tot) + "표" + (voted ? " · 우리 세대 투표함" : "") + "</p>" +
+          labels.map(function (t, i) {
+            var q = pct(votes[i], tot);
+            return '<div class="meter" style="margin-bottom:12px"><div class="row"><span>' + esc(t) + (p.mine === i ? ' <span class="tag">선택</span>' : "") + '</span><span class="num">' + q.toFixed(0) + "% · " + n(votes[i]) + '</span></div><div class="bar-track"><i style="width:' + q.toFixed(1) + '%"></i></div>' +
+              (can ? '<button type="button" class="btn vote" data-poll="' + p.id + '" data-idx="' + i + '" style="margin-top:6px;padding:5px 12px;font-size:13px">이 항목에 투표</button>' : "") + "</div>";
+          }).join("") + "</div>";
+      }).join("") + "</div>" : empty("진행 중인 투표가 없습니다", "운영진이 투표를 열면 이곳에 표시됩니다.")) + "</div>";
+    if (!LIVE) return;
+    C.addEventListener("click", async function (e) {
+      var j = e.target.closest(".join"), v = e.target.closest(".vote");
+      if (!j && !v) return;
+      var btn = j || v; busy(btn, true);
+      try {
+        if (j) await API.joinCampaign(Number(j.dataset.id));
+        else await API.vote(Number(v.dataset.poll), Number(v.dataset.idx));
+        await R.participate();
+      } catch (err) { busy(btn, false); say("pMsg", API.errorText(err), true); el("pMsg").scrollIntoView({ block: "center" }); }
+    });
+  };
+
+  /* ── 자유게시판 ── */
+  R.board = async function () {
+    if (!LIVE) { C.innerHTML = gate("member"); return; }
+    var g = gate("member"); if (g) { C.innerHTML = g; return; }
+    var cats = arr(S.boardCats).length ? S.boardCats : ["자유"];
+    var L = await API.posts();
+    C.innerHTML =
+      '<div id="postView" hidden></div>' +
+      "<div>" + '<div class="toolbar">' + (L.length ? chips("bCats", cats, "분류") : "<span></span>") + '<a class="btn solid" href="#write">글쓰기</a></div>' +
+      (L.length ? '<div class="tablebox"><table class="spec board"><thead><tr><th class="r">번호</th><th>분류</th><th>제목</th><th>작성자</th><th class="r">날짜</th></tr></thead><tbody id="bList">' +
+        L.map(function (b) {
+          var cc = b.comments && b.comments[0] ? b.comments[0].count : 0;
+          return '<tr data-no="' + b.id + '" data-cat="' + esc(b.cat) + '" tabindex="0"><td class="r num">' + b.id + '</td><td><span class="tag">' + esc(b.cat) + '</span></td><td class="title">' + esc(b.title) + (cc ? ' <span class="muted num">[' + cc + "]</span>" : "") + "</td><td>" + esc(b.author_label) + '</td><td class="r num">' + fmtDate(b.created_at).slice(5) + "</td></tr>";
+        }).join("") + "</tbody></table></div>" : empty("아직 게시글이 없습니다", "첫 글을 남겨주세요.")) + "</div>" +
+      '<div id="write">' + head("글쓰기", '<span class="note">작성자: ' + esc(API.profile.nickname ? API.profile.nickname + " · " + API.profile.unit_id.split("-")[0] + "동" : API.profile.unit_id.split("-")[0] + "동 입주예정자") + ' · <a href="account.html">닉네임 설정</a></span>') +
+      '<form class="panel" id="wForm"><div class="field"><label for="wCat">분류</label><select id="wCat">' + cats.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="field"><label for="wTitle">제목</label><input id="wTitle" maxlength="80" required></div>' +
+      '<div class="field"><label for="wBody">내용</label><textarea id="wBody" maxlength="5000" required></textarea></div>' +
+      '<button class="btn solid" type="submit">등록</button><p class="notice-box" id="wMsg" role="status" hidden style="margin-top:12px"></p></form></div>';
+    async function show(id) {
+      var b = await API.post(id), v = el("postView");
+      if (!b) { v.hidden = false; v.innerHTML = empty("글을 찾을 수 없습니다", "삭제되었을 수 있습니다."); return; }
+      var mine = b.author_id === API.session.user.id;
+      v.innerHTML = '<article class="panel post"><span class="tag">' + esc(b.cat) + '</span><h3 style="margin-top:8px">' + esc(b.title) + '</h3><div class="meta">' + esc(b.author_label) + " · " + fmtTime(b.created_at) + '</div><div class="content">' + esc(b.body) + "</div>" +
+        '<ul class="comments">' + (b.comments.length ? b.comments.map(function (c) { var cm = c.author_id === API.session.user.id || API.isAdmin; return "<li><b>" + esc(c.author_label) + "</b>" + esc(c.body) + ' <span class="muted small">' + fmtTime(c.created_at) + "</span>" + (cm ? ' <button type="button" class="linkbtn delc" data-id="' + c.id + '">삭제</button>' : "") + "</li>"; }).join("") : '<li class="muted">아직 댓글이 없습니다.</li>') + "</ul>" +
+        '<form id="cForm" class="find" style="margin-top:10px"><label for="cBody" class="sr">댓글</label><input id="cBody" maxlength="1000" placeholder="댓글 쓰기" style="flex:1;width:auto;min-width:0"><button class="btn" type="submit">등록</button></form>' +
+        '<p class="cta-row" style="margin:14px 0 0"><button type="button" class="btn" id="closePost">목록으로</button>' + (mine || API.isAdmin ? '<button type="button" class="btn danger" id="delPost">글 삭제</button>' : "") + '</p><p class="notice-box" id="vMsg" role="status" hidden></p></article>';
+      v.hidden = false; v.scrollIntoView({ block: "start" });
+      el("closePost").addEventListener("click", function () { v.hidden = true; history.replaceState(null, "", "#"); });
+      el("cForm").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.addComment(b.id, el("cBody").value); await show(b.id); } catch (err) { say("vMsg", API.errorText(err), true); } });
+      v.querySelectorAll(".delc").forEach(function (x) { x.addEventListener("click", async function () { try { await API.deleteComment(Number(x.dataset.id)); await show(b.id); } catch (err) { say("vMsg", API.errorText(err), true); } }); });
+      if (el("delPost")) el("delPost").addEventListener("click", async function () {
+        var btn = this;
+        if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "한 번 더 누르면 삭제됩니다"; return; }
+        try { await API.deletePost(b.id); history.replaceState(null, "", "#"); await R.board(); } catch (err) { say("vMsg", API.errorText(err), true); }
+      });
+    }
+    if (L.length) {
+      el("bList").addEventListener("click", function (e) { var tr = e.target.closest("tr"); if (tr) { history.replaceState(null, "", "#p" + tr.dataset.no); show(tr.dataset.no); } });
+      el("bList").addEventListener("keydown", function (e) { if (e.key === "Enter") { var tr = e.target.closest("tr"); if (tr) show(tr.dataset.no); } });
+      bindChips("bCats", filterBy("bList", "tr"));
+      var hm = location.hash.match(/^#p(\d+)$/); if (hm) show(hm[1]);
+    }
+    el("wForm").addEventListener("submit", async function (e) {
+      e.preventDefault(); var btn = this.querySelector("button[type=submit]"); busy(btn, true, "등록 중…");
+      try { var p = await API.createPost({ cat: el("wCat").value, title: el("wTitle").value, body: el("wBody").value }); history.replaceState(null, "", "#p" + p.id); await R.board(); }
+      catch (err) { busy(btn, false); say("wMsg", API.errorText(err), true); }
+    });
+  };
+
+  R.links = function () {
+    var CT = arr(S.contacts);
+    C.innerHTML = "<div>" + head("바로가기") + '<div class="tiles">' + arr(S.links).map(tile).join("") + "</div></div>" +
+      (CT.length ? "<div>" + head("문의처") + '<div class="tablebox"><table class="spec kv">' + CT.map(function (c) { return "<tr><th>" + esc(c[0]) + '</th><td class="num sel-all">' + esc(c[1]) + "</td></tr>"; }).join("") + "</table></div></div>" : "") +
+      '<div class="two"><div>' + head("공식 카페 가입 · 인증") + '<ol class="steps">' +
+      "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
+      "<li><div><b>등업 신청</b><span>계약서 첫 장을 올립니다. 동·호수와 이름 외에는 가려주세요.</span></div></li>" +
+      "<li><div><b>오픈채팅 참여</b><span>등업 후 공지에 있는 참여 코드로 입장합니다.</span></div></li></ol></div>" +
+      "<div>" + head("휴대폰 홈 화면에 추가") +
+      '<p class="muted"><b class="fg">아이폰(사파리)</b> 하단 공유 버튼을 누르고 "홈 화면에 추가"를 선택합니다.</p>' +
+      '<p class="muted"><b class="fg">안드로이드(크롬)</b> 오른쪽 위 메뉴에서 "홈 화면에 추가"를 선택합니다.</p></div></div>';
+  };
+
+  R.calculator = function () {
+    var TY = arr(S.types), hasOpt = S.options && typeof S.options === "object";
+    C.innerHTML = '<div class="two"><form class="panel" id="cForm" novalidate>' +
+      '<div class="field"><label for="cPrice">분양가</label><input id="cPrice" class="big num" inputmode="numeric" autocomplete="off"></div>' +
+      '<div class="chips" role="group" aria-label="타입별 최고 분양가 불러오기" id="cChips" style="margin:-4px 0 16px">' + TY.map(function (t, i) { return '<button type="button" class="chip" data-p="' + t.maxPrice + '" data-area="' + esc(t.area) + '" aria-pressed="' + (i === 0) + '">' + esc(t.type) + "</button>"; }).join("") + "</div>" +
+      (hasOpt ? '<fieldset class="ck opts"><legend>유상옵션 선택</legend><div id="cOptList"></div></fieldset>' : "") +
+      '<div class="field"><label for="cOpt">유상옵션 합계</label><input id="cOpt" class="big num" inputmode="numeric" value="0" autocomplete="off"></div>' +
+      '<label class="check"><input type="checkbox" id="cFirst"> 생애최초 주택 구입 감면 (취득세 최대 200만원)</label>' +
+      '<p class="muted small" style="margin:12px 0 0">타입 버튼은 모집공고의 타입별 최고가를 불러옵니다. 실제 금액은 계약서의 동·층별 분양가로 입력하세요.</p></form>' +
+      "<div>" + head("회차별 납부액") + '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th class="r">비율</th><th class="r">금액</th><th class="r">누적</th></tr></thead><tbody id="cPay"></tbody></table></div></div></div>' +
+      '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') + '<div class="tablebox"><table class="spec"><tbody id="cTax"></tbody></table></div></div>' +
+      '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">과세표준은 분양가와 유상옵션을 합한 금액입니다. 취득세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%로 계산했습니다. 지방교육세는 취득세의 10%이며, 전용 85㎡ 이하는 농어촌특별세가 없습니다.</p>' +
+      '<p class="muted small">세율과 감면 요건은 바뀔 수 있으니 실제 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p></div></div>';
+    var P = el("cPrice"), O = el("cOpt"), F = el("cFirst");
+    function val(i) { return Number(String(i.value).replace(/[^0-9]/g, "")) || 0; }
+    function fmtIn(i) { var d = i.value.replace(/[^0-9]/g, "").slice(0, 12); i.value = d ? n(Number(d)) : ""; }
+    function render() {
+      var p = val(P), o = val(O), base = p + o;
+      var rows = [["계약금", 0.1]]; for (var i = 1; i <= 6; i++) rows.push(["중도금 " + i + "회", 0.1]); rows.push(["잔금", 0.3]);
+      var acc = 0;
+      el("cPay").innerHTML = rows.map(function (r) { acc += p * r[1]; return "<tr><td>" + r[0] + '</td><td class="r num">' + Math.round(r[1] * 100) + '%</td><td class="r num">' + eok(p * r[1]) + '</td><td class="r num">' + eok(acc) + "</td></tr>"; }).join("") +
+        (o ? '<tr><td>유상옵션</td><td class="r num">-</td><td class="r num">' + eok(o) + '</td><td class="r num">' + eok(p + o) + "</td></tr>" : "") +
+        '<tr class="total"><td colspan="2">합계</td><td class="r num" colspan="2">' + eok(base) + "</td></tr>";
+      var rate = base <= 6e8 ? 0.01 : base <= 9e8 ? (base / 1e8 * 2 / 3 - 3) / 100 : 0.03;
+      var tax = base * rate, relief = F.checked ? Math.min(tax, 2e6) : 0, edu = tax * 0.1;
+      el("cTax").innerHTML =
+        '<tr><th>과세표준</th><td class="r num">' + eok(base) + "</td></tr>" +
+        '<tr><th>취득세율</th><td class="r num">' + (base ? (rate * 100).toFixed(2) : "0.00") + "%</td></tr>" +
+        '<tr><th>취득세</th><td class="r num">' + n(Math.round(tax)) + "원</td></tr>" +
+        (relief ? '<tr><th>생애최초 감면</th><td class="r num">−' + n(Math.round(relief)) + "원</td></tr>" : "") +
+        '<tr><th>지방교육세</th><td class="r num">' + n(Math.round(edu)) + "원</td></tr>" +
+        '<tr class="total"><td>합계 (예상)</td><td class="r num">' + n(Math.round(tax - relief + edu)) + "원</td></tr>";
+    }
+    function optList(area) {
+      if (!hasOpt) return;
+      var L = arr(S.options[area]);
+      el("cOptList").innerHTML = L.length ? L.map(function (o, i) {
+        return '<div class="optrow"><label class="check" for="op' + i + '"><input type="checkbox" id="op' + i + '"> ' + esc(o[0]) + '</label><input class="num optamt" id="opa' + i + '" inputmode="numeric" aria-label="' + esc(o[0]) + ' 금액" value="' + n(o[1]) + '"></div>';
+      }).join("") : '<p class="muted small">이 면적의 옵션 정보가 없습니다.</p>';
+      sumOpts();
+    }
+    function sumOpts() {
+      if (!hasOpt) return;
+      var s = 0;
+      el("cOptList").querySelectorAll(".optrow").forEach(function (r) { if (r.querySelector("input[type=checkbox]").checked) s += val(r.querySelector(".optamt")); });
+      O.value = n(s); render();
+    }
+    if (hasOpt) {
+      el("cOptList").addEventListener("input", function (e) { if (e.target.classList.contains("optamt")) fmtIn(e.target); sumOpts(); });
+      el("cOptList").addEventListener("change", sumOpts);
+    }
+    el("cForm").addEventListener("submit", function (e) { e.preventDefault(); });
+    P.addEventListener("input", function () { fmtIn(P); el("cChips").querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", "false"); }); render(); });
+    O.addEventListener("input", function () { fmtIn(O); render(); });
+    F.addEventListener("change", render);
+    el("cChips").addEventListener("click", function (e) {
+      var b = e.target.closest(".chip"); if (!b) return;
+      el("cChips").querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", c === b ? "true" : "false"); });
+      P.value = n(Number(b.dataset.p)); optList(b.dataset.area); render();
+    });
+    P.value = TY.length ? n(TY[0].maxPrice) : "";
+    optList(TY.length ? TY[0].area : "");
+    render();
+  };
+
+  R.checklist = function () {
+    var KEY = "s4-checklist", saved = {}, total = 0;
+    try { saved = JSON.parse(store(KEY) || "{}") || {}; } catch (e) { saved = {}; }
+    C.innerHTML = '<div class="toolbar"><div class="meter" style="margin:0;flex:1;min-width:220px"><div class="row"><span>점검 진행률</span><b class="num" id="ckPct">0%</b></div><div class="bar-track"><i id="ckBar" style="width:0%"></i></div></div>' +
+      '<button type="button" class="btn" id="ckReset">체크 모두 지우기</button></div>' +
+      '<div class="ck-grid">' + arr(S.checklist).map(function (g, gi) {
+        return '<fieldset class="ck"><legend>' + esc(g.room) + "</legend>" + arr(g.items).map(function (it, ii) {
+          total++; var id = "ck" + gi + "-" + ii;
+          return '<label class="check" for="' + id + '"><input type="checkbox" id="' + id + '"' + (saved[id] ? " checked" : "") + "> " + esc(it) + "</label>";
+        }).join("") + "</fieldset>";
+      }).join("") + "</div>" +
+      '<div class="two"><div><h3 style="margin-bottom:8px">챙겨갈 준비물</h3><p class="muted">마스킹테이프(하자 표시), 수평계 앱, 멀티탭 테스터, 줄자, 손전등, 물 한 병(배수 확인), 휴대폰 충전기</p></div>' +
+      '<div><h3 style="margin-bottom:8px">하자 접수 팁</h3><p class="muted">하자 부위는 테이프로 표시하고 멀리서 한 장, 가까이서 한 장 찍습니다. 사진에 동·호수와 위치를 메모해 두면 접수가 빨라집니다.</p></div></div>';
+    function update(persist) {
+      var on = 0, st = {};
+      C.querySelectorAll(".ck input").forEach(function (b) { if (b.checked) { on++; st[b.id] = 1; } });
+      var q = pct(on, total);
+      el("ckPct").textContent = on + " / " + total + " · " + q.toFixed(0) + "%";
+      el("ckBar").style.width = q.toFixed(1) + "%";
+      if (persist) store(KEY, JSON.stringify(st));
+    }
+    C.addEventListener("change", function (e) { if (e.target.matches(".ck input")) update(true); });
+    el("ckReset").addEventListener("click", function () { C.querySelectorAll(".ck input").forEach(function (b) { b.checked = false; }); update(true); });
+    update(false);
+  };
+
+  R.documents = function () {
+    var L = arr(S.documents);
+    if (!L.length) { C.innerHTML = empty("등록된 자료가 없습니다", ""); return; }
+    var cats = uniq(L.map(function (d) { return d.cat; }));
+    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("dCats", cats, "분류") + "</div>" +
+      '<ul class="list" id="dList">' + L.map(function (d) {
+        var t = d.url ? '<a href="' + esc(safeUrl(d.url)) + '" target="_blank" rel="noopener">' + esc(d.title) + "</a>" : esc(d.title);
+        return '<li data-cat="' + esc(d.cat) + '"><span class="tag">' + esc(d.cat) + '</span><span class="t">' + t + '<br><span class="muted small">' + esc(d.src) + '</span></span><span class="d num">' + esc(d.date) + "</span></li>";
+      }).join("") + "</ul>" +
+      '<p class="muted small" style="margin-top:12px">협의회가 정리한 자료(옵션 비교표, 계약 체크리스트 등)는 만들어지는 대로 추가합니다.</p></div>';
+    bindChips("dCats", filterBy("dList", "li"));
+  };
+
+  R.faq = function () {
+    var L = arr(S.faq), cats = uniq(L.map(function (f) { return f.cat; }));
+    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("fCats", cats, "분류") + "</div>" +
+      '<div class="rows" id="fList">' + L.map(function (x) { return '<details class="row faq" data-cat="' + esc(x.cat) + '"><summary><span class="t">' + esc(x.q) + '</span></summary><p class="body">' + esc(x.a) + "</p></details>"; }).join("") + "</div>" +
+      '<p class="muted small" style="margin-top:16px">찾는 답이 없으면 공식 카페에 질문을 남겨주세요.</p></div>';
+    bindChips("fCats", filterBy("fList", "details"));
+  };
+
+  R.privacy = function () {
+    var rows = [
+      ["회원가입", "아이디, 닉네임, 동 · 호수, 계약서 사진", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지"],
+      ["위임동의서", "동 · 호수, 계약자 성명, 동의 일시, 제3자 제공 동의 여부", "위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙", "철회 또는 협의회 해산 시 즉시 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
+      ["게시판 · 투표 · 민원", "작성 글과 댓글, 세대별 투표 · 참여 여부", "커뮤니티 운영, 1세대 1표 집계", "삭제 시 또는 협의회 해산 시까지"]
+    ];
+    C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
+      rows.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
+      '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">위임동의서에서 제3자 제공에 동의한 세대에 한해, 관계 기관(LH, 고양시 등)과 협의할 때 동 · 호수 목록과 위임 세대수를 제공할 수 있습니다. 성명은 제공하지 않습니다. 그 밖에는 제3자에게 제공하지 않습니다.</p>' +
+      head("처리 위탁") + '<p class="muted">회원 정보와 파일은 Supabase(데이터베이스 · 인증 · 파일 저장 서비스)에 저장합니다.</p></div>' +
+      "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원에게만, 계약자 성명은 본인과 운영진에게만 보입니다. 게시판 작성자는 "닉네임 · 동"으로만 표시하고 호수는 보여주지 않습니다.</p>' +
+      head("권리 행사") + '<p class="muted">위임동의 철회는 내 정보 화면에서 바로 할 수 있습니다. 회원 정보 열람 · 정정 · 삭제(탈퇴)는 운영진에게 요청하면 지체 없이 처리합니다.</p></div></div>' +
+      '<p class="muted small">시행일: ' + esc(S.updated) + ". 내용이 바뀌면 이 페이지와 공지사항으로 알립니다.</p>";
+  };
+
+  /* ── 로그인 · 회원가입 ── */
+  R.login = async function () {
+    var PREVIEW = !LIVE;
+    var needsProfile = !PREVIEW && API.loggedIn && !API.profile;
+    if (!PREVIEW && API.loggedIn && !needsProfile) { location.replace("account.html"); return; }
+    var tab = needsProfile || location.hash === "#signup" ? "signup" : "login";
+    var fileField = '<div class="field"><label for="sFile">계약서 사진 <span class="muted small">첫 장, 동 · 호수와 계약자 이름만 보이게 나머지는 가려주세요 · 5MB 이하</span></label><input id="sFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>';
+    var privacy = '<details class="terms"><summary>개인정보 수집 · 이용 안내 보기</summary><p class="body">' + esc(PRIVACY_SIGNUP) + "</p></details>" +
+      '<label class="check" for="sPriv"><input type="checkbox" id="sPriv"> 개인정보 수집 · 이용에 동의합니다 (필수)</label>';
+    C.innerHTML =
+      '<div class="auth-wrap">' +
+      (PREVIEW ? '<div class="notice-box" style="margin-bottom:14px">미리보기 화면입니다. 서버가 연결되기 전이라 실제로 가입 · 로그인되지는 않습니다.</div>' : "") +
+      (needsProfile ? "" : '<div class="tabs" role="tablist"><button type="button" role="tab" id="tLogin" aria-selected="' + (tab === "login") + '">로그인</button><button type="button" role="tab" id="tSignup" aria-selected="' + (tab === "signup") + '">회원가입</button></div>') +
+
+      '<form class="panel" id="fLogin"' + (tab === "login" ? "" : " hidden") + ' novalidate>' +
+      unitPicker("l") +
+      '<div class="field"><label for="lPw">비밀번호</label><input id="lPw" type="password" autocomplete="current-password" required></div>' +
+      '<button class="btn solid wide" type="submit">로그인</button><p class="notice-box" id="lMsg" role="alert" hidden></p>' +
+      '<p class="muted small" style="margin:12px 0 0">비밀번호를 잊었다면 운영진에게 문의하세요. 본인 확인 후 다시 가입할 수 있게 도와드립니다.</p></form>' +
+
+      '<form class="panel" id="fSignup"' + (tab === "signup" ? "" : " hidden") + ' novalidate>' +
+      (needsProfile
+        ? '<div class="notice-box" style="margin-bottom:14px">' + esc(unitLabel(API.accountUnit)) + " 계정은 만들어졌지만 계약서가 아직 없습니다. 계약서를 올려 가입을 마무리하세요.</div>"
+        : '<p class="muted small" style="margin:0 0 12px">우리 집 동 · 호수가 아이디가 됩니다. 로그인할 때도 동 · 호수와 비밀번호만 넣으면 됩니다.</p>' + unitPicker("s") +
+          '<div class="two" style="gap:12px"><div class="field"><label for="sPw">비밀번호 <span class="muted small">8자 이상</span></label><input id="sPw" type="password" autocomplete="new-password" required></div>' +
+          '<div class="field"><label for="sPw2">비밀번호 확인</label><input id="sPw2" type="password" autocomplete="new-password" required></div></div>') +
+      fileField + privacy +
+      '<button class="btn solid wide" type="submit">' + (needsProfile ? "가입 마무리" : "가입 신청") + '</button><p class="notice-box" id="sMsg" role="alert" hidden></p>' +
+      '<p class="muted small" style="margin:12px 0 0">운영진이 계약서를 확인하고 승인하면 위임동의서 제출, 게시판, 투표를 이용할 수 있습니다. 한 세대에는 한 계정만 만들 수 있습니다.</p></form></div>';
+    bindUnitPicker("l");
+    if (!needsProfile) bindUnitPicker("s");
+    function setTab(t) {
+      el("fLogin").hidden = t !== "login"; el("fSignup").hidden = t !== "signup";
+      el("tLogin").setAttribute("aria-selected", t === "login"); el("tSignup").setAttribute("aria-selected", t === "signup");
+    }
+    if (!needsProfile) {
+      el("tLogin").addEventListener("click", function () { setTab("login"); history.replaceState(null, "", "#"); });
+      el("tSignup").addEventListener("click", function () { setTab("signup"); history.replaceState(null, "", "#signup"); });
+    }
+    if (PREVIEW) {
+      el("fLogin").addEventListener("submit", function (e) { e.preventDefault(); say("lMsg", "미리보기에서는 로그인되지 않습니다. 서버 연결 후 동작합니다."); });
+      el("fSignup").addEventListener("submit", function (e) { e.preventDefault(); say("sMsg", "미리보기에서는 가입되지 않습니다. 서버 연결 후 동작합니다."); });
+      return;
+    }
+    el("fLogin").addEventListener("submit", async function (e) {
+      e.preventDefault(); var btn = this.querySelector("button[type=submit]"); busy(btn, true, "로그인 중…"); say("lMsg", "");
+      try {
+        await API.signIn(el("lHo").value, el("lPw").value);
+        if (!API.profile) { location.hash = "signup"; location.reload(); return; }
+        location.href = API.isMember ? "consent.html" : "account.html";
+      } catch (err) { busy(btn, false); say("lMsg", API.errorText(err), true); }
+    });
+    el("fSignup").addEventListener("submit", async function (e) {
+      e.preventDefault(); var btn = this.querySelector("button[type=submit]"); busy(btn, true, "가입 처리 중…"); say("sMsg", "");
+      var o = { file: el("sFile").files[0], privacy: el("sPriv").checked };
+      try {
+        if (needsProfile) await API.completeProfile(o);
+        else { o.unit = el("sHo").value; o.password = el("sPw").value; o.password2 = el("sPw2").value; await API.signUp(o); }
+        location.href = "account.html";
+      } catch (err) { busy(btn, false); say("sMsg", API.errorText(err), true); }
+    });
+  };
+
+  /* ── 내 정보 ── */
+  R.account = async function () {
+    if (!LIVE) { C.innerHTML = gate("login"); return; }
+    if (!API.loggedIn) { C.innerHTML = gate("login"); return; }
+    if (!API.profile) { location.replace("login.html#signup"); return; }
+    var p = API.profile, ag = API.isMember ? await API.myAgreement() : null;
+    var badge = { pending: ["tag hot", "승인 대기"], approved: ["tag", "승인됨"], rejected: ["tag off", "반려됨"] }[p.status];
+    var dongLabel = p.unit_id.split("-")[0] + "동";
+    C.innerHTML =
+      '<div class="two"><div class="panel"><div class="acct-head"><b>' + esc(unitLabel(p.unit_id)) + '</b><span class="' + badge[0] + '">' + badge[1] + "</span>" + (API.isAdmin ? '<span class="tag">운영진</span>' : "") + "</div>" +
+      '<table class="spec kv"><tr><th>아이디</th><td class="num">' + esc(p.unit_id) + "</td></tr><tr><th>게시판 표시</th><td>" + esc(p.nickname ? p.nickname + " · " + dongLabel : dongLabel + " 입주예정자") + "</td></tr><tr><th>가입 신청</th><td>" + fmtDate(p.created_at) + "</td></tr>" +
+      (p.reviewed_at ? "<tr><th>" + (p.status === "approved" ? "승인일" : "처리일") + "</th><td>" + fmtDate(p.reviewed_at) + "</td></tr>" : "") + "</table>" +
+      (p.status === "pending" ? '<p class="notice-box">운영진이 계약서를 확인하고 있습니다. 승인되면 위임동의서를 낼 수 있습니다.</p>' : "") +
+      (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
+      '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' +
+
+      "<div>" + (API.isMember ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0"><b>' + esc(ag.signer_name) + "</b> 님 명의로 " + fmtTime(ag.signed_at) + '에 제출했습니다.</p><p class="muted small">제3자 제공 동의: ' + (ag.agree_third_party ? "동의" : "동의 안 함") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
+        : '<div class="empty"><b>아직 위임동의서를 내지 않았습니다</b><span>제출하면 현황판에 바로 반영됩니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="consent.html">위임동의서 제출</a></p></div>') : "") +
+      (p.status === "rejected" ? head("계약서 다시 내기") + '<form class="panel" id="fRe" novalidate>' +
+        '<div class="field"><label for="rFile">계약서 사진</label><input id="rFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>' +
+        '<button class="btn solid" type="submit">재신청</button><p class="notice-box" id="rMsg" role="alert" hidden></p>' +
+        '<p class="muted small" style="margin:10px 0 0">세대를 잘못 골랐다면 운영진에게 계정 삭제를 요청한 뒤 맞는 세대로 다시 가입하세요.</p></form>' : "") +
+      "</div></div>" +
+
+      '<div class="two"><form class="panel" id="fNick" novalidate><h3 style="margin-bottom:10px">게시판 닉네임 <span class="muted small">선택</span></h3><div class="field"><label for="nNick">닉네임 <span class="muted small">비워 두면 "' + esc(dongLabel) + ' 입주예정자"로 표시</span></label><input id="nNick" maxlength="20" value="' + esc(p.nickname || "") + '"></div><button class="btn" type="submit">저장</button><p class="notice-box" id="nMsg" role="status" hidden></p></form>' +
+      '<form class="panel" id="fPw" novalidate><h3 style="margin-bottom:10px">비밀번호 바꾸기</h3><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form></div>';
+    el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
+    if (el("withdraw")) el("withdraw").addEventListener("click", async function () {
+      var btn = this;
+      if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "한 번 더 누르면 철회됩니다"; return; }
+      busy(btn, true); try { await API.withdrawAgreement(); await R.account(); } catch (err) { busy(btn, false); say("aMsg", API.errorText(err), true); }
+    });
+    if (el("fRe")) el("fRe").addEventListener("submit", async function (e) {
+      e.preventDefault(); var btn = this.querySelector("button"); busy(btn, true);
+      try { await API.reapply({ file: el("rFile").files[0] }); await R.account(); } catch (err) { busy(btn, false); say("rMsg", API.errorText(err), true); }
+    });
+    el("fNick").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.updateNickname(el("nNick").value); await R.account(); say("nMsg", "저장했습니다."); } catch (err) { say("nMsg", API.errorText(err), true); } });
+    el("fPw").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.changePassword(el("pPw").value, el("pPw2").value); el("pPw").value = el("pPw2").value = ""; say("pMsg2", "비밀번호를 바꿨습니다."); } catch (err) { say("pMsg2", API.errorText(err), true); } });
+  };
+
+  /* ── 위임동의서 ── */
+  var CONSENT = [
+    ["위임 범위", "본인은 고양창릉 S-4블록 공공분양주택의 계약자(입주예정자)로서 아래 사항을 고양창릉 S-4블록 입주예정자협의회에 위임합니다.\n1. LH · 시공사 · 관계 기관과의 공사 품질, 하자, 설계 변경, 입주 일정에 관한 협의와 의견 전달\n2. 입주예정자 공동의 이익을 위한 민원 제기와 정보공개 청구\n3. 사전점검 · 입주 과정의 공동 대응"],
+    ["위임하지 않는 사항", "개인의 계약 체결 · 변경 · 해지, 분양대금 납부, 개별 재산권의 처분 등 개인의 권리 · 의무에 관한 사항은 위임하지 않습니다. 이 위임으로 회비 등 금전 부담이 생기지 않습니다."],
+    ["위임 기간 · 철회", "동의한 날부터 입주자대표회의가 구성될 때까지 유효합니다. 언제든지 내 정보 화면에서 철회할 수 있으며, 철회하면 현황판에서 즉시 빠집니다."],
+    ["개인정보 수집 · 이용", "수집 항목: 동 · 호수, 계약자 성명, 동의 일시\n목적: 위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙\n보유 기간: 철회 또는 협의회 해산 시 즉시 파기\n동의를 거부할 수 있으나, 이 경우 위임동의서를 낼 수 없습니다."],
+    ["제3자 제공 (선택)", "관계 기관(LH, 고양시 등)과 협의할 때 위임 사실을 증빙하기 위해 동 · 호수 목록과 위임 세대수를 제공할 수 있습니다. 성명은 제공하지 않습니다. 동의하지 않아도 위임동의는 유효하며, 이 세대는 세대수 집계에만 포함됩니다."]
+  ];
+  R.consent = async function () {
+    var form = '<article class="consent-doc"><h2>고양창릉 S-4블록 입주예정자협의회 위임동의서</h2><p class="muted small">양식 버전 ' + esc(API.formVersion || "2026-11-v1") + "</p>" +
+      CONSENT.map(function (c, i) { return "<section><h3>" + (i + 1) + ". " + esc(c[0]) + '</h3><p class="body">' + esc(c[1]) + "</p></section>"; }).join("") + "</article>";
+    if (!LIVE) { C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + gate("member") + "</div></div>"; return; }
+    var g = gate("member");
+    if (g) { C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + g + "</div></div>"; return; }
+    var ag = await API.myAgreement(), p = API.profile;
+    var side = ag
+      ? '<div class="panel done"><div class="eyebrow">제출 완료</div><h3>' + esc(unitLabel(p.unit_id)) + '</h3><p>계약자 <b>' + esc(ag.signer_name) + "</b> · " + fmtTime(ag.signed_at) + '</p><p class="muted small">위임동의 현황판에 반영되었습니다. 철회는 내 정보에서 할 수 있습니다.</p><p class="cta-row"><a class="btn solid" href="agreement.html">현황판 보기</a><a class="btn" href="account.html">내 정보</a></p></div>'
+      : '<form class="panel" id="fAg" novalidate><div class="eyebrow">제출 세대</div><h3 style="margin:4px 0 14px">' + esc(unitLabel(p.unit_id)) + "</h3>" +
+        '<div class="field"><label for="aName">계약자 성명</label><input id="aName" maxlength="30" autocomplete="name" required></div>' +
+        '<label class="check" for="aDel"><input type="checkbox" id="aDel"> 1~3항의 위임 내용에 동의합니다 (필수)</label>' +
+        '<label class="check" for="aPriv"><input type="checkbox" id="aPriv"> 4항 개인정보 수집 · 이용에 동의합니다 (필수)</label>' +
+        '<label class="check" for="a3rd"><input type="checkbox" id="a3rd"> 5항 제3자 제공에 동의합니다 (선택)</label>' +
+        '<label class="check" for="aId"><input type="checkbox" id="aId"> 본인은 위 세대의 계약자 본인 또는 공동명의자임을 확인합니다 (필수)</label>' +
+        '<button class="btn solid wide" type="submit">위임동의서 제출</button><p class="notice-box" id="aMsg" role="alert" hidden></p>' +
+        '<p class="muted small" style="margin:10px 0 0">제출 일시와 세대는 서버가 기록합니다. 한 세대는 한 번만 제출할 수 있습니다.</p></form>';
+    C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + side + "</div></div>";
+    if (ag) return;
+    el("fAg").addEventListener("submit", async function (e) {
+      e.preventDefault(); var btn = this.querySelector("button"); busy(btn, true, "제출 중…"); say("aMsg", "");
+      try { await API.submitAgreement({ signer: el("aName").value, delegation: el("aDel").checked, privacy: el("aPriv").checked, thirdParty: el("a3rd").checked, identity: el("aId").checked }); await R.consent(); window.scrollTo(0, 0); }
+      catch (err) { busy(btn, false); say("aMsg", API.errorText(err), true); }
+    });
+  };
+
+  /* ── 운영진 ── */
+  R.admin = async function () {
+    if (!LIVE || !API.loggedIn) { C.innerHTML = gate("login"); return; }
+    if (!API.isAdmin) { C.innerHTML = empty("운영진만 볼 수 있습니다", ""); return; }
+    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["polls", "투표"], ["campaigns", "민원"], ["news", "자동 수집"]];
+    var cur = (location.hash || "#pending").slice(1); if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
+    C.innerHTML = '<div class="tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '<span class="cnt" id="cnt-' + t[0] + '"></span></button>'; }).join("") + "</div>" +
+      '<div id="adminBody"></div><p class="notice-box" id="admMsg" role="status" hidden></p>';
+    C.querySelector(".tabs").addEventListener("click", function (e) { var b = e.target.closest("button[data-t]"); if (!b) return; cur = b.dataset.t; history.replaceState(null, "", "#" + cur); C.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x === b); }); show(); });
+    var B = el("adminBody");
+    function err(e) { say("admMsg", API.errorText(e), true); }
+    function csv(rows) { return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\n"); }
+    async function counts() { try { var pd = await API.admin.profiles("pending"); el("cnt-pending").textContent = pd.length ? " " + pd.length : ""; } catch (e) {} }
+
+    async function show() {
+      say("admMsg", ""); B.innerHTML = '<p class="muted">불러오는 중…</p>';
+      try {
+        if (cur === "pending") {
+          var L = await API.admin.profiles("pending");
+          B.innerHTML = L.length ? '<div class="review-list">' + L.map(function (p) {
+            return '<article class="panel review" data-id="' + p.id + '"><div class="row-info"><b>' + esc(unitLabel(p.unit_id)) + '</b><span class="muted small">' + fmtTime(p.created_at) + " 신청</span></div>" +
+              '<div class="contract" id="ct-' + p.id + '">' + (p.contract_path ? '<button type="button" class="btn view" data-path="' + esc(p.contract_path) + '">계약서 보기</button>' : '<span class="muted small">계약서 없음</span>') + "</div>" +
+              '<div class="review-act"><button type="button" class="btn solid approve">승인</button><input class="reason" placeholder="반려 사유 (예: 사진이 흐립니다)" aria-label="반려 사유"><button type="button" class="btn reject">반려 · 다시 내기</button><button type="button" class="btn danger del">계정 삭제</button></div>' +
+              '<p class="muted small" style="margin:0">계약서가 이 세대가 아니면 <b>계정 삭제</b>를 누르세요. 세대가 풀려 실제 계약자가 가입할 수 있습니다.</p></article>';
+          }).join("") + "</div>" : empty("대기 중인 가입 신청이 없습니다", "");
+          B.querySelectorAll(".view").forEach(function (v) { v.addEventListener("click", async function () {
+            try { var u = await API.admin.contractUrl(v.dataset.path), box = v.parentNode; box.innerHTML = /\.pdf$/i.test(v.dataset.path) ? '<a class="btn" href="' + u + '" target="_blank" rel="noopener">PDF 열기</a>' : '<img alt="계약서" src="' + u + '">'; } catch (e) { err(e); }
+          }); });
+          B.querySelectorAll(".review").forEach(function (r) {
+            var p = L.filter(function (x) { return x.id === r.dataset.id; })[0];
+            r.querySelector(".approve").addEventListener("click", async function () { busy(this, true); try { await API.admin.approve(p); r.remove(); say("admMsg", unitLabel(p.unit_id) + " 승인했습니다. 계약서 사진은 삭제했습니다."); counts(); } catch (e) { busy(this, false); err(e); } });
+            r.querySelector(".reject").addEventListener("click", async function () { busy(this, true); try { await API.admin.reject(p, r.querySelector(".reason").value); r.remove(); say("admMsg", "반려했습니다. 계약서 사진은 삭제했습니다."); counts(); } catch (e) { busy(this, false); err(e); } });
+            r.querySelector(".del").addEventListener("click", async function () {
+              var b = this; if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; }
+              busy(b, true); try { await API.admin.deleteAccount(p); r.remove(); say("admMsg", unitLabel(p.unit_id) + " 계정을 삭제했습니다. 이제 이 세대로 새로 가입할 수 있습니다."); counts(); } catch (e) { busy(b, false); err(e); }
+            });
+          });
+        }
+        if (cur === "members") {
+          var M = await API.admin.profiles(), O = await API.admin.orphans(), q = "";
+          B.innerHTML = '<div class="toolbar"><div class="chips" id="mSt"><button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + '</button><button type="button" class="chip" data-s="approved" aria-pressed="false">승인</button><button type="button" class="chip" data-s="pending" aria-pressed="false">대기</button><button type="button" class="chip" data-s="rejected" aria-pressed="false">반려</button></div>' +
+            '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
+            (O.length ? head("가입 중단 계정", '<span class="note">계정만 있고 계약서가 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : "");
+          var sf = "";
+          function draw() {
+            el("mList").innerHTML = M.filter(function (p) { return (!sf || p.status === sf) && (!q || (p.unit_id + (p.nickname || "")).indexOf(q) >= 0); }).map(function (p) {
+              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.nickname || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.is_admin ? " · 운영진" : "") + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
+                (p.status === "approved" && p.id !== API.session.user.id ? '<button type="button" class="linkbtn revoke" data-id="' + p.id + '">승인 취소</button>' : "") +
+                (p.status === "approved" && p.id !== API.session.user.id ? ' <button type="button" class="linkbtn setadm" data-id="' + p.id + '" data-on="' + (p.is_admin ? "0" : "1") + '">' + (p.is_admin ? "운영진 해제" : "운영진 지정") + "</button>" : "") +
+                (!p.is_admin && p.id !== API.session.user.id ? ' <button type="button" class="linkbtn delacct" data-id="' + p.id + '">계정 삭제</button>' : "") + "</td></tr>";
+            }).join("") || '<tr><td colspan="6" class="muted">해당하는 회원이 없습니다.</td></tr>';
+          }
+          draw();
+          el("mSt").addEventListener("click", function (e) { var b = e.target.closest(".chip"); if (!b) return; sf = b.dataset.s; el("mSt").querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", x === b); }); draw(); });
+          el("mQ").addEventListener("input", function () { q = this.value.trim(); draw(); });
+          el("mFind").addEventListener("submit", function (e) { e.preventDefault(); });
+          B.querySelectorAll(".delorphan").forEach(function (b) { b.addEventListener("click", async function () {
+            if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; }
+            try { await API.admin.deleteAccount({ id: b.dataset.id }); await show(); say("admMsg", "계정을 삭제했습니다."); } catch (er) { err(er); }
+          }); });
+          el("mList").addEventListener("click", async function (e) {
+            var sa = e.target.closest(".setadm");
+            if (sa) {
+              var ps = M.filter(function (x) { return x.id === sa.dataset.id; })[0], on = sa.dataset.on === "1";
+              if (sa.dataset.confirm !== "1") { sa.dataset.confirm = "1"; sa.textContent = "한 번 더 누르면 " + (on ? "지정" : "해제"); return; }
+              try { await API.admin.setAdmin(ps, on); await show(); say("admMsg", ps.unit_id + (on ? " 회원을 운영진으로 지정했습니다." : " 회원의 운영진 권한을 해제했습니다.")); } catch (er) { err(er); }
+              return;
+            }
+            var d = e.target.closest(".delacct");
+            if (d) {
+              var pd = M.filter(function (x) { return x.id === d.dataset.id; })[0];
+              if (d.dataset.confirm !== "1") { d.dataset.confirm = "1"; d.textContent = "한 번 더 누르면 삭제"; return; }
+              try { await API.admin.deleteAccount(pd); await show(); say("admMsg", pd.unit_id + " 계정을 삭제했습니다. 이 세대의 위임동의 · 글도 함께 지워졌습니다."); } catch (er) { err(er); }
+              return;
+            }
+            var b = e.target.closest(".revoke"); if (!b) return;
+            var p = M.filter(function (x) { return x.id === b.dataset.id; })[0];
+            if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "사유 입력 후 다시 누르기"; var i = document.createElement("input"); i.className = "reason"; i.placeholder = "승인 취소 사유"; i.setAttribute("aria-label", "승인 취소 사유"); b.before(i); return; }
+            try { await API.admin.revoke(p, b.previousSibling.value); await show(); say("admMsg", p.unit_id + " 승인을 취소했습니다. 이 세대의 위임동의도 함께 삭제했습니다."); } catch (er) { err(er); }
+          });
+        }
+        if (cur === "agreements") {
+          var A = await API.admin.agreements(), lg = await API.admin.log();
+          var rows = [["세대", "동", "호", "타입", "계약자", "제출일시", "제3자 제공"]].concat(A.map(function (a) { var u = UNIT[a.unit_id] || {}; return [a.unit_id, u.dong, u.ho, u.type, a.signer_name, fmtTime(a.signed_at), a.agree_third_party ? "동의" : "미동의"]; }));
+          var text = csv(rows);
+          B.innerHTML = '<div class="toolbar"><b>' + n(A.length) + "세대 제출</b>" + '<div class="cta-row" style="margin:0"><button type="button" class="btn" id="csvCopy">CSV 복사</button><button type="button" class="btn" id="csvDl">CSV 내려받기</button></div></div>' +
+            '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>계약자</th><th>제출</th><th>제3자</th></tr></thead><tbody>' +
+            (A.map(function (a) { var u = UNIT[a.unit_id] || {}; return '<tr><td class="num">' + esc(a.unit_id) + "</td><td>" + esc(u.type) + "</td><td>" + esc(a.signer_name) + '</td><td class="num">' + fmtTime(a.signed_at) + "</td><td>" + (a.agree_third_party ? "동의" : "-") + "</td></tr>"; }).join("") || '<tr><td colspan="5" class="muted">아직 제출된 위임동의서가 없습니다.</td></tr>') +
+            "</tbody></table></div>" + head("최근 기록") + '<div class="tablebox"><table class="spec"><tbody>' + (lg.slice(0, 50).map(function (x) { return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + (x.action === "sign" ? "제출" : "철회") + "</td></tr>"; }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>') + "</tbody></table></div>" +
+            '<textarea class="out" id="csvOut" readonly hidden aria-label="CSV"></textarea>';
+          el("csvCopy").addEventListener("click", function () { var o = el("csvOut"), b = this; o.value = text; o.hidden = false; try { navigator.clipboard.writeText(text).then(function () { b.textContent = "복사했습니다"; }, function () { o.select(); }); } catch (e) { o.select(); } });
+          el("csvDl").addEventListener("click", function () { var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" })); a.download = "위임동의_" + fmtDate(new Date()).replace(/\./g, "") + ".csv"; document.body.appendChild(a); a.click(); a.remove(); });
+        }
+        if (cur === "polls") {
+          var P = await API.polls();
+          B.innerHTML = '<form class="panel" id="fPoll" novalidate><h3 style="margin-bottom:10px">새 투표</h3><div class="field"><label for="pQ">질문</label><input id="pQ" maxlength="200"></div><div class="field"><label for="pO">선택지 (한 줄에 하나, 2~10개)</label><textarea id="pO" style="min-height:90px"></textarea></div><div class="field"><label for="pE">마감일</label><input id="pE" type="date"></div><button class="btn solid" type="submit">투표 열기</button></form>' +
+            head("투표 목록") + (P.length ? '<div class="tablebox"><table class="spec"><tbody>' + P.map(function (p) { var t = p.votes.reduce(function (s, v) { return s + v; }, 0); return "<tr><td>" + esc(p.question) + '</td><td class="num">' + n(t) + "표</td><td>" + (p.closed ? "마감" : fmtDate(p.ends_at) + " 마감") + '</td><td><button type="button" class="linkbtn delpoll" data-id="' + p.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("투표가 없습니다", ""));
+          el("fPoll").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createPoll({ question: el("pQ").value, options: el("pO").value.split("\n"), ends: el("pE").value }); show(); } catch (er) { err(er); } });
+          B.querySelectorAll(".delpoll").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deletePoll(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
+        }
+        if (cur === "news") {
+          var NW = await API.admin.newsAll();
+          B.innerHTML = '<div class="toolbar"><span class="muted small">매일 07:13에 자동 수집합니다. 엉뚱한 기사는 숨기면 사이트에서 빠집니다.</span><button type="button" class="btn solid" id="collectNow">지금 수집</button></div>' +
+            (NW.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th>제목</th><th>출처</th><th>날짜</th><th></th></tr></thead><tbody>' + NW.map(function (x) {
+              return '<tr class="' + (x.hidden ? "muted" : "") + '"><td><span class="tag' + (x.kind === "lh" ? " hot" : "") + '">' + (x.kind === "lh" ? "LH" : esc(x.topic)) + '</span></td><td><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a>" + (x.hidden ? " (숨김)" : "") + "</td><td>" + esc(x.source) + '</td><td class="num">' + (x.published_at ? fmtDate(x.published_at) : "") + '</td><td><button type="button" class="linkbtn togglenews" data-id="' + x.id + '" data-h="' + (x.hidden ? "0" : "1") + '">' + (x.hidden ? "다시 보이기" : "숨기기") + "</button></td></tr>";
+            }).join("") + "</tbody></table></div>" : empty("아직 수집된 소식이 없습니다", "\"지금 수집\"을 눌러 바로 가져올 수 있습니다."));
+          el("collectNow").addEventListener("click", async function () {
+            var b = this; busy(b, true, "수집 중…");
+            try { var res = await API.admin.collectNow(); await show(); say("admMsg", "찾은 소식 " + res.found + "건, 새로 올린 소식 " + res.inserted + "건" + (res.errors && res.errors.length ? " · 일부 실패: " + res.errors.join(" / ") : "")); }
+            catch (er) { busy(b, false); err(er); }
+          });
+          B.querySelectorAll(".togglenews").forEach(function (t) { t.addEventListener("click", async function () { try { await API.admin.setNewsHidden(Number(t.dataset.id), t.dataset.h === "1"); await show(); } catch (er) { err(er); } }); });
+        }
+        if (cur === "campaigns") {
+          var CP = await API.campaigns(), ST = ["의견 모집", "접수 완료", "답변 완료"];
+          B.innerHTML = '<form class="panel" id="fCamp" novalidate><h3 style="margin-bottom:10px">새 단체민원</h3><div class="field"><label for="cT">제목</label><input id="cT" maxlength="120"></div><div class="field"><label for="cTo">대상 기관</label><input id="cTo" maxlength="60" placeholder="예: 고양시, LH 경기북부지역본부"></div><div class="field"><label for="cD">설명</label><textarea id="cD" style="min-height:90px"></textarea></div><button class="btn solid" type="submit">민원 열기</button></form>' +
+            head("민원 목록") + (CP.length ? '<div class="tablebox"><table class="spec"><tbody>' + CP.map(function (c) { return "<tr><td>" + esc(c.title) + '</td><td class="num">' + n(c.joined) + '세대</td><td><select class="cst" data-id="' + c.id + '" aria-label="상태">' + ST.map(function (s) { return "<option" + (s === c.status ? " selected" : "") + ">" + s + "</option>"; }).join("") + '</select></td><td><button type="button" class="linkbtn delcamp" data-id="' + c.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("민원이 없습니다", ""));
+          el("fCamp").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createCampaign({ title: el("cT").value, target: el("cTo").value, description: el("cD").value }); show(); } catch (er) { err(er); } });
+          B.querySelectorAll(".cst").forEach(function (s) { s.addEventListener("change", async function () { try { await API.admin.setCampaignStatus(Number(s.dataset.id), s.value); say("admMsg", "상태를 바꿨습니다."); } catch (er) { err(er); } }); });
+          B.querySelectorAll(".delcamp").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deleteCampaign(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
+        }
+      } catch (e) { B.innerHTML = ""; err(e); }
+    }
+    window.addEventListener("hashchange", function () {
+      var h = location.hash.slice(1);
+      if (h !== cur && TABS.some(function (t) { return t[0] === h; })) { cur = h; C.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x.dataset.t === cur); }); show(); }
+    });
+    await counts(); await show();
+  };
+
+  if (LIVE && ["home", "association"].indexOf(page) >= 0) {
+    try { var sts = await API.stats(); LIVE_AGREED = sts.reduce(function (s, r) { return s + r.agreed; }, 0); } catch (e) { LIVE_AGREED = null; }
+  }
+  if (R[page]) {
+    try { await R[page](); if (page === "home") await homeNews(); }
+    catch (e) { if (C) C.innerHTML = '<div class="notice-box">' + esc(API.errorText ? API.errorText(e) : e.message) + "</div>"; }
+  }
+  }
+  boot();
+})();

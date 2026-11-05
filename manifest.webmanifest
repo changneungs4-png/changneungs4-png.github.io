@@ -1,0 +1,26 @@
+{
+  "name": "창릉 S-4 입주예정자협의회",
+  "short_name": "창릉 S-4",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f2f5f3",
+  "theme_color": "#1d4d3a",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
