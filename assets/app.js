@@ -264,7 +264,7 @@
   }
   R.notice = async function () {
     var L = arr(S.notices), lh = await lhItems();
-    var lhBlock = LIVE ? "<div>" + head("LH 공고", '<span class="note">LH 청약플러스에서 매일 자동으로 가져옵니다</span>') + (lh.length ? autoRows(lh) : empty("아직 수집된 LH 공고가 없습니다", "고양창릉 관련 공고가 올라오면 자동으로 표시됩니다.")) + "</div>" : "";
+    var lhBlock = LIVE ? "<div>" + head("LH 공고", '<span class="note">LH 청약플러스에서 매일 자동으로 가져옵니다</span>') + (lh.length ? lhPanel(lh) : empty("아직 수집된 LH 공고가 없습니다", "S-4 관련 공고가 올라오면 자동으로 표시됩니다.")) + "</div>" : "";
     if (!L.length) { C.innerHTML = empty("아직 공지가 없습니다", "새 공지가 올라오면 이곳에 표시됩니다.") + lhBlock; return; }
     var cats = uniq(L.map(function (x) { return x.cat; }));
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nCats", cats, "분류") + '<span class="muted small">총 ' + L.length + "건</span></div>" +
@@ -281,7 +281,7 @@
     if (LIVE) {
       try {
         var L = (await lhItems()).filter(function (x) { return x.extra && x.extra.s4 && arr(x.extra.tables).some(function (t) { return t.key === "dsSplScdl"; }); });
-        if (L.length) lhs = "<div>" + head("LH 공식 일정 (S-4)", '<span class="note">LH 공고에서 매일 자동으로 가져옵니다</span>') + L.slice(0, 3).map(function (x) {
+        if (L.length) lhs = "<div>" + head("LH 공식 일정 (S-4)", '<span class="note">LH 공고에서 매일 자동으로 가져옵니다</span>') + L.slice(0, 1).map(function (x) {
           return '<div class="lh-sched"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener"><b>' + esc(x.title) + "</b></a>" + lhTables(x, "dsSplScdl") + "</div>";
         }).join("") + "</div>";
       } catch (e) { lhs = ""; }
@@ -296,11 +296,27 @@
       "</div></div>" + lhs;
   };
 
+  function cellText(v) {
+    var t = String(v == null ? "" : v).trim(), m = t.match(/^0*(\d{2,3})\.0+([A-Z]{0,3})$/);
+    if (m) return m[1] + m[2];
+    if (/^20\d{6}$/.test(t)) return t.slice(0, 4) + "." + t.slice(4, 6) + "." + t.slice(6);
+    return t;
+  }
   function lhTables(x, only) {
     var ex = x.extra || {}, T = arr(ex.tables).filter(function (t) { return !only || t.key === only; });
     return T.map(function (t) {
-      return '<div class="lh-table"><h4>' + esc(t.title) + '</h4><div class="tablebox"><table class="spec"><thead><tr>' + arr(t.columns).map(function (c) { return "<th>" + esc(c.label) + "</th>"; }).join("") + "</tr></thead><tbody>" +
-        arr(t.rows).map(function (r) { return "<tr>" + arr(r).map(function (v) { var m = String(v).match(/^0*(\d{2,3})\.0+([A-Z]{0,3})$/); return "<td>" + esc(m ? m[1] + m[2] : v) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>";
+      var cols = arr(t.columns), rows = arr(t.rows).map(function (r) { return arr(r).map(cellText); });
+      if (cols.length <= 4) {
+        return '<div class="lh-table"><h4>' + esc(t.title) + '</h4><div class="tablebox"><table class="spec"><thead><tr>' + cols.map(function (c) { return "<th>" + esc(c.label) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+          rows.map(function (r) { return "<tr>" + r.map(function (v) { return "<td>" + esc(v) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>";
+      }
+      // 열이 많은 표: 모든 행에 같은 값은 위에 한 번만, 나머지는 행마다 카드로
+      var same = cols.map(function (c, i) { return rows.length > 1 && rows.every(function (r) { return r[i] === rows[0][i]; }); });
+      var common = cols.map(function (c, i) { return same[i] && rows[0][i] ? '<div><dt>' + esc(c.label) + "</dt><dd>" + esc(rows[0][i]) + "</dd></div>" : ""; }).join("");
+      return '<div class="lh-table"><h4>' + esc(t.title) + "</h4>" + (common ? '<dl class="kv-common">' + common + "</dl>" : "") +
+        '<div class="kvcards">' + rows.map(function (r) {
+          return "<dl>" + cols.map(function (c, i) { return !same[i] && r[i] ? "<div><dt>" + esc(c.label) + "</dt><dd>" + esc(r[i]) + "</dd></div>" : ""; }).join("") + "</dl>";
+        }).join("") + "</div></div>";
     }).join("");
   }
   function lhDetail(x) {
@@ -355,11 +371,35 @@
       (arr(P.facts).length ? '<ul class="facts">' + P.facts.map(function (f) { return "<li><b>" + esc(f.label) + "</b> " + esc(f.text) + "</li>"; }).join("") + "</ul>" : "") +
       '<p class="muted small">' + esc(arr(P.files).map(function (f) { return f.name; }).join(", ")) + "에서 자동으로 읽었습니다 · " + fmtTime(P.parsed_at) + ". 정확한 내용은 공고문 원문을 확인하세요.</p></div>";
   }
+  function keyDates(x) {
+    var P = x.parsed, by = {};
+    arr(P && P.events).forEach(function (e) { by[canon(e.label)] = e; });
+    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+  }
+  function lhPanel(list) {
+    var L = list.slice().sort(function (a, b) { return String(b.published_at || "") < String(a.published_at || "") ? -1 : 1; });
+    var x = L[0], ex = x.extra || {}, K = keyDates(x), P = x.parsed || {}, today = todayKST();
+    var card = '<article class="lh-card"><p class="lh-meta"><span class="tag hot">' + esc(ex.status || "LH 공고") + "</span>" +
+      (x.published_at ? ' <span class="num">' + esc(fmtDate(x.published_at)) + " 공고</span>" : "") + (ex.closes ? ' <span class="muted small">· 접수 마감 ' + esc(ex.closes) + "</span>" : "") + "</p>" +
+      '<h3><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + " ↗</a></h3>" +
+      (K.length ? '<div class="eyebrow">공고문에서 읽은 핵심 일정</div><ol class="keydates">' + K.map(function (e) {
+        var last = e.end || e.start, st = last < today ? "done" : e.start <= today ? "now" : "";
+        return '<li class="' + st + '"><span class="kd-d num">' + esc(whenOf(e)) + '</span><span class="kd-t">' + esc(e.label) + "</span></li>";
+      }).join("") + "</ol>" : "") +
+      (arr(P.facts).length ? '<details class="lh-more"><summary>주요 내용 ' + P.facts.length + "가지 (전매제한 · 거주의무 · 계약금 등)</summary>" + '<ul class="facts">' + P.facts.map(function (f) { return "<li><b>" + esc(f.label) + "</b> " + esc(f.text) + "</li>"; }).join("") + "</ul></details>" : "") +
+      (K.length ? '<details class="lh-more"><summary>날짜가 나온 공고문 원문 문장 보기</summary><ul class="evid">' + K.map(function (e) { return "<li><b>" + esc(e.label) + '</b> <span class="num">' + esc(whenOf(e)) + "</span><br>" + esc(e.evidence) + "</li>"; }).join("") + "</ul></details>" : "") +
+      lhDetail(x) +
+      (P.parsed_at ? '<p class="muted small">' + esc(arr(P.files).map(function (f) { return f.name; }).join(", ")) + " 자동 읽기 · " + fmtTime(P.parsed_at) + ". 정확한 내용은 공고문 원문을 확인하세요.</p>" : "") + "</article>";
+    var older = L.slice(1);
+    return card + (older.length ? '<details class="lh-more lh-older"><summary>이전 공고 ' + older.length + "건</summary><ul>" + older.map(function (o) {
+      return '<li><a href="' + esc(safeUrl(o.url)) + '" target="_blank" rel="noopener">' + esc(o.title) + '</a> <span class="muted small num">' + esc(o.published_at ? fmtDate(o.published_at) : "") + "</span></li>";
+    }).join("") + "</ul></details>" : "");
+  }
   function autoRows(list) {
     return '<ul class="list news">' + list.map(function (x) {
       var d = x.published_at ? fmtDate(x.published_at) : "";
       return '<li><span class="src">' + esc(x.source) + '<br><span class="num">' + esc(d) + '</span></span><span class="t"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a>" +
-        '<p><span class="tag' + (x.topic === "S-4" || (x.extra && x.extra.s4) ? " hot" : "") + '">' + esc(x.kind === "lh" ? (x.extra && x.extra.status ? x.extra.status : "LH 공고") : x.topic === "S-4" ? "S-4" : "창릉") + "</span>" + (x.kind === "lh" && x.extra && x.extra.closes ? ' <span class="muted small">마감 ' + esc(x.extra.closes) + "</span>" : "") + "</p>" + (x.kind === "lh" ? parsedBlock(x) + lhDetail(x) : "") + "</span></li>";
+        '<p><span class="tag' + (x.topic === "S-4" || (x.extra && x.extra.s4) ? " hot" : "") + '">' + esc(x.kind === "lh" ? (x.extra && x.extra.status ? x.extra.status : "LH 공고") : x.topic === "S-4" ? "S-4" : "창릉") + "</span>" + (x.kind === "lh" && x.extra && x.extra.closes ? ' <span class="muted small">마감 ' + esc(x.extra.closes) + "</span>" : "") + "</p>" + (x.kind === "lh" ? '<p class="small"><a href="notice.html">공지사항에서 공고 요약 보기 →</a></p>' : "") + "</span></li>";
     }).join("") + "</ul>";
   }
   R.news = async function () {

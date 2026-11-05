@@ -456,3 +456,31 @@ ul.attach{margin:0;padding-left:18px;font-size:14px}
 ul.facts{margin:10px 0 0;padding-left:18px;font-size:13px}
 .list ul.facts li{display:list-item;padding:2px 0;border:0}
 .tag.auto{background:var(--water-soft);color:var(--water);font-size:11px}
+
+/* LH 공고 카드 (공지사항) */
+.lh-card{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface);display:flex;flex-direction:column;gap:10px;min-width:0}
+.lh-card h3{margin:0;font-size:17px;line-height:1.4;text-wrap:balance}
+.lh-card h3 a{color:inherit;text-decoration:none}
+.lh-card h3 a:hover{color:var(--pine);text-decoration:underline}
+.lh-meta{margin:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+ol.keydates{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+ol.keydates li{display:grid;grid-template-columns:minmax(9.5em,auto) 1fr;gap:12px;padding:8px 2px;border-bottom:1px solid var(--line);align-items:baseline}
+ol.keydates .kd-d{white-space:nowrap;font-size:14px;font-weight:600}
+ol.keydates .kd-t{min-width:0}
+ol.keydates li.done{color:var(--muted)}
+ol.keydates li.done .kd-d{font-weight:500}
+ol.keydates li.now{background:var(--signal-soft);border-radius:6px}
+ol.keydates li.now .kd-t::after{content:" · 진행 중";color:var(--signal);font-weight:600;font-size:13px}
+details.lh-more{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--bg)}
+details.lh-more summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--pine)}
+details.lh-more ul{margin:8px 0 0;padding-left:18px;display:grid;gap:8px;font-size:14px}
+details.lh-more ul.evid{list-style:none;padding-left:0;color:var(--muted);font-size:13px}
+details.lh-more ul.evid b{color:var(--fg)}
+details.lh-older{margin-top:10px}
+/* 열이 많은 LH 표 → 카드 */
+dl.kv-common{margin:0 0 8px;display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px}
+dl.kv-common div,.kvcards dl div{display:flex;gap:6px;min-width:0}
+dl.kv-common dt,.kvcards dt{color:var(--muted)}
+dl.kv-common dd,.kvcards dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.kvcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.kvcards dl{margin:0;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface);display:grid;gap:3px;font-size:13px}
