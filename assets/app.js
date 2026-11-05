@@ -312,7 +312,7 @@
   }
   /* LH 공고문에서 읽은 일정 → 사이트 일정 */
   var LH_CACHE = null;
-  async function lhItems() { if (!LIVE) return []; if (!LH_CACHE) { try { LH_CACHE = await API.news("lh", 30); } catch (e) { LH_CACHE = []; } } return LH_CACHE; }
+  async function lhItems() { if (!LIVE) return []; if (!LH_CACHE) { try { LH_CACHE = (await API.news("lh", 30)).filter((x) => x.extra && x.extra.s4); } catch (e) { LH_CACHE = []; } } return LH_CACHE; }
   function canon(t) { return String(t || "").replace(/\(.*?\)|\s/g, ""); }
   function todayKST() { var d = new Date(Date.now() + 9 * 3600e3); return d.toISOString().slice(0, 10); }
   function whenOf(e) { var f = function (s) { return s.replace(/-/g, "."); }; return e.month ? f(e.start) : f(e.start) + (e.end ? "–" + (e.end.slice(0, 4) === e.start.slice(0, 4) ? f(e.end.slice(5)) : f(e.end)) : ""); }

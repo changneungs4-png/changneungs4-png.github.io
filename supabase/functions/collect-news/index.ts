@@ -57,6 +57,7 @@ export function parseLh(json) {
   for (const r of rows) {
     const title = decode(r.PAN_NM), url = String(r.DTL_URL || "").trim();
     if (!/창릉/.test(title) || !/^https?:\/\//.test(url)) continue;
+    if (!S4_RE.test(title)) continue; // 우리 단지(S-4) 공고만
     const ds = String(r.PAN_NT_ST_DT || r.PAN_DT || "").replace(/[^0-9]/g, "");
     const pub = ds.length >= 8 ? new Date(ds.slice(0, 4) + "-" + ds.slice(4, 6) + "-" + ds.slice(6, 8) + "T09:00:00+09:00") : null;
     out.push({
