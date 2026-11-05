@@ -134,10 +134,14 @@ export async function collect(env, fetcher = fetch) {
       const u = "https://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1?serviceKey=" + encodeURIComponent(env.LH_API_KEY) +
         "&PG_SZ=100&PAGE=1&PAN_NM=" + encodeURIComponent("창릉") + "&PAN_NT_ST_DT=" + ymd(from) + "&CLSG_DT=" + ymd(to);
       const r = await fetcher(u);
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      items.push(...parseLh(await r.json()));
+      const body = await r.text();
+      if (!r.ok) throw new Error("HTTP " + r.status + " " + body.slice(0, 200));
+      let json; try { json = JSON.parse(body); } catch { throw new Error("JSON 아님: " + body.slice(0, 200)); }
+      const got = parseLh(json);
+      if (!got.length) errors.push("LH: 창릉 공고 0건 — 응답 " + body.slice(0, 200));
+      items.push(...got);
     } catch (e) { errors.push("LH: " + e.message); }
-  }
+  } else errors.push("LH: LH_API_KEY가 설정되지 않아 건너뜀");
   // 같은 링크 중복 제거
   const seen = new Set(), uniq = items.filter((x) => !seen.has(x.url) && seen.add(x.url));
 
