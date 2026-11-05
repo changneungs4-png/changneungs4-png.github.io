@@ -87,7 +87,7 @@
         g.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "<small>" + x[3] + "</small></a>"; }).join("") + "</div></div>";
     }).join("") + "</nav>" +
     (!LIVE ? '<a class="acct" id="acctLink" href="login.html">로그인</a>' : "") +
-    (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isMember ? "" : " · 승인 대기") : "가입 마무리") : "로그인") + "</a>" : "") +
+    (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isMember ? "" : API.profile.status === "pending" ? " · 승인 대기" : API.profile.status === "rejected" ? " · 반려" : " · 위임 철회") : "가입 마무리") : "로그인") + "</a>" : "") +
     '<a class="btn solid head-cta" href="' + (LIVE && !API.loggedIn ? "login.html#signup" : "agreement.html") + '">' + (LIVE && !API.loggedIn ? "회원가입 · 위임동의" : "위임동의 현황") + "</a>" +
     '<button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="drawer">메뉴</button></div>' +
     '<nav class="wrap drawer" id="drawer" aria-label="전체 메뉴" hidden>' + (!LIVE ? '<a class="btn solid" href="login.html" style="justify-content:center">로그인 · 회원가입</a>' : "") + (LIVE ? '<a class="btn' + (API.loggedIn ? "" : " solid") + '" href="' + (API.loggedIn ? "account.html" : "login.html") + '" style="justify-content:center">' + (API.loggedIn ? "내 정보" : "로그인 · 회원가입") + "</a>" : "") + GROUPS.map(function (g) {
@@ -518,6 +518,7 @@
     if (!p) return '<div class="empty"><b>가입을 마무리해 주세요</b><span>계약서 사진이 아직 등록되지 않았습니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="login.html#signup">가입 마무리</a></p></div>';
     if (p.status === "pending") return '<div class="empty"><b>승인 대기 중입니다</b><span>운영진이 계약서를 확인하고 있습니다. 승인되면 바로 이용할 수 있습니다.</span></div>';
     if (p.status === "rejected") return '<div class="empty"><b>가입이 반려되었습니다</b><span>' + esc(p.reject_reason || "") + '</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="account.html">재신청하기</a></p></div>';
+    if (!API.isMember) return '<div class="empty"><b>위임동의를 철회해 회원 이용이 중지되었습니다</b><span>협의회 회원은 위임동의 세대입니다. 위임동의서를 다시 내면 바로 이용할 수 있습니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="consent.html">위임동의서 다시 내기</a></p></div>';
     return "";
   }
   function busy(btn, on, label) { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.l = btn.textContent; btn.textContent = label || "처리 중…"; } else if (btn.dataset.l) btn.textContent = btn.dataset.l; }
@@ -852,7 +853,7 @@
 
   R.privacy = function () {
     var rows = [
-      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 계약서 사진, 가입 · 접속 기록, 닉네임(선택)", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지"],
+      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 계약서 사진, 가입 · 접속 기록, 닉네임(선택)", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지"],
       ["위임동의서", "동 · 호수, 동의 일시, 제3자 제공 동의 여부 (성명은 받지 않음)", "위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙", "철회 또는 협의회 해산 시 즉시 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
       ["게시판 · 투표 · 민원", "작성 글과 댓글, 세대별 투표 · 참여 여부", "커뮤니티 운영, 1세대 1표 집계", "삭제 시 또는 협의회 해산 시까지"]
     ];
@@ -961,8 +962,8 @@
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
       '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' +
 
-      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진 승인 후 현황판에 반영됩니다." : "") + '</p><p class="muted small">제3자 제공 동의: ' + (ag.agree_third_party ? "동의" : "동의 안 함") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
-        : '<div class="empty"><b>아직 위임동의서를 내지 않았습니다</b><span>' + (p.status === "pending" ? "위임동의서를 내야 가입 승인을 받을 수 있습니다." : "제출하면 현황판에 바로 반영됩니다.") + '</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="consent.html">위임동의서 제출</a></p></div>') : "") +
+      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진 승인 후 현황판에 반영됩니다." : "") + '</p><p class="muted small">제3자 제공 동의: ' + (ag.agree_third_party ? "동의" : "동의 안 함") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판에서 바로 빠지고 게시판 · 투표 · 민원 참여가 중지됩니다. 위임동의서를 다시 내면 바로 회복됩니다.</p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
+        : '<div class="empty"><b>아직 위임동의서를 내지 않았습니다</b><span>' + (p.status === "pending" ? "위임동의서를 내야 가입 승인을 받을 수 있습니다." : p.is_admin ? "제출하면 현황판에 바로 반영됩니다." : "위임동의서를 내야 게시판 · 투표 · 민원에 참여할 수 있습니다. 제출하면 현황판에 바로 반영됩니다.") + '</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="consent.html">위임동의서 제출</a></p></div>') : "") +
       (p.status === "rejected" ? head("계약서 다시 내기") + '<form class="panel" id="fRe" novalidate>' +
         '<div class="field"><label for="rFile">계약서 사진</label><input id="rFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>' +
         '<button class="btn solid" type="submit">재신청</button><p class="notice-box" id="rMsg" role="alert" hidden></p>' +
@@ -974,7 +975,7 @@
     el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
     if (el("withdraw")) el("withdraw").addEventListener("click", async function () {
       var btn = this;
-      if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "한 번 더 누르면 철회됩니다"; return; }
+      if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "한 번 더 누르면 철회 (회원 이용 중지)"; return; }
       busy(btn, true); try { await API.withdrawAgreement(); await R.account(); } catch (err) { busy(btn, false); say("aMsg", API.errorText(err), true); }
     });
     if (el("fRe")) el("fRe").addEventListener("submit", async function (e) {
@@ -989,7 +990,7 @@
   var CONSENT = [
     ["위임 범위", "본인은 고양창릉 S-4블록 공공분양주택의 계약자(입주예정자)로서, 이 세대를 대표하여 아래 사항을 고양창릉 S-4블록 입주예정자협의회에 위임합니다. 협의회 가입은 곧 이 위임에 동의하는 것입니다.\n1. LH · 시공사 · 관계 기관과의 공사 품질, 하자, 설계 변경, 입주 일정에 관한 협의와 의견 전달\n2. 입주예정자 공동의 이익을 위한 민원 제기와 정보공개 청구\n3. 사전점검 · 입주 과정의 공동 대응"],
     ["위임하지 않는 사항", "개인의 계약 체결 · 변경 · 해지, 분양대금 납부, 개별 재산권의 처분 등 개인의 권리 · 의무에 관한 사항은 위임하지 않습니다. 이 위임으로 회비 등 금전 부담이 생기지 않습니다."],
-    ["위임 기간 · 철회", "동의한 날부터 입주자대표회의가 구성될 때까지 유효합니다. 언제든지 내 정보 화면에서 철회할 수 있으며, 철회하면 현황판에서 즉시 빠집니다. 관계 기관이 서명된 위임장을 요구하는 경우에는 그때 별도로 요청드립니다."],
+    ["위임 기간 · 철회", "동의한 날부터 입주자대표회의가 구성될 때까지 유효합니다. 언제든지 내 정보 화면에서 철회할 수 있으며, 철회하면 현황판에서 즉시 빠지고, 협의회 회원 이용(게시판 · 투표 · 민원 참여)도 함께 중지됩니다. 다시 동의하면 바로 회복됩니다.\n철회 전에 이미 관계 기관에 제출된 협의 · 민원 자료의 위임 세대수는 바뀌지 않습니다.\n관계 기관이 서명된 위임장을 요구하는 경우에는 그때 별도로 요청드립니다."],
     ["개인정보 수집 · 이용", "수집 항목: 동 · 호수, 동의 일시, 제3자 제공 동의 여부 (성명은 받지 않습니다)\n목적: 위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙\n보유 기간: 철회 또는 협의회 해산 시 즉시 파기\n동의를 거부할 수 있으나, 이 경우 협의회에 가입할 수 없습니다."],
     ["제3자 제공 (선택)", "제공받는 자: 한국토지주택공사(LH), 고양시, 시공사(요진건설산업)\n목적: 협의 · 민원 시 위임 사실 증빙\n항목: 위임한 세대의 동 · 호수 목록, 위임 세대수\n제공받는 자의 보유 기간: 해당 협의 · 민원 처리가 끝날 때까지\n동의하지 않아도 위임동의는 유효하며, 이 세대는 세대수 집계에만 포함됩니다."]
   ];
@@ -1063,8 +1064,16 @@
           var M = await API.admin.profiles(), O = await API.admin.orphans(), q = "";
           B.innerHTML = '<div class="toolbar"><div class="chips" id="mSt"><button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + '</button><button type="button" class="chip" data-s="approved" aria-pressed="false">승인</button><button type="button" class="chip" data-s="pending" aria-pressed="false">대기</button><button type="button" class="chip" data-s="rejected" aria-pressed="false">반려</button></div>' +
             '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
+            head("가입 · 승인 기록", '<span class="note">최근 100건 · 지우지 않고 보관</span>') + '<div class="tablebox"><table class="spec"><tbody id="mLog"><tr><td class="muted">불러오는 중…</td></tr></tbody></table></div>' +
             (O.length ? head("가입 중단 계정", '<span class="note">계정만 있고 계약서가 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : "");
-          var sf = "";
+          var sf = "", WHO = {}; M.forEach(function (p) { WHO[p.id] = p.unit_id; });
+          var ACT = { signup: "가입 신청", approve: "승인", reject: "반려", reapply: "재신청", revoke: "승인 취소", admin_on: "운영진 지정", admin_off: "운영진 해제", "delete": "계정 삭제" };
+          API.admin.memberLog().then(function (L) {
+            el("mLog").innerHTML = L.slice(0, 100).map(function (x) {
+              var by = !x.by_user ? "시스템" : x.by_user === x.profile_id ? "본인" : "운영진 " + (WHO[x.by_user] || "");
+              return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + esc(ACT[x.action] || x.action) + (x.note ? ' <span class="muted small">(' + esc(x.note) + ")</span>" : "") + '</td><td class="muted small">' + esc(by) + "</td></tr>";
+            }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>';
+          }).catch(function (e) { el("mLog").innerHTML = '<tr><td class="muted">기록을 불러오지 못했습니다.</td></tr>'; });
           function draw() {
             el("mList").innerHTML = M.filter(function (p) { return (!sf || p.status === sf) && (!q || (p.unit_id + (p.nickname || "")).indexOf(q) >= 0); }).map(function (p) {
               return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.nickname || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.is_admin ? " · 운영진" : "") + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
@@ -1109,7 +1118,7 @@
           B.innerHTML = '<div class="toolbar"><b>' + n(A.length) + "세대 제출</b>" + '<div class="cta-row" style="margin:0"><button type="button" class="btn" id="csvCopy">CSV 복사</button><button type="button" class="btn" id="csvDl">CSV 내려받기</button></div></div>' +
             '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>제출</th><th>제3자</th></tr></thead><tbody>' +
             (A.map(function (a) { var u = UNIT[a.unit_id] || {}; return '<tr><td class="num">' + esc(a.unit_id) + "</td><td>" + esc(u.type) + '</td><td class="num">' + fmtTime(a.signed_at) + "</td><td>" + (a.agree_third_party ? "동의" : "-") + "</td></tr>"; }).join("") || '<tr><td colspan="4" class="muted">아직 제출된 위임동의서가 없습니다.</td></tr>') +
-            "</tbody></table></div>" + head("최근 기록") + '<div class="tablebox"><table class="spec"><tbody>' + (lg.slice(0, 50).map(function (x) { return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + (x.action === "sign" ? "제출" : "철회") + "</td></tr>"; }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>') + "</tbody></table></div>" +
+            "</tbody></table></div>" + head("최근 기록") + '<div class="tablebox"><table class="spec"><tbody>' + (lg.slice(0, 50).map(function (x) { return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + (x.action === "sign" ? "제출" : "철회") + '</td><td class="muted small">' + (!x.by_user ? "시스템" : x.by_user === x.user_id ? "본인" : "운영진") + "</td></tr>"; }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>') + "</tbody></table></div>" +
             '<textarea class="out" id="csvOut" readonly hidden aria-label="CSV"></textarea>';
           el("csvCopy").addEventListener("click", function () { var o = el("csvOut"), b = this; o.value = text; o.hidden = false; try { navigator.clipboard.writeText(text).then(function () { b.textContent = "복사했습니다"; }, function () { o.select(); }); } catch (e) { o.select(); } });
           el("csvDl").addEventListener("click", function () { var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" })); a.download = "위임동의_" + fmtDate(new Date()).replace(/\./g, "") + ".csv"; document.body.appendChild(a); a.click(); a.remove(); });

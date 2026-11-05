@@ -6,7 +6,7 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v2";
+  var FORM_VERSION = "2026-11-v3";
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성해야 가입할 수 있습니다.");
     if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
@@ -44,6 +44,8 @@
     if (!uid()) { st.profile = null; return null; }
     var r = await sb.from("profiles").select("*").eq("id", uid()).maybeSingle();
     st.profile = r.error ? null : r.data;
+    st.hasAgreement = false;
+    if (st.profile) { var a = await sb.from("agreements").select("user_id").eq("user_id", uid()).maybeSingle(); st.hasAgreement = !a.error && !!a.data; }
     return st.profile;
   }
   function checkFile(f) {
@@ -65,7 +67,10 @@
     get session() { return st.session; },
     get profile() { return st.profile; },
     get loggedIn() { return !!st.session; },
-    get isMember() { return !!(st.profile && st.profile.status === "approved"); },
+    /* 회원 = 승인 + 위임동의 (운영진은 예외). 위임을 철회하면 게시판 · 투표 · 민원 이용이 멈춤 */
+    get isMember() { return !!(st.profile && st.profile.status === "approved" && (st.profile.is_admin || st.hasAgreement)); },
+    get isApproved() { return !!(st.profile && st.profile.status === "approved"); },
+    get hasAgreement() { return !!st.hasAgreement; },
     get isAdmin() { return !!(st.profile && st.profile.status === "approved" && st.profile.is_admin); },
     validUnit: validUnit,
 
@@ -148,9 +153,10 @@
       need();
       if (!st.profile || st.profile.status === "rejected") throw new Error("가입한 회원만 위임동의서를 낼 수 있습니다.");
       checkConsent(o);
-      return must(await sb.from("agreements").insert({ agree_delegation: true, agree_privacy: true, agree_identity: true, agree_third_party: !!o.thirdParty, form_version: FORM_VERSION }).select().single());
+      var row = must(await sb.from("agreements").insert({ agree_delegation: true, agree_privacy: true, agree_identity: true, agree_third_party: !!o.thirdParty, form_version: FORM_VERSION }).select().single());
+      st.hasAgreement = true; return row;
     },
-    withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); },
+    withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
     agreedUnits: async function () { need(); if (!API.isMember && !API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
 
@@ -252,6 +258,7 @@
       },
       agreements: async function () { need(); return must(await sb.from("agreements").select("*").order("unit_id")); },
       log: async function () { need(); return must(await sb.from("agreement_log").select("*").order("id", { ascending: false }).limit(300)); },
+      memberLog: async function () { need(); return must(await sb.from("member_log").select("*").order("id", { ascending: false }).limit(300)); },
       createPoll: async function (o) {
         need(); var opts = (o.options || []).map(function (x) { return x.trim(); }).filter(Boolean);
         if (!o.question || o.question.trim().length < 2) throw new Error("질문을 입력하세요.");
