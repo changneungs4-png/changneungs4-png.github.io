@@ -7,11 +7,11 @@ import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-export const PARSER_VERSION = 2;
+export const PARSER_VERSION = 3;
 
 // 일정 이름표: 줄에 이 말이 있으면 그 일정으로 봅니다 (위에 있을수록 우선)
 const LABELS = [
-  [/선택\s*품목|유상\s*옵션|추가\s*선택|옵션\s*(선택|신청|계약)/, "유상옵션(선택품목) 선택"],
+  [/선택\s*품목|유상\s*옵션|추가\s*선택|옵션\s*(선택|신청|계약)|품목\s*결정/, "유상옵션(선택품목) 선택"],
   [/사전\s*청약\s*당첨자/, "사전청약 당첨자 접수"],
   [/배정\s*결과/, "주택형 배정결과 확인"],
   [/전자\s*계약/, "전자계약 체결"],
@@ -44,8 +44,7 @@ export function nearestLabel(line, at) {
   const over = hits.filter((h) => h.s < last.e && h.e > last.s);
   return over.reduce((a, b) => (b.s < a.s ? b : a)).name;
 }
-const OPTION_CTX = /선택\s*품목|유상\s*옵션|추가\s*선택|발코니\s*확장/;
-const OPTION_WHEN = /신청\s*(시기|기간|일정)|선택\s*(시기|기간)/;
+
 // 일정이 아닌 날짜 (자격 기준일 등)는 무시
 const NOT_EVENT = /기준일|공고일\s*기준|기준\s*\(|현재|이전|이후\s*출생|생년월일|무주택|소득|자산|거주\s*기간|이상\s*거주|만\s*\d+세|입주자\s*모집\s*공고일/;
 const FACTS = [
@@ -91,7 +90,8 @@ function headerCells(h) {
   return cells;
 }
 export function extractEvents(text) {
-  const lines = String(text || "").split(/\r?\n/);
+  // ‘26.11.09 같은 두 자리 연도 → 2026.11.09
+  const lines = String(text || "").split(/\r?\n/).map((l) => l.replace(/[‘’'`´]\s*(\d{2})\s*\.(?=\s*\d{1,2}\s*\.)/g, "20$1."));
   const events = [], seen = new Set(), used = new Set();
   const push = (label, d, raw) => {
     const key = label + "|" + d.start + "|" + (d.end || "");
@@ -143,11 +143,6 @@ export function extractEvents(text) {
     for (const d of dates) {
       const lb = d.month ? labelOf(line) : nearestLabel(line, d.at);
       if (lb) { push(lb, d, line); any = true; }
-    }
-    // 옵션(선택품목) 안내 단락 안의 "신청시기 : … (11.18~11.19)" → 옵션 선택 일정
-    if (OPTION_WHEN.test(line) && !dates[0].month) {
-      const ctx = lines.slice(Math.max(0, i - 30), i + 1).join(" ");
-      if (OPTION_CTX.test(ctx)) { push("유상옵션(선택품목) 선택", dates[0], line); any = true; }
     }
     if (any) continue;
     const prev = i > 0 && !used.has(i - 1) ? labelOf(lines[i - 1]) : null;

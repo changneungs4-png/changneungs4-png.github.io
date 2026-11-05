@@ -325,7 +325,8 @@
   }
   async function parsedEvents() {
     var by = {}, L = (await lhItems()).filter(function (x) { return x.extra && x.extra.s4 && x.parsed && arr(x.parsed.events).length; });
-    L.sort(function (a, b) { return String(a.parsed.parsed_at) < String(b.parsed.parsed_at) ? -1 : 1; });
+    // 오래된 공고 → 최신 정정공고 순으로 덮어써서, 최신 공고의 날짜가 남게 함
+    L.sort(function (a, b) { return String(a.published_at || "") < String(b.published_at || "") ? -1 : 1; });
     L.forEach(function (x) { arr(x.parsed.events).forEach(function (e) { by[canon(e.label)] = { when: whenOf(e), title: e.label, desc: "LH 공고문 자동 반영 · " + (e.file || x.title), state: stateOf(e), start: e.start, auto: true, src: x.url }; }); });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
   }
