@@ -6,7 +6,12 @@ name: LH 공고문 읽기
 on:
   schedule:
     - cron: "37 22 * * *"   # 한국 07:37 (목록 수집 07:13 이후)
-  workflow_dispatch: {}      # Actions 탭에서 "Run workflow"로 바로 실행
+  workflow_dispatch:         # Actions 탭에서 "Run workflow"로 바로 실행
+    inputs:
+      grep:
+        description: "점검용: 공고문에서 찾을 말(정규식). 비워 두면 평소처럼 실행"
+        required: false
+        default: ""
 permissions:
   contents: read
 jobs:
@@ -24,4 +29,5 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEBUG_GREP: ${{ inputs.grep }}
         run: node supabase/scripts/read-notices.mjs

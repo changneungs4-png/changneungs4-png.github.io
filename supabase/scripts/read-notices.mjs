@@ -190,7 +190,7 @@ export async function run(env, fetcher = fetch, toText = pdfToText) {
     const docs = pickDocs(it.extra.attachments);
     const sig = docs.map((d) => d.url).join("|");
     if (!docs.length) { report.skipped++; continue; }
-    if (it.parsed && it.parsed.sig === sig && it.parsed.version === PARSER_VERSION) { report.skipped++; continue; }
+    if (!env.DEBUG_GREP && it.parsed && it.parsed.sig === sig && it.parsed.version === PARSER_VERSION) { report.skipped++; continue; }
     const events = [], facts = [], files = [];
     for (const d of docs) {
       try {
@@ -198,7 +198,13 @@ export async function run(env, fetcher = fetch, toText = pdfToText) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         const buf = Buffer.from(await res.arrayBuffer());
         if (buf.slice(0, 5).toString() !== "%PDF-") throw new Error("PDF가 아닙니다");
-        const out = extractEvents(toText(buf));
+        const text = toText(buf);
+        if (env.DEBUG_GREP) {
+          // 점검용: 검색어 주변 줄을 실행 기록에 출력 (저장 안 함)
+          const L = text.split(/\r?\n/), re = new RegExp(env.DEBUG_GREP);
+          L.forEach((l, i) => { if (re.test(l)) console.log("---- " + d.name + " #" + i + "\n" + L.slice(Math.max(0, i - 45), i + 3).map((x, j) => (i - 45 + j) + ": " + x).join("\n")); });
+        }
+        const out = extractEvents(text);
         events.push(...out.events.map((e) => ({ ...e, file: d.name })));
         facts.push(...out.facts.filter((f) => !facts.some((g) => g.label === f.label)));
         files.push({ name: d.name, url: d.url, events: out.events.length });
@@ -213,7 +219,7 @@ export async function run(env, fetcher = fetch, toText = pdfToText) {
 }
 
 if (process.argv[1] && process.argv[1].endsWith("read-notices.mjs")) {
-  run({ SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY })
+  run({ SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY, DEBUG_GREP: process.env.DEBUG_GREP || "" })
     .then((r) => { console.log(JSON.stringify(r, null, 2)); if (r.errors.length) process.exitCode = 0; })
     .catch((e) => { console.error(e); process.exit(1); });
 }
