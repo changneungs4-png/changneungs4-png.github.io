@@ -7,6 +7,11 @@
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
   var FORM_VERSION = "2026-11-v1";
+  function checkConsent(c) {
+    if (!c) throw new Error("위임동의서를 작성해야 가입할 수 있습니다.");
+    if (!c.signer || c.signer.trim().length < 2) throw new Error("위임동의서의 계약자 성명을 입력하세요.");
+    if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
+  }
   var st = { session: null, profile: null };
 
   var MSG = [
@@ -88,7 +93,7 @@
     /* 로그인 계정의 세대 (아이디 = 동-호) */
     get accountUnit() { return st.session ? String(st.session.user.email || "").split("@")[0] : null; },
 
-    /* 가입: 세대로 계정 → 계약서 업로드 → 회원 정보(대기) */
+    /* 가입: 세대로 계정 → 계약서 업로드 → 회원 정보(대기) → 위임동의서 */
     signUp: async function (o) {
       need();
       if (!validUnit(o.unit)) throw new Error("동과 호수를 고르세요.");
@@ -96,20 +101,25 @@
       if (o.password !== o.password2) throw new Error("비밀번호 확인이 일치하지 않습니다.");
       checkFile(o.file);
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
+      checkConsent(o.consent);
       if (await API.unitTaken(o.unit)) throw new Error("이 세대는 이미 가입되어 있습니다. 본인 세대인데 가입한 적이 없다면 운영진에게 문의하세요.");
       var r = await sb.auth.signUp({ email: emailOf(o.unit), password: o.password });
       must(r);
       if (!r.data.session) { var s = await sb.auth.signInWithPassword({ email: emailOf(o.unit), password: o.password }); must(s); st.session = s.data.session; }
       else st.session = r.data.session;
-      return API.completeProfile({ file: o.file, privacy: true });
+      return API.completeProfile({ file: o.file, privacy: true, consent: o.consent });
     },
     /* 계정은 있는데 회원 정보가 없을 때(가입 중단) 마무리 */
     completeProfile: async function (o) {
       need();
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
+      checkConsent(o.consent);
       var unit = API.accountUnit, path = await uploadContract(o.file);
       must(await sb.from("profiles").insert({ id: uid(), username: unit, unit_id: unit, contract_path: path }));
-      await loadProfile(); return st.profile;
+      await loadProfile();
+      try { await API.submitAgreement(o.consent); }
+      catch (e) { throw new Error("가입 신청은 되었지만 위임동의서 저장에 실패했습니다. 내 정보 화면에서 위임동의서를 다시 제출해 주세요. (" + API.errorText(e) + ")"); }
+      return st.profile;
     },
     /* 반려 후 계약서 다시 내기 */
     reapply: async function (o) {
@@ -132,14 +142,13 @@
 
     /* 위임동의 */
     myAgreement: async function () {
-      need(); if (!API.isMember) return null;
+      need(); if (!st.profile || st.profile.status === "rejected") return null;
       return must(await sb.from("agreements").select("*").eq("user_id", uid()).maybeSingle());
     },
     submitAgreement: async function (o) {
       need();
-      if (!API.isMember) throw new Error("승인된 회원만 위임동의서를 낼 수 있습니다.");
-      if (!o.signer || o.signer.trim().length < 2) throw new Error("계약자 성명을 입력하세요.");
-      if (!o.delegation || !o.privacy || !o.identity) throw new Error("필수 항목에 모두 동의해야 제출할 수 있습니다.");
+      if (!st.profile || st.profile.status === "rejected") throw new Error("가입한 회원만 위임동의서를 낼 수 있습니다.");
+      checkConsent(o);
       return must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), agree_delegation: true, agree_privacy: true, agree_identity: true, agree_third_party: !!o.thirdParty, form_version: FORM_VERSION }).select().single());
     },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); },
