@@ -4,6 +4,9 @@
 #   SUPABASE_SERVICE_ROLE_KEY  Supabase → Project Settings → API → service_role (절대 사이트 파일에 넣지 마세요)
 name: LH 공고문 읽기
 on:
+  push:                      # 읽기 프로그램을 고치면 바로 다시 읽기
+    branches: [main]
+    paths: ["supabase/scripts/read-notices.mjs"]
   schedule:
     - cron: "37 22 * * *"   # 한국 07:37 (목록 수집 07:13 이후)
   workflow_dispatch:         # Actions 탭에서 "Run workflow"로 바로 실행

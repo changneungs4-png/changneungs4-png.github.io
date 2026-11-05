@@ -7,7 +7,7 @@ import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-export const PARSER_VERSION = 3;
+export const PARSER_VERSION = 4;
 
 // 일정 이름표: 줄에 이 말이 있으면 그 일정으로 봅니다 (위에 있을수록 우선)
 const LABELS = [
@@ -47,10 +47,39 @@ export function nearestLabel(line, at) {
 
 // 일정이 아닌 날짜 (자격 기준일 등)는 무시
 const NOT_EVENT = /기준일|공고일\s*기준|기준\s*\(|현재|이전|이후\s*출생|생년월일|무주택|소득|자산|거주\s*기간|이상\s*거주|만\s*\d+세|입주자\s*모집\s*공고일/;
+// 주요 정보: [이름, 꼭 있어야 할 말, 있으면 더 좋은 말(숫자 · 기간 등)]
 const FACTS = [
-  [/전매\s*제한/, "전매제한"], [/거주\s*의무|실거주\s*의무/, "거주의무"], [/계약금/, "계약금"],
-  [/중도금\s*(대출|집단|이자)/, "중도금 대출"], [/잔금/, "잔금"], [/발코니\s*확장/, "발코니 확장"], [/(유상\s*옵션|선택\s*품목).*(금액|원|가격)/, "옵션 금액"]
+  ["전매제한", /전매\s*제한/, /\d+\s*년/],
+  ["거주의무", /거주\s*의무/, /\d+\s*년/],
+  ["계약금", /계약금/, /\d+\s*%/],
+  ["중도금 대출", /중도금\s*(집단\s*)?대출/, /협약|알선|이자|후불/],
+  ["잔금", /잔금/, /입주|지정기간|\d+\s*%/],
+  ["발코니 확장", /발코니\s*확장/, /확장형|시공/],
+  ["선택품목(옵션)", /추가\s*선택\s*품목|선택\s*품목|유상\s*옵션/, /결정일|\d{2}\.\s*\d{2}\./]
 ];
+const BAD_FACT = /인지세|부동산\s*거래\s*신고|실거래\s*신고|주택취득자금/;
+
+// 줄바꿈으로 끊긴 공고문을 문장 단위로 다시 잇습니다.
+export function sentences(text) {
+  const SEP = "\u0000";
+  const raw = String(text || "").replace(/\f/g, "\n").split(/\r?\n/).filter((l) => l.trim());
+  let flat = "", prevLen = 0, prevTable = true;
+  for (const r of raw) {
+    const table = /\S\s{3,}\S/.test(r.trim());            // 칸 사이가 넓게 벌어진 줄 = 표
+    const l = r.replace(/\s{2,}/g, " ").trim();
+    if (table || prevTable || !flat) flat += SEP + l;       // 표 줄은 따로 떼어 둠
+    // 긴 문단 줄이 한글 낱말 중간에서 끊긴 경우("완료되" + "면")는 띄우지 않고 붙임
+    else if (prevLen >= 40 && /[가-힣]$/.test(flat) && /^[가-힣]/.test(l) && !/^(및|또는|그리고|단,)/.test(l)) flat += l;
+    else flat += " " + l;
+    prevLen = l.length; prevTable = table;
+  }
+  return flat.split(SEP).flatMap((p) => p.split(/(?<=(?:다|요|함|음)\.)\s+|\s+(?=[■□•◦▶▷○●※*\-]\s)/)).map((x) => x.replace(/^[■□•◦▶▷○●※*\-]\s*/, "").trim()).filter((x) => x.length >= 10);
+}
+function trimFact(t, max = 240) {
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max), at = Math.max(cut.lastIndexOf(", "), cut.lastIndexOf("며 "), cut.lastIndexOf("고 "));
+  return (at > 80 ? cut.slice(0, at + 1) : cut).trim() + "…";
+}
 
 const D1 = /(20\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})\s*[일.]?(?:\s*\([월화수목금토일]\))?/g;
 const pad = (n) => String(n).padStart(2, "0");
@@ -149,12 +178,18 @@ export function extractEvents(text) {
     if (prev && !findDates(lines[i - 1]).length && clean(line).length < 60) push(prev, dates[0], lines[i - 1] + " " + line);
   }
 
-  const facts = [], fseen = new Set();
-  for (const line of lines) {
-    for (const [re, name] of FACTS) {
-      if (re.test(line) && !fseen.has(name) && clean(line).length > 8 && clean(line).length < 220) { fseen.add(name); facts.push({ label: name, text: clean(line).slice(0, 200) }); }
-    }
+  const facts = [], S = sentences(text);
+  for (const [name, must, good] of FACTS) {
+    const cand = S.map((t, i) => ({ t, i })).filter((x) => must.test(x.t) && !BAD_FACT.test(x.t) && x.t.length <= 600);
+    if (!cand.length) continue;
+    // 숫자 · 기간이 있는 문장, 그다음 짧은 문장을 우선
+    cand.sort((a, b) => (good.test(b.t) - good.test(a.t)) || (Math.min(a.t.length, 400) - Math.min(b.t.length, 400)));
+    const pick = cand.find((x) => !facts.some((f) => f.at === x.i)) || cand[0];
+    const same = facts.find((f) => f.at === pick.i);
+    if (same) { same.label += " · " + name; continue; }   // 같은 문장이면 이름만 합침 (전매제한 · 거주의무)
+    facts.push({ label: name, text: trimFact(pick.t), at: pick.i });
   }
+  facts.sort((a, b) => a.at - b.at); facts.forEach((f) => delete f.at);
   // 오래된 날짜(법 시행일 등 본문 인용)는 일정이 아님
   const floor = (new Date().getFullYear() - 1) + "-01-01";
   for (let k = events.length - 1; k >= 0; k--) if (events[k].start < floor) events.splice(k, 1);
