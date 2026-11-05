@@ -333,6 +333,11 @@
   async function mergedSchedule() {
     var auto = await parsedEvents();
     if (!auto.length) return arr(S.schedule);
+    // 기존 일정이 기간(7.10–19)을 갖고 있는데 공고문에서 하루만 읽혔다면 기존 일정을 유지
+    auto = auto.filter(function (e) {
+      if (/[–~-]/.test(String(e.when).slice(5))) return true;
+      return !arr(S.schedule).some(function (s) { return canon(s.title) === canon(e.title) && /^20\d{2}.*[–~]/.test(s.when); });
+    });
     var keys = auto.map(function (e) { return canon(e.title); });
     var rest = arr(S.schedule).filter(function (s) { var c = canon(s.title); return !keys.some(function (k) { return c === k || c.indexOf(k) === 0; }); });
     var autoStarts = auto.map(function (e) { return e.start; });
