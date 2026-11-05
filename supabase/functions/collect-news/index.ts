@@ -200,6 +200,16 @@ const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers
 export async function handle(req, env, fetcher = fetch) {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (!(await authorized(req, env, fetcher))) return new Response(JSON.stringify({ error: "권한이 없습니다" }), { status: 401, headers: { ...CORS, "content-type": "application/json" } });
+  let probe = null;
+  try { probe = (await req.clone().json()).probe; } catch { /* 본문 없음 */ }
+  if (probe && env.LH_API_KEY) {
+    // 운영 점검용: LH 목록 API 원본 응답 일부를 돌려줍니다(저장 안 함).
+    const q = new URLSearchParams({ PG_SZ: "100", PAGE: "1", ...probe });
+    const r = await fetcher("https://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1?serviceKey=" + encodeURIComponent(env.LH_API_KEY) + "&" + q.toString());
+    const t = await r.text();
+    const names = [...t.matchAll(/"PAN_NM":"([^"]*)".{0,400}?"PAN_NT_ST_DT":"([^"]*)"/g)].map((m) => m[2] + " " + m[1]);
+    return new Response(JSON.stringify({ status: r.status, count: names.length, names: names.slice(0, 40), head: t.slice(0, 600) }), { headers: { ...CORS, "content-type": "application/json" } });
+  }
   const res = await collect(env, fetcher);
   return new Response(JSON.stringify(res), { headers: { ...CORS, "content-type": "application/json" } });
 }
