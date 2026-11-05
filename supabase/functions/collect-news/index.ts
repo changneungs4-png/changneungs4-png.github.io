@@ -130,9 +130,9 @@ export async function collect(env, fetcher = fetch) {
   }
   if (env.LH_API_KEY) {
     try {
-      const now = new Date(), from = new Date(now.getTime() - 400 * 864e5), to = new Date(now.getTime() + 730 * 864e5);
+      const now = new Date(), from = new Date(now.getTime() - 365 * 864e5), to = now;
       const u = "https://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1?serviceKey=" + encodeURIComponent(env.LH_API_KEY) +
-        "&PG_SZ=100&PAGE=1&PAN_NM=" + encodeURIComponent("창릉") + "&PAN_NT_ST_DT=" + ymd(from) + "&CLSG_DT=" + ymd(to);
+        "&PG_SZ=100&PAGE=1&PAN_NM=" + encodeURIComponent("창릉") + "&PAN_ST_DT=" + ymd(from) + "&PAN_ED_DT=" + ymd(to);
       const r = await fetcher(u);
       const body = await r.text();
       if (!r.ok) throw new Error("HTTP " + r.status + " " + body.slice(0, 200));
