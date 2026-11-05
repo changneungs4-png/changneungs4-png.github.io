@@ -7,11 +7,15 @@ import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-export const PARSER_VERSION = 1;
+export const PARSER_VERSION = 2;
 
 // 일정 이름표: 줄에 이 말이 있으면 그 일정으로 봅니다 (위에 있을수록 우선)
 const LABELS = [
   [/선택\s*품목|유상\s*옵션|추가\s*선택|옵션\s*(선택|신청|계약)/, "유상옵션(선택품목) 선택"],
+  [/사전\s*청약\s*당첨자/, "사전청약 당첨자 접수"],
+  [/배정\s*결과/, "주택형 배정결과 확인"],
+  [/전자\s*계약/, "전자계약 체결"],
+  [/현장\s*계약/, "현장계약 체결"],
   [/계약\s*체결|정\s*당\s*계\s*약|계\s*약\s*일|계약\s*기간/, "계약 체결"],
   [/서류\s*(제출|접수)|자격\s*검증/, "당첨자 서류 제출"],
   [/당첨자\s*(발표|선정)/, "당첨자 발표"],
@@ -25,8 +29,25 @@ const LABELS = [
   [/특별\s*공급/, "특별공급 접수"],
   [/일반\s*공급|1\s*순위|2\s*순위/, "일반공급 접수"]
 ];
+// 문장 속 날짜는 바로 앞(이 글자 수 안)에 나온 이름표를 씁니다. 멀리 떨어진 말에 끌려가지 않도록.
+const NEAR = 50;
+export function nearestLabel(line, at) {
+  const w = line.slice(Math.max(0, at - NEAR), at);
+  const hits = [];
+  LABELS.forEach(([re, name]) => {
+    const g = new RegExp(re.source, "g"); let m;
+    while ((m = g.exec(w))) { hits.push({ s: m.index, e: m.index + m[0].length, name }); if (!m[0].length) g.lastIndex++; }
+  });
+  if (!hits.length) return null;
+  const last = hits.reduce((a, b) => (b.e > a.e ? b : a));
+  // 겹치는 말은 앞에서 시작하는 긴 말을 우선 ("전자계약기간" → 전자계약, "현장계약체결" → 현장계약)
+  const over = hits.filter((h) => h.s < last.e && h.e > last.s);
+  return over.reduce((a, b) => (b.s < a.s ? b : a)).name;
+}
+const OPTION_CTX = /선택\s*품목|유상\s*옵션|추가\s*선택|발코니\s*확장/;
+const OPTION_WHEN = /신청\s*(시기|기간|일정)|선택\s*(시기|기간)/;
 // 일정이 아닌 날짜 (자격 기준일 등)는 무시
-const NOT_EVENT = /기준일|현재|이전|이후\s*출생|생년월일|무주택|소득|자산|거주\s*기간|이상\s*거주|만\s*\d+세|입주자\s*모집\s*공고일/;
+const NOT_EVENT = /기준일|공고일\s*기준|기준\s*\(|현재|이전|이후\s*출생|생년월일|무주택|소득|자산|거주\s*기간|이상\s*거주|만\s*\d+세|입주자\s*모집\s*공고일/;
 const FACTS = [
   [/전매\s*제한/, "전매제한"], [/거주\s*의무|실거주\s*의무/, "거주의무"], [/계약금/, "계약금"],
   [/중도금\s*(대출|집단|이자)/, "중도금 대출"], [/잔금/, "잔금"], [/발코니\s*확장/, "발코니 확장"], [/(유상\s*옵션|선택\s*품목).*(금액|원|가격)/, "옵션 금액"]
@@ -75,6 +96,9 @@ export function extractEvents(text) {
   const push = (label, d, raw) => {
     const key = label + "|" + d.start + "|" + (d.end || "");
     if (seen.has(key)) return; seen.add(key);
+    // 같은 일정 · 같은 시작일이면 기간(끝 날짜)이 있는 쪽만 남김
+    const same = events.find((e) => e.label === label && e.start === d.start);
+    if (same) { if (!same.end && d.end) { same.end = d.end; same.evidence = clean(raw).slice(0, 140); } return; }
     events.push({ label, start: d.start, end: d.end || null, month: !!d.month, evidence: clean(raw).slice(0, 140) });
   };
 
@@ -110,15 +134,24 @@ export function extractEvents(text) {
     block.forEach((k) => used.add(k)); used.add(h);
   }
 
-  // 2) 세로 표 · 문장: 같은 줄(또는 바로 윗줄)의 이름표와 날짜
+  // 2) 세로 표 · 문장: 날짜마다 바로 앞의 이름표를 붙임 (없으면 바로 윗줄 이름표)
   for (let i = 0; i < lines.length; i++) {
     if (used.has(i)) continue;
     const line = lines[i], dates = findDates(line);
     if (!dates.length || NOT_EVENT.test(line)) continue;
-    const own = labelOf(line);
-    if (own) { push(own, dates[0], line); continue; }
+    let any = false;
+    for (const d of dates) {
+      const lb = d.month ? labelOf(line) : nearestLabel(line, d.at);
+      if (lb) { push(lb, d, line); any = true; }
+    }
+    // 옵션(선택품목) 안내 단락 안의 "신청시기 : … (11.18~11.19)" → 옵션 선택 일정
+    if (OPTION_WHEN.test(line) && !dates[0].month) {
+      const ctx = lines.slice(Math.max(0, i - 30), i + 1).join(" ");
+      if (OPTION_CTX.test(ctx)) { push("유상옵션(선택품목) 선택", dates[0], line); any = true; }
+    }
+    if (any) continue;
     const prev = i > 0 && !used.has(i - 1) ? labelOf(lines[i - 1]) : null;
-    if (prev && !findDates(lines[i - 1]).length) push(prev, dates[0], lines[i - 1] + " " + line);
+    if (prev && !findDates(lines[i - 1]).length && clean(line).length < 60) push(prev, dates[0], lines[i - 1] + " " + line);
   }
 
   const facts = [], fseen = new Set();
@@ -127,6 +160,9 @@ export function extractEvents(text) {
       if (re.test(line) && !fseen.has(name) && clean(line).length > 8 && clean(line).length < 220) { fseen.add(name); facts.push({ label: name, text: clean(line).slice(0, 200) }); }
     }
   }
+  // 오래된 날짜(법 시행일 등 본문 인용)는 일정이 아님
+  const floor = (new Date().getFullYear() - 1) + "-01-01";
+  for (let k = events.length - 1; k >= 0; k--) if (events[k].start < floor) events.splice(k, 1);
   events.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   return { events: events.slice(0, 40), facts: facts.slice(0, 10) };
 }
