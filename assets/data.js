@@ -150,6 +150,9 @@ window.SITE = {
     { title: "위택스", desc: "취득세 신고 · 납부", url: "https://www.wetax.go.kr" },
     { title: "고양특례시청", desc: "창릉신도시 도시계획 · 교통 소식", url: "https://www.goyang.go.kr" }
   ],
+  /* 개인정보 보호책임자: 협의회 대표 운영진. contact에 이메일 또는 전화를 적어주세요 */
+  privacyOfficer: { role: "협의회 운영진 대표", contact: "" },
+
   contacts: [
     ["LH 경기북부지역본부 (분양 문의)", "031-941-0730"]
   ],

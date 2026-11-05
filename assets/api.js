@@ -6,10 +6,9 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v1";
+  var FORM_VERSION = "2026-11-v2";
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성해야 가입할 수 있습니다.");
-    if (!c.signer || c.signer.trim().length < 2) throw new Error("위임동의서의 계약자 성명을 입력하세요.");
     if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
   }
   var st = { session: null, profile: null };
@@ -149,7 +148,7 @@
       need();
       if (!st.profile || st.profile.status === "rejected") throw new Error("가입한 회원만 위임동의서를 낼 수 있습니다.");
       checkConsent(o);
-      return must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), agree_delegation: true, agree_privacy: true, agree_identity: true, agree_third_party: !!o.thirdParty, form_version: FORM_VERSION }).select().single());
+      return must(await sb.from("agreements").insert({ agree_delegation: true, agree_privacy: true, agree_identity: true, agree_third_party: !!o.thirdParty, form_version: FORM_VERSION }).select().single());
     },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); },
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },

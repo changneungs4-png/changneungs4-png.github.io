@@ -487,3 +487,4 @@ dl.kv-common dd,.kvcards dd{margin:0;font-weight:500;overflow-wrap:anywhere}
 /* 가입 화면 위임동의서 */
 fieldset.consent-in{border:1px solid var(--pine);border-radius:10px;padding:12px 14px 6px;margin:14px 0;background:var(--pine-soft);min-width:0}
 fieldset.consent-in legend{font-weight:700;padding:0 6px;display:flex;gap:6px;align-items:center}
+.plain-list{margin:0;padding-left:18px;display:grid;gap:6px}

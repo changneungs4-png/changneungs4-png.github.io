@@ -528,7 +528,7 @@
     D.addEventListener("change", fill);
     if (current && UNIT[current]) { D.value = String(UNIT[current].dong); fill(); H.value = current; }
   }
-  var PRIVACY_SIGNUP = "수집 항목: 동 · 호수(아이디), 계약서 사진\n목적: 입주예정자 여부 확인과 1세대 1계정 관리\n보유 기간: 계약서 사진은 운영진 확인 후 즉시 삭제, 나머지는 탈퇴 또는 협의회 해산 시까지\n동의하지 않을 수 있으나, 이 경우 가입할 수 없습니다.";
+  var PRIVACY_SIGNUP = "수집 항목: 동 · 호수(아이디), 비밀번호(암호화하여 저장), 계약서 사진, 가입 · 접속 기록\n목적: 입주예정자 여부 확인과 1세대 1계정 관리\n보유 기간: 계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제, 나머지는 탈퇴 또는 협의회 해산 시까지\n계약서 사진에 주민등록번호가 보이면 반려하고 즉시 삭제합니다.\n동의하지 않을 수 있으나, 이 경우 가입할 수 없습니다.";
 
   /* ── 위임동의 현황판 ── */
   R.agreement = async function () {
@@ -832,16 +832,20 @@
 
   R.privacy = function () {
     var rows = [
-      ["회원가입", "아이디, 닉네임, 동 · 호수, 계약서 사진", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지"],
-      ["위임동의서", "동 · 호수, 계약자 성명, 동의 일시, 제3자 제공 동의 여부", "위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙", "철회 또는 협의회 해산 시 즉시 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
+      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 계약서 사진, 가입 · 접속 기록, 닉네임(선택)", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지"],
+      ["위임동의서", "동 · 호수, 동의 일시, 제3자 제공 동의 여부 (성명은 받지 않음)", "위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙", "철회 또는 협의회 해산 시 즉시 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
       ["게시판 · 투표 · 민원", "작성 글과 댓글, 세대별 투표 · 참여 여부", "커뮤니티 운영, 1세대 1표 집계", "삭제 시 또는 협의회 해산 시까지"]
     ];
     C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
       rows.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
-      '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">위임동의서에서 제3자 제공에 동의한 세대에 한해, 관계 기관(LH, 고양시 등)과 협의할 때 동 · 호수 목록과 위임 세대수를 제공할 수 있습니다. 성명은 제공하지 않습니다. 그 밖에는 제3자에게 제공하지 않습니다.</p>' +
-      head("처리 위탁") + '<p class="muted">회원 정보와 파일은 Supabase(데이터베이스 · 인증 · 파일 저장 서비스)에 저장합니다.</p></div>' +
+      '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">위임동의서에서 제3자 제공에 동의한 세대에 한해, 한국토지주택공사(LH) · 고양시 · 시공사(요진건설산업)와 협의 · 민원을 할 때 위임 사실 증빙을 위해 동 · 호수 목록과 위임 세대수를 제공할 수 있습니다. 제공받는 곳은 해당 협의 · 민원 처리가 끝날 때까지 보유합니다. 그 밖에는 제3자에게 제공하지 않습니다.</p>' +
+      head("처리 위탁 · 국외 이전") + '<ul class="muted plain-list"><li><b>Supabase Inc.</b> (미국, support@supabase.com) — 회원 정보 · 위임동의 · 게시글 · 계약서 사진 저장과 로그인 처리. 데이터는 서울(대한민국) 리전에 저장되며, 회원가입 · 이용 시 인터넷으로 전송됩니다. 보유 기간은 위 표와 같습니다.</li>' +
+      '<li><b>GitHub Inc.</b> (미국) — 홈페이지 호스팅과 LH 공고문 자동 읽기. 회원 개인정보는 다루지 않으며, 접속 기록(IP 등)이 남을 수 있습니다.</li></ul>' +
+      '<p class="muted small">위 이전은 서비스 제공에 필요한 처리로, 원하지 않으면 회원가입을 하지 않거나 탈퇴하면 됩니다.</p></div>' +
       "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원에게만, 계약자 성명은 본인과 운영진에게만 보입니다. 게시판 작성자는 "닉네임 · 동"으로만 표시하고 호수는 보여주지 않습니다.</p>' +
-      head("권리 행사") + '<p class="muted">위임동의 철회는 내 정보 화면에서 바로 할 수 있습니다. 회원 정보 열람 · 정정 · 삭제(탈퇴)는 운영진에게 요청하면 지체 없이 처리합니다.</p></div></div>' +
+      head("권리 행사") + '<p class="muted">위임동의 철회는 내 정보 화면에서 바로 할 수 있습니다. 회원 정보 열람 · 정정 · 삭제(탈퇴)는 운영진에게 요청하면 지체 없이 처리합니다.</p>' +
+      head("파기 · 안전 조치") + '<p class="muted">보유 기간이 끝나거나 철회 · 탈퇴하면 데이터베이스에서 즉시 삭제합니다. 비밀번호는 암호화해 저장하고, 계약서 사진은 운영진만 열람할 수 있는 비공개 저장소에 두었다가 확인 즉시 삭제합니다. 로그인 상태 유지를 위해 브라우저 저장소에 로그인 정보를 저장합니다.</p>' +
+      head("개인정보 보호책임자") + '<p class="muted">' + esc((S.privacyOfficer && S.privacyOfficer.role) || "협의회 운영진 대표") + (S.privacyOfficer && S.privacyOfficer.contact ? " · " + esc(S.privacyOfficer.contact) : " · 연락처는 공지사항으로 안내합니다") + '</p></div></div>' +
       '<p class="muted small">시행일: ' + esc(S.updated) + ". 내용이 바뀌면 이 페이지와 공지사항으로 알립니다.</p>";
   };
 
@@ -850,21 +854,20 @@
     return '<fieldset class="consent-in"><legend>위임동의서 <span class="tag hot">필수</span></legend>' +
       '<p class="muted small" style="margin:0 0 8px">입주예정자협의회는 위임한 세대의 뜻을 모아 LH · 시공사와 협의합니다. 가입할 때 함께 제출하며, 운영진 승인 후 위임동의 현황판에 반영됩니다. 철회는 언제든 내 정보에서 할 수 있습니다.</p>' +
       '<details class="terms"><summary>위임동의서 전문 보기</summary><div class="body">' + CONSENT.map(function (c, i) { return "<b>" + (i + 1) + ". " + esc(c[0]) + "</b>\n" + esc(c[1]); }).join("\n\n") + "</div></details>" +
-      '<div class="field"><label for="cName">계약자 성명</label><input id="cName" maxlength="30" autocomplete="name" required></div>' +
       '<label class="check" for="cDel"><input type="checkbox" id="cDel"> 1~3항의 위임 내용에 동의합니다 (필수)</label>' +
       '<label class="check" for="cPriv"><input type="checkbox" id="cPriv"> 4항 개인정보 수집 · 이용에 동의합니다 (필수)</label>' +
       '<label class="check" for="c3rd"><input type="checkbox" id="c3rd"> 5항 제3자 제공에 동의합니다 (선택)</label>' +
       '<label class="check" for="cId"><input type="checkbox" id="cId"> 본인은 이 세대의 계약자 본인 또는 공동명의자임을 확인합니다 (필수)</label></fieldset>';
   }
   function consentValues() {
-    return { signer: el("cName").value, delegation: el("cDel").checked, privacy: el("cPriv").checked, thirdParty: el("c3rd").checked, identity: el("cId").checked };
+    return { delegation: el("cDel").checked, privacy: el("cPriv").checked, thirdParty: el("c3rd").checked, identity: el("cId").checked };
   }
   R.login = async function () {
     var PREVIEW = !LIVE;
     var needsProfile = !PREVIEW && API.loggedIn && !API.profile;
     if (!PREVIEW && API.loggedIn && !needsProfile) { location.replace("account.html"); return; }
     var tab = needsProfile || location.hash === "#signup" ? "signup" : "login";
-    var fileField = '<div class="field"><label for="sFile">계약서 사진 <span class="muted small">첫 장, 동 · 호수와 계약자 이름만 보이게 나머지는 가려주세요 · 5MB 이하</span></label><input id="sFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>';
+    var fileField = '<div class="field"><label for="sFile">계약서 사진 <span class="muted small">첫 장, 동 · 호수와 계약자 이름만 보이게 나머지는 가려주세요 · <b>주민등록번호는 반드시 가리세요</b> · 5MB 이하</span></label><input id="sFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>';
     var privacy = '<details class="terms"><summary>개인정보 수집 · 이용 안내 보기</summary><p class="body">' + esc(PRIVACY_SIGNUP) + "</p></details>" +
       '<label class="check" for="sPriv"><input type="checkbox" id="sPriv"> 개인정보 수집 · 이용에 동의합니다 (필수)</label>';
     C.innerHTML =
@@ -937,7 +940,7 @@
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
       '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' +
 
-      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0"><b>' + esc(ag.signer_name) + "</b> 님 명의로 " + fmtTime(ag.signed_at) + "에 제출했습니다." + (p.status === "pending" ? " 운영진 승인 후 현황판에 반영됩니다." : "") + '</p><p class="muted small">제3자 제공 동의: ' + (ag.agree_third_party ? "동의" : "동의 안 함") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
+      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진 승인 후 현황판에 반영됩니다." : "") + '</p><p class="muted small">제3자 제공 동의: ' + (ag.agree_third_party ? "동의" : "동의 안 함") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
         : '<div class="empty"><b>아직 위임동의서를 내지 않았습니다</b><span>' + (p.status === "pending" ? "위임동의서를 내야 가입 승인을 받을 수 있습니다." : "제출하면 현황판에 바로 반영됩니다.") + '</span><p class="cta-row" style="margin-top:8px"><a class="btn solid" href="consent.html">위임동의서 제출</a></p></div>') : "") +
       (p.status === "rejected" ? head("계약서 다시 내기") + '<form class="panel" id="fRe" novalidate>' +
         '<div class="field"><label for="rFile">계약서 사진</label><input id="rFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>' +
@@ -963,11 +966,11 @@
 
   /* ── 위임동의서 ── */
   var CONSENT = [
-    ["위임 범위", "본인은 고양창릉 S-4블록 공공분양주택의 계약자(입주예정자)로서 아래 사항을 고양창릉 S-4블록 입주예정자협의회에 위임합니다.\n1. LH · 시공사 · 관계 기관과의 공사 품질, 하자, 설계 변경, 입주 일정에 관한 협의와 의견 전달\n2. 입주예정자 공동의 이익을 위한 민원 제기와 정보공개 청구\n3. 사전점검 · 입주 과정의 공동 대응"],
+    ["위임 범위", "본인은 고양창릉 S-4블록 공공분양주택의 계약자(입주예정자)로서, 이 세대를 대표하여 아래 사항을 고양창릉 S-4블록 입주예정자협의회에 위임합니다. 협의회 가입은 곧 이 위임에 동의하는 것입니다.\n1. LH · 시공사 · 관계 기관과의 공사 품질, 하자, 설계 변경, 입주 일정에 관한 협의와 의견 전달\n2. 입주예정자 공동의 이익을 위한 민원 제기와 정보공개 청구\n3. 사전점검 · 입주 과정의 공동 대응"],
     ["위임하지 않는 사항", "개인의 계약 체결 · 변경 · 해지, 분양대금 납부, 개별 재산권의 처분 등 개인의 권리 · 의무에 관한 사항은 위임하지 않습니다. 이 위임으로 회비 등 금전 부담이 생기지 않습니다."],
-    ["위임 기간 · 철회", "동의한 날부터 입주자대표회의가 구성될 때까지 유효합니다. 언제든지 내 정보 화면에서 철회할 수 있으며, 철회하면 현황판에서 즉시 빠집니다."],
-    ["개인정보 수집 · 이용", "수집 항목: 동 · 호수, 계약자 성명, 동의 일시\n목적: 위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙\n보유 기간: 철회 또는 협의회 해산 시 즉시 파기\n동의를 거부할 수 있으나, 이 경우 위임동의서를 낼 수 없습니다."],
-    ["제3자 제공 (선택)", "관계 기관(LH, 고양시 등)과 협의할 때 위임 사실을 증빙하기 위해 동 · 호수 목록과 위임 세대수를 제공할 수 있습니다. 성명은 제공하지 않습니다. 동의하지 않아도 위임동의는 유효하며, 이 세대는 세대수 집계에만 포함됩니다."]
+    ["위임 기간 · 철회", "동의한 날부터 입주자대표회의가 구성될 때까지 유효합니다. 언제든지 내 정보 화면에서 철회할 수 있으며, 철회하면 현황판에서 즉시 빠집니다. 관계 기관이 서명된 위임장을 요구하는 경우에는 그때 별도로 요청드립니다."],
+    ["개인정보 수집 · 이용", "수집 항목: 동 · 호수, 동의 일시, 제3자 제공 동의 여부 (성명은 받지 않습니다)\n목적: 위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙\n보유 기간: 철회 또는 협의회 해산 시 즉시 파기\n동의를 거부할 수 있으나, 이 경우 협의회에 가입할 수 없습니다."],
+    ["제3자 제공 (선택)", "제공받는 자: 한국토지주택공사(LH), 고양시, 시공사(요진건설산업)\n목적: 협의 · 민원 시 위임 사실 증빙\n항목: 위임한 세대의 동 · 호수 목록, 위임 세대수\n제공받는 자의 보유 기간: 해당 협의 · 민원 처리가 끝날 때까지\n동의하지 않아도 위임동의는 유효하며, 이 세대는 세대수 집계에만 포함됩니다."]
   ];
   R.consent = async function () {
     var form = '<article class="consent-doc"><h2>고양창릉 S-4블록 입주예정자협의회 위임동의서</h2><p class="muted small">양식 버전 ' + esc(API.formVersion || "2026-11-v1") + "</p>" +
@@ -977,9 +980,8 @@
     if (g) { C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + g + "</div></div>"; return; }
     var ag = await API.myAgreement(), p = API.profile;
     var side = ag
-      ? '<div class="panel done"><div class="eyebrow">제출 완료</div><h3>' + esc(unitLabel(p.unit_id)) + '</h3><p>계약자 <b>' + esc(ag.signer_name) + "</b> · " + fmtTime(ag.signed_at) + '</p><p class="muted small">' + (p.status === "approved" ? "위임동의 현황판에 반영되었습니다." : "운영진이 가입을 승인하면 위임동의 현황판에 반영됩니다.") + ' 철회는 내 정보에서 할 수 있습니다.</p><p class="cta-row"><a class="btn solid" href="agreement.html">현황판 보기</a><a class="btn" href="account.html">내 정보</a></p></div>'
+      ? '<div class="panel done"><div class="eyebrow">제출 완료</div><h3>' + esc(unitLabel(p.unit_id)) + '</h3><p>' + fmtTime(ag.signed_at) + ' 제출</p><p class="muted small">' + (p.status === "approved" ? "위임동의 현황판에 반영되었습니다." : "운영진이 가입을 승인하면 위임동의 현황판에 반영됩니다.") + ' 철회는 내 정보에서 할 수 있습니다.</p><p class="cta-row"><a class="btn solid" href="agreement.html">현황판 보기</a><a class="btn" href="account.html">내 정보</a></p></div>'
       : '<form class="panel" id="fAg" novalidate><div class="eyebrow">제출 세대</div><h3 style="margin:4px 0 14px">' + esc(unitLabel(p.unit_id)) + "</h3>" +
-        '<div class="field"><label for="aName">계약자 성명</label><input id="aName" maxlength="30" autocomplete="name" required></div>' +
         '<label class="check" for="aDel"><input type="checkbox" id="aDel"> 1~3항의 위임 내용에 동의합니다 (필수)</label>' +
         '<label class="check" for="aPriv"><input type="checkbox" id="aPriv"> 4항 개인정보 수집 · 이용에 동의합니다 (필수)</label>' +
         '<label class="check" for="a3rd"><input type="checkbox" id="a3rd"> 5항 제3자 제공에 동의합니다 (선택)</label>' +
@@ -990,7 +992,7 @@
     if (ag) return;
     el("fAg").addEventListener("submit", async function (e) {
       e.preventDefault(); var btn = this.querySelector("button"); busy(btn, true, "제출 중…"); say("aMsg", "");
-      try { await API.submitAgreement({ signer: el("aName").value, delegation: el("aDel").checked, privacy: el("aPriv").checked, thirdParty: el("a3rd").checked, identity: el("aId").checked }); await R.consent(); window.scrollTo(0, 0); }
+      try { await API.submitAgreement({ delegation: el("aDel").checked, privacy: el("aPriv").checked, thirdParty: el("a3rd").checked, identity: el("aId").checked }); await R.consent(); window.scrollTo(0, 0); }
       catch (err) { busy(btn, false); say("aMsg", API.errorText(err), true); }
     });
   };
@@ -1018,10 +1020,10 @@
           B.innerHTML = L.length ? '<div class="review-list">' + L.map(function (p) {
             var a = AG[p.id];
             return '<article class="panel review" data-id="' + p.id + '"><div class="row-info"><b>' + esc(unitLabel(p.unit_id)) + '</b><span class="muted small">' + fmtTime(p.created_at) + " 신청</span>" +
-              (a ? '<span class="tag">위임동의 제출 · ' + esc(a.signer_name) + "</span>" : '<span class="tag off">위임동의 없음 · 승인 불가</span>') + "</div>" +
+              (a ? '<span class="tag">위임동의 제출</span>' : '<span class="tag off">위임동의 없음 · 승인 불가</span>') + "</div>" +
               '<div class="contract" id="ct-' + p.id + '">' + (p.contract_path ? '<button type="button" class="btn view" data-path="' + esc(p.contract_path) + '">계약서 보기</button>' : '<span class="muted small">계약서 없음</span>') + "</div>" +
               '<div class="review-act"><button type="button" class="btn solid approve">승인</button><input class="reason" placeholder="반려 사유 (예: 사진이 흐립니다)" aria-label="반려 사유"><button type="button" class="btn reject">반려 · 다시 내기</button><button type="button" class="btn danger del">계정 삭제</button></div>' +
-              '<p class="muted small" style="margin:0">계약서가 이 세대가 아니면 <b>계정 삭제</b>를 누르세요. 세대가 풀려 실제 계약자가 가입할 수 있습니다.</p></article>';
+              '<p class="muted small" style="margin:0">주민등록번호가 가려지지 않았으면 <b>반려</b>하세요(사진은 바로 삭제됩니다). 계약서가 이 세대가 아니면 <b>계정 삭제</b>를 누르세요. 세대가 풀려 실제 계약자가 가입할 수 있습니다.</p></article>';
           }).join("") + "</div>" : empty("대기 중인 가입 신청이 없습니다", "");
           B.querySelectorAll(".view").forEach(function (v) { v.addEventListener("click", async function () {
             try { var u = await API.admin.contractUrl(v.dataset.path), box = v.parentNode; box.innerHTML = /\.pdf$/i.test(v.dataset.path) ? '<a class="btn" href="' + u + '" target="_blank" rel="noopener">PDF 열기</a>' : '<img alt="계약서" src="' + u + '">'; } catch (e) { err(e); }
@@ -1081,11 +1083,11 @@
         }
         if (cur === "agreements") {
           var A = await API.admin.agreements(), lg = await API.admin.log();
-          var rows = [["세대", "동", "호", "타입", "계약자", "제출일시", "제3자 제공"]].concat(A.map(function (a) { var u = UNIT[a.unit_id] || {}; return [a.unit_id, u.dong, u.ho, u.type, a.signer_name, fmtTime(a.signed_at), a.agree_third_party ? "동의" : "미동의"]; }));
+          var rows = [["세대", "동", "호", "타입", "제출일시", "제3자 제공"]].concat(A.map(function (a) { var u = UNIT[a.unit_id] || {}; return [a.unit_id, u.dong, u.ho, u.type, fmtTime(a.signed_at), a.agree_third_party ? "동의" : "미동의"]; }));
           var text = csv(rows);
           B.innerHTML = '<div class="toolbar"><b>' + n(A.length) + "세대 제출</b>" + '<div class="cta-row" style="margin:0"><button type="button" class="btn" id="csvCopy">CSV 복사</button><button type="button" class="btn" id="csvDl">CSV 내려받기</button></div></div>' +
-            '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>계약자</th><th>제출</th><th>제3자</th></tr></thead><tbody>' +
-            (A.map(function (a) { var u = UNIT[a.unit_id] || {}; return '<tr><td class="num">' + esc(a.unit_id) + "</td><td>" + esc(u.type) + "</td><td>" + esc(a.signer_name) + '</td><td class="num">' + fmtTime(a.signed_at) + "</td><td>" + (a.agree_third_party ? "동의" : "-") + "</td></tr>"; }).join("") || '<tr><td colspan="5" class="muted">아직 제출된 위임동의서가 없습니다.</td></tr>') +
+            '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>제출</th><th>제3자</th></tr></thead><tbody>' +
+            (A.map(function (a) { var u = UNIT[a.unit_id] || {}; return '<tr><td class="num">' + esc(a.unit_id) + "</td><td>" + esc(u.type) + '</td><td class="num">' + fmtTime(a.signed_at) + "</td><td>" + (a.agree_third_party ? "동의" : "-") + "</td></tr>"; }).join("") || '<tr><td colspan="4" class="muted">아직 제출된 위임동의서가 없습니다.</td></tr>') +
             "</tbody></table></div>" + head("최근 기록") + '<div class="tablebox"><table class="spec"><tbody>' + (lg.slice(0, 50).map(function (x) { return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + (x.action === "sign" ? "제출" : "철회") + "</td></tr>"; }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>') + "</tbody></table></div>" +
             '<textarea class="out" id="csvOut" readonly hidden aria-label="CSV"></textarea>';
           el("csvCopy").addEventListener("click", function () { var o = el("csvOut"), b = this; o.value = text; o.hidden = false; try { navigator.clipboard.writeText(text).then(function () { b.textContent = "복사했습니다"; }, function () { o.select(); }); } catch (e) { o.select(); } });
