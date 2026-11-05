@@ -179,7 +179,13 @@ export async function collect(env, fetcher = fetch) {
 
 // 호출 권한: pg_cron(비밀 헤더) 또는 로그인한 운영진
 async function authorized(req, env, fetcher = fetch) {
-  if (env.CRON_SECRET && req.headers.get("x-cron-secret") === env.CRON_SECRET) return true;
+  const cron = req.headers.get("x-cron-secret");
+  if (cron) {
+    if (env.CRON_SECRET) return cron === env.CRON_SECRET;
+    // 비밀값을 사람이 다루지 않도록 DB(vault)에 만들어 둔 값과 비교합니다.
+    const c = await fetcher(env.SUPABASE_URL + "/rest/v1/rpc/check_cron_secret", { method: "POST", headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" }, body: JSON.stringify({ s: cron }) });
+    return c.ok && (await c.json()) === true;
+  }
   const auth = req.headers.get("authorization") || "";
   if (!auth.startsWith("Bearer ")) return false;
   const r = await fetcher(env.SUPABASE_URL + "/rest/v1/rpc/is_admin", { method: "POST", headers: { apikey: env.SUPABASE_ANON_KEY, authorization: auth, "content-type": "application/json" }, body: "{}" });
