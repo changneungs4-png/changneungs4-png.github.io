@@ -48,7 +48,7 @@
   var GROUPS = [
     { name: "소식", items: [["notice.html", "공지사항", "notice", "협의회 · LH 안내"], ["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
     { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["gallery.html", "사진관", "gallery", "현장과 주변 모습"]] },
-    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회계"], ["consent.html", "위임동의서 제출", "consent", "로그인 후 바로 반영"], ["agreement.html", "위임동의 현황판", "agreement", "동·호수별 한눈에"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
+    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회계"], ["consent.html", "위임동의서", "consent", "가입할 때 함께 제출"], ["agreement.html", "위임동의 현황판", "agreement", "동·호수별 한눈에"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
     { name: "커뮤니티", items: [["board.html", "자유게시판", "board", "입주예정자 이야기"], ["links.html", "카페 · 바로가기", "links", "가입 · 인증 안내"]] },
     { name: "입주 준비", items: [["calculator.html", "납부 · 취득세 계산기", "calculator", "회차별 금액"], ["checklist.html", "사전점검", "checklist", "공간별 체크리스트"], ["documents.html", "자료실", "documents", "공고문 · 정리 자료"], ["faq.html", "자주 묻는 질문", "faq", "FAQ"]] }
   ];
@@ -88,7 +88,7 @@
     }).join("") + "</nav>" +
     (!LIVE ? '<a class="acct" id="acctLink" href="login.html">로그인</a>' : "") +
     (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isMember ? "" : " · 승인 대기") : "가입 마무리") : "로그인") + "</a>" : "") +
-    '<a class="btn solid head-cta" href="' + (LIVE ? "consent.html" : "agreement.html") + '">' + (LIVE ? "위임동의서 제출" : "위임동의 현황") + "</a>" +
+    '<a class="btn solid head-cta" href="' + (LIVE && !API.loggedIn ? "login.html#signup" : "agreement.html") + '">' + (LIVE && !API.loggedIn ? "회원가입 · 위임동의" : "위임동의 현황") + "</a>" +
     '<button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="drawer">메뉴</button></div>' +
     '<nav class="wrap drawer" id="drawer" aria-label="전체 메뉴" hidden>' + (!LIVE ? '<a class="btn solid" href="login.html" style="justify-content:center">로그인 · 회원가입</a>' : "") + (LIVE ? '<a class="btn' + (API.loggedIn ? "" : " solid") + '" href="' + (API.loggedIn ? "account.html" : "login.html") + '" style="justify-content:center">' + (API.loggedIn ? "내 정보" : "로그인 · 회원가입") + "</a>" : "") + GROUPS.map(function (g) {
       return "<div><h4>" + g.name + '</h4><div class="dl">' + g.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "</a>"; }).join("") + "</div></div>";
@@ -109,6 +109,20 @@
   });
   document.addEventListener("click", function (e) { if (!e.target.closest(".grp")) closeAll(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") { var a = document.activeElement; if (a && a.closest && a.closest(".grp")) a.blur(); closeAll(); } });
+
+  /* ── 운영진 알림: 승인 대기 가입 신청 ── */
+  if (LIVE && API.isAdmin && page !== "admin") {
+    API.admin.profiles("pending").then(function (L) {
+      if (!L || !L.length) return;
+      var ab = document.createElement("div");
+      ab.className = "banner admin-alert";
+      ab.setAttribute("role", "status");
+      ab.innerHTML = '<div class="wrap"><span><b>운영진 알림</b> · 가입 신청 ' + L.length + '건이 승인을 기다리고 있습니다. <a href="admin.html#pending">확인하기 →</a></span></div>';
+      header.after(ab);
+      document.title = "(" + L.length + ") " + document.title;
+      var al = el("acctLink"); if (al) al.insertAdjacentHTML("beforeend", ' <span class="dot" aria-label="가입 신청 ' + L.length + '건">' + L.length + "</span>");
+    }).catch(function () {});
+  }
 
   /* ── banner ── */
   if (S.banner && store("hide:" + S.banner.id) !== new Date().toDateString()) {
@@ -227,7 +241,7 @@
       '<div class="eyebrow">고양창릉 공공주택지구 · LH 공공분양</div>' +
       "<h1>창릉 S-4<small>입주예정자협의회</small></h1>" +
       '<p class="lead">창릉천 물길과 서오릉 숲 사이, ' + n(T) + '세대가 함께 만들어갈 새 동네입니다. 공지와 일정, 공사 진행과 위임동의 현황을 이곳에서 확인하세요.</p>' +
-      '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="consent.html">위임동의서 제출</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') : '<a class="btn solid" href="links.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
+      '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="account.html">내 정보 · 위임동의</a>' : '<a class="btn solid" href="login.html#signup">회원가입 · 위임동의</a>') : '<a class="btn solid" href="links.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
       '<aside class="status" aria-label="단지 현황"><div class="top"><div><b class="num">' + dd + "</b></div><span>" + ddl + "<br>16개 동 · " + n(T) + "세대</span></div>" +
       agreeMeter(true) + progressMeter() +
       '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
@@ -239,9 +253,9 @@
       '<div id="homeNews"></div>' +
       '<section class="band first"><div class="wrap">' + head("처음 오셨나요?", '<span class="note">3단계면 협의회 활동에 참여할 수 있습니다</span>') +
       '<ol class="steps steps-row">' +
-      (LIVE ? '<li><div><b><a href="login.html#signup">회원가입</a></b><span>아이디를 만들고 동·호수와 계약서 사진을 올립니다.</span></div></li>' +
-        "<li><div><b>운영진 승인</b><span>계약서를 확인하면 승인됩니다. 사진은 확인 후 바로 삭제합니다.</span></div></li>" +
-        '<li><div><b><a href="consent.html">위임동의서 제출</a></b><span>제출하면 현황판에 바로 반영됩니다.</span></div></li>'
+      (LIVE ? '<li><div><b><a href="login.html#signup">회원가입 · 위임동의</a></b><span>동·호수를 고르고 계약서 사진을 올린 뒤, 위임동의서에 동의합니다.</span></div></li>' +
+        "<li><div><b>운영진 승인</b><span>계약서로 세대를 확인하면 승인되고, 사진은 바로 삭제합니다.</span></div></li>" +
+        '<li><div><b><a href="agreement.html">현황판 반영 · 참여</a></b><span>위임동의가 현황판에 반영되고 게시판 · 투표 · 민원에 참여할 수 있습니다.</span></div></li>'
       : "<li><div><b>공식 카페 가입</b><span>카페 · 바로가기 메뉴에서 카페에 가입합니다.</span></div></li>" +
         "<li><div><b>계약자 인증 · 등업</b><span>동·호수와 이름만 보이게 가린 계약서를 올립니다.</span></div></li>" +
         "<li><div><b>위임동의서 제출</b><span>선택 사항입니다. 모일수록 협상력이 커집니다.</span></div></li>") +
@@ -423,10 +437,10 @@
     var cards = arr(S.types).map(function (t) {
       return '<div class="ftype"><div class="code">' + esc(t.type) + "</div>" +
         "<dl><dt>전용면적</dt><dd>" + esc(t.area) + "</dd><dt>공급면적</dt><dd>" + Number(t.supply).toFixed(2) + "㎡</dd>" +
-        "<dt>최고 분양가</dt><dd>" + eok(t.maxPrice) + "</dd>" + (cnt[t.type] ? "<dt>배치표 세대</dt><dd>" + n(cnt[t.type]) + "</dd>" : "") + "</dl></div>";
+        "<dt>최고 분양가</dt><dd>" + eok(t.maxPrice) + "</dd>" + (t.units ? "<dt>공급 세대</dt><dd>" + n(t.units) + "</dd>" : cnt[t.type] ? "<dt>배치표 세대</dt><dd>" + n(cnt[t.type]) + "</dd>" : "") + "</dl></div>";
     }).join("");
     C.innerHTML = "<div>" + head("주택형 7개", '<a class="more" href="https://apply.lh.or.kr" target="_blank" rel="noopener">평면도 원본 (LH 청약플러스) →</a>') + '<div class="ftypes">' + cards + "</div>" +
-      '<p class="muted small" style="margin-top:12px">최고 분양가는 모집공고의 주택형별 최고가입니다. 층과 동에 따라 낮아집니다. 배치표 세대는 동·호수 배치표에서 센 값입니다.</p></div>' +
+      '<p class="muted small" style="margin-top:12px">최고 분양가는 모집공고의 주택형별 최고가입니다. 층과 동에 따라 낮아집니다. 공급 세대는 모집공고(LH) 기준입니다.</p></div>' +
       '<div class="two"><div>' + head("면적별 세대수", '<span class="note">모집공고 기준</span>') + areaBars() + "</div><div>" + head("단지 개요") + complexTable(arr(S.complex)) + "</div></div>";
   };
 
@@ -472,20 +486,20 @@
     function role(r, cls) { return '<div class="role ' + (cls || "") + '"><b>' + esc(r.role) + "</b><span>" + esc(r.name) + "</span></div>"; }
     C.innerHTML =
       (g && g.text ? '<div class="greeting"><div class="eyebrow">인사말</div><p class="content">' + esc(g.text) + '</p><p class="muted small">— ' + esc(g.from) + "</p></div>" : "") +
-      '<div class="two"><div>' + head("위임동의 현황", more("agreement.html", "동·호수별 현황판")) + agreeMeter() + (LIVE ? '<p class="cta-row" style="margin:0 0 12px"><a class="btn solid" href="consent.html">위임동의서 제출</a></p>' : "") +
+      '<div class="two"><div>' + head("위임동의 현황", more("agreement.html", "동·호수별 현황판")) + agreeMeter() + (LIVE ? '<p class="cta-row" style="margin:0 0 12px">' + (API.loggedIn ? '<a class="btn" href="consent.html">위임동의서 보기</a>' : '<a class="btn solid" href="login.html#signup">회원가입 · 위임동의</a>') + "</p>" : "") +
       '<p class="muted">협의회는 법적 권한이 있는 단체가 아닌 자발적 모임입니다. 그래서 위임 세대 수가 곧 대표성입니다. 위임이 모일수록 LH와의 협의에서 목소리가 커집니다.</p></div>' +
       "<div>" + head("위임동의 절차") + '<ol class="steps">' +
-      "<li><div><b>회원가입</b><span>아이디를 만들고 동·호수와 계약서 첫 장 사진을 올립니다. 한 세대에는 한 계정만 승인됩니다.</span></div></li>" +
-      "<li><div><b>운영진 승인</b><span>운영진이 계약서로 입주예정자인지 확인합니다. 사진은 확인 후 바로 삭제합니다.</span></div></li>" +
-      '<li><div><b>위임동의서 제출</b><span><a href="consent.html">위임동의서</a>에 계약자 성명을 적고 동의합니다. 주민등록번호는 받지 않습니다.</span></div></li>' +
-      "<li><div><b>자동 반영</b><span>제출 즉시 위임동의 현황판에 반영됩니다. 언제든 철회할 수 있습니다.</span></div></li>" +
+      "<li><div><b>회원가입</b><span>동·호수를 고르고 계약서 첫 장 사진을 올립니다. 동·호수가 아이디가 되며, 한 세대에는 한 계정만 만들 수 있습니다.</span></div></li>" +
+      '<li><div><b>위임동의</b><span>가입 화면에서 <a href="consent.html">위임동의서</a>를 읽고 동의합니다. 성명과 주민등록번호는 받지 않습니다.</span></div></li>' +
+      "<li><div><b>운영진 승인</b><span>운영진이 계약서로 세대를 확인합니다. 사진은 확인 후 바로 삭제합니다.</span></div></li>" +
+      "<li><div><b>현황판 반영</b><span>승인되면 위임동의 현황판에 자동 반영됩니다. 언제든 내 정보에서 철회할 수 있습니다.</span></div></li>" +
       "</ol></div></div>" +
       (o.head ? "<div>" + head("조직 구성(안)", '<span class="note">운영진 선출 전</span>') +
         '<div class="org">' + role(o.head, "head") + '<span class="link-line"></span><div class="lvl">' + arr(o.officers).map(function (r) { return role(r); }).join("") + '</div><span class="link-line"></span><div class="lvl">' + arr(o.teams).map(function (r) { return role(r); }).join("") + "</div>" +
         '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1인" }) + "</div></div></div>" : "") +
       "<div>" + head("운영 원칙(안)") + '<div class="three"><div><h3>투명한 운영</h3><p class="muted">회의록과 회계 내역을 공개합니다. 회비는 전체 투표 없이 걷지 않습니다.</p></div>' +
       '<div><h3>현장 중심 활동</h3><p class="muted">정기 현장 방문으로 공정과 품질을 확인하고, 하자 우려 사항을 LH에 공식 전달합니다.</p></div>' +
-      '<div><h3>개인정보 최소 수집</h3><p class="muted">동·호수와 성명 외 정보는 받지 않으며, 인증 자료는 확인 후 삭제합니다.</p></div></div></div>' +
+      '<div><h3>개인정보 최소 수집</h3><p class="muted">동·호수 외에는 받지 않으며(성명도 받지 않음), 계약서 사진은 확인 즉시 삭제합니다.</p></div></div></div>' +
       "<div>" + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
       (rows.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>날짜</th><th>항목</th><th class="r">수입</th><th class="r">지출</th><th>비고</th></tr></thead><tbody>' +
         rows.map(function (r) { return '<tr><td class="num">' + esc(r.date) + "</td><td>" + esc(r.item) + '</td><td class="r num">' + n(r.in) + '</td><td class="r num">' + n(r.out) + "</td><td>" + esc(r.by) + "</td></tr>"; }).join("") +
@@ -709,10 +723,12 @@
     var CT = arr(S.contacts);
     C.innerHTML = "<div>" + head("바로가기") + '<div class="tiles">' + arr(S.links).map(tile).join("") + "</div></div>" +
       (CT.length ? "<div>" + head("문의처") + '<div class="tablebox"><table class="spec kv">' + CT.map(function (c) { return "<tr><th>" + esc(c[0]) + '</th><td class="num sel-all">' + esc(c[1]) + "</td></tr>"; }).join("") + "</table></div></div>" : "") +
-      '<div class="two"><div>' + head("공식 카페 가입 · 인증") + '<ol class="steps">' +
-      "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
-      "<li><div><b>등업 신청</b><span>계약서 첫 장을 올립니다. 동·호수와 이름 외에는 가려주세요.</span></div></li>" +
-      "<li><div><b>오픈채팅 참여</b><span>등업 후 공지에 있는 참여 코드로 입장합니다.</span></div></li></ol></div>" +
+      '<div class="two"><div>' + (arr(S.links).some(function (l) { return /카페/.test(l.title) && l.url; })
+        ? head("공식 카페 가입") + '<ol class="steps">' +
+          "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
+          '<li><div><b>입주예정자 확인</b><span>입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 카페에 계약서를 따로 올리지 않아도 됩니다.</span></div></li>' +
+          "<li><div><b>오픈채팅 참여</b><span>공지에 있는 참여 코드로 입장합니다.</span></div></li></ol>"
+        : head("입주예정자 확인") + '<p class="muted">입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 동·호수를 고르고 계약서 사진을 올리면 운영진이 확인합니다. 공식 카페와 오픈채팅은 개설되면 이곳에 연결합니다.</p>') + "</div>" +
       "<div>" + head("휴대폰 홈 화면에 추가") +
       '<p class="muted"><b class="fg">아이폰(사파리)</b> 하단 공유 버튼을 누르고 "홈 화면에 추가"를 선택합니다.</p>' +
       '<p class="muted"><b class="fg">안드로이드(크롬)</b> 오른쪽 위 메뉴에서 "홈 화면에 추가"를 선택합니다.</p></div></div>';
@@ -725,21 +741,24 @@
       '<div class="chips" role="group" aria-label="타입별 최고 분양가 불러오기" id="cChips" style="margin:-4px 0 16px">' + TY.map(function (t, i) { return '<button type="button" class="chip" data-p="' + t.maxPrice + '" data-area="' + esc(t.area) + '" aria-pressed="' + (i === 0) + '">' + esc(t.type) + "</button>"; }).join("") + "</div>" +
       (hasOpt ? '<fieldset class="ck opts"><legend>유상옵션 선택</legend><div id="cOptList"></div></fieldset>' : "") +
       '<div class="field"><label for="cOpt">유상옵션 합계</label><input id="cOpt" class="big num" inputmode="numeric" value="0" autocomplete="off"></div>' +
-      '<label class="check"><input type="checkbox" id="cFirst"> 생애최초 주택 구입 감면 (취득세 최대 200만원)</label>' +
+      '<div class="field"><label for="cBal">발코니 확장비용 <span class="muted small">모집공고 발코니 확장금액 표 · 분양가와 별도</span></label><input id="cBal" class="big num" inputmode="numeric" value="0" autocomplete="off"></div>' +
+      '<label class="check"><input type="checkbox" id="cFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
       '<p class="muted small" style="margin:12px 0 0">타입 버튼은 모집공고의 타입별 최고가를 불러옵니다. 실제 금액은 계약서의 동·층별 분양가로 입력하세요.</p></form>' +
       "<div>" + head("회차별 납부액") + '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th class="r">비율</th><th class="r">금액</th><th class="r">누적</th></tr></thead><tbody id="cPay"></tbody></table></div></div></div>' +
       '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') + '<div class="tablebox"><table class="spec"><tbody id="cTax"></tbody></table></div></div>' +
-      '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">과세표준은 분양가와 유상옵션을 합한 금액입니다. 취득세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%로 계산했습니다. 지방교육세는 취득세의 10%이며, 전용 85㎡ 이하는 농어촌특별세가 없습니다.</p>' +
+      '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">과세표준은 분양가, 유상옵션, 발코니 확장비용을 합한 금액입니다. 취득세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%로 계산했습니다. 지방교육세는 취득세의 10%이며, 전용 85㎡ 이하는 농어촌특별세가 없습니다.</p>' +
+      '<p class="muted small">취득세는 잔금을 내는 입주 시점(2030년 예정)의 법으로 매겨집니다. 생애최초 감면은 현행법상 2028년 12월 31일까지 취득분에 적용되므로, 입주 때 연장되었는지 확인이 필요합니다. 2026년 정부 개편안(40세 미만 한도 300만원 등)은 아직 확정 전입니다.</p>' +
       '<p class="muted small">세율과 감면 요건은 바뀔 수 있으니 실제 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p></div></div>';
-    var P = el("cPrice"), O = el("cOpt"), F = el("cFirst");
+    var P = el("cPrice"), O = el("cOpt"), BL = el("cBal"), F = el("cFirst");
     function val(i) { return Number(String(i.value).replace(/[^0-9]/g, "")) || 0; }
     function fmtIn(i) { var d = i.value.replace(/[^0-9]/g, "").slice(0, 12); i.value = d ? n(Number(d)) : ""; }
     function render() {
-      var p = val(P), o = val(O), base = p + o;
+      var p = val(P), o = val(O), bl = val(BL), base = p + o + bl;
       var rows = [["계약금", 0.1]]; for (var i = 1; i <= 6; i++) rows.push(["중도금 " + i + "회", 0.1]); rows.push(["잔금", 0.3]);
       var acc = 0;
-      el("cPay").innerHTML = rows.map(function (r) { acc += p * r[1]; return "<tr><td>" + r[0] + '</td><td class="r num">' + Math.round(r[1] * 100) + '%</td><td class="r num">' + eok(p * r[1]) + '</td><td class="r num">' + eok(acc) + "</td></tr>"; }).join("") +
-        (o ? '<tr><td>유상옵션</td><td class="r num">-</td><td class="r num">' + eok(o) + '</td><td class="r num">' + eok(p + o) + "</td></tr>" : "") +
+      el("cPay").innerHTML = rows.map(function (r, i) { var a = p * r[1] + (i === 0 ? bl * 0.1 : 0); acc += a; return "<tr><td>" + r[0] + (i === 0 && bl ? '<br><span class="muted small">발코니 10% 포함</span>' : "") + '</td><td class="r num">' + Math.round(r[1] * 100) + '%</td><td class="r num">' + eok(a) + '</td><td class="r num">' + eok(acc) + "</td></tr>"; }).join("") +
+        (bl ? '<tr><td>발코니 확장 나머지<br><span class="muted small">중도금 · 잔금 때 나눠 냄</span></td><td class="r num">-</td><td class="r num">' + eok(bl * 0.9) + '</td><td class="r num">' + eok(acc += bl * 0.9) + "</td></tr>" : "") +
+        (o ? '<tr><td>유상옵션</td><td class="r num">-</td><td class="r num">' + eok(o) + '</td><td class="r num">' + eok(acc += o) + "</td></tr>" : "") +
         '<tr class="total"><td colspan="2">합계</td><td class="r num" colspan="2">' + eok(base) + "</td></tr>";
       var rate = base <= 6e8 ? 0.01 : base <= 9e8 ? (base / 1e8 * 2 / 3 - 3) / 100 : 0.03;
       var tax = base * rate, relief = F.checked ? Math.min(tax, 2e6) : 0, edu = tax * 0.1;
@@ -772,6 +791,7 @@
     el("cForm").addEventListener("submit", function (e) { e.preventDefault(); });
     P.addEventListener("input", function () { fmtIn(P); el("cChips").querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", "false"); }); render(); });
     O.addEventListener("input", function () { fmtIn(O); render(); });
+    BL.addEventListener("input", function () { fmtIn(BL); render(); });
     F.addEventListener("change", render);
     el("cChips").addEventListener("click", function (e) {
       var b = e.target.closest(".chip"); if (!b) return;
@@ -836,13 +856,14 @@
       ["위임동의서", "동 · 호수, 동의 일시, 제3자 제공 동의 여부 (성명은 받지 않음)", "위임 현황 집계, 관계 기관 협의 시 위임 세대수 증빙", "철회 또는 협의회 해산 시 즉시 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
       ["게시판 · 투표 · 민원", "작성 글과 댓글, 세대별 투표 · 참여 여부", "커뮤니티 운영, 1세대 1표 집계", "삭제 시 또는 협의회 해산 시까지"]
     ];
-    C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
-      rows.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
+    var LB = ["구분", "항목", "목적", "보유 기간"];
+    C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec stack"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
+      rows.map(function (r) { return "<tr>" + r.map(function (c, i) { return '<td data-label="' + LB[i] + '">' + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
       '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">위임동의서에서 제3자 제공에 동의한 세대에 한해, 한국토지주택공사(LH) · 고양시 · 시공사(요진건설산업)와 협의 · 민원을 할 때 위임 사실 증빙을 위해 동 · 호수 목록과 위임 세대수를 제공할 수 있습니다. 제공받는 곳은 해당 협의 · 민원 처리가 끝날 때까지 보유합니다. 그 밖에는 제3자에게 제공하지 않습니다.</p>' +
       head("처리 위탁 · 국외 이전") + '<ul class="muted plain-list"><li><b>Supabase Inc.</b> (미국, support@supabase.com) — 회원 정보 · 위임동의 · 게시글 · 계약서 사진 저장과 로그인 처리. 데이터는 서울(대한민국) 리전에 저장되며, 회원가입 · 이용 시 인터넷으로 전송됩니다. 보유 기간은 위 표와 같습니다.</li>' +
       '<li><b>GitHub Inc.</b> (미국) — 홈페이지 호스팅과 LH 공고문 자동 읽기. 회원 개인정보는 다루지 않으며, 접속 기록(IP 등)이 남을 수 있습니다.</li></ul>' +
       '<p class="muted small">위 이전은 서비스 제공에 필요한 처리로, 원하지 않으면 회원가입을 하지 않거나 탈퇴하면 됩니다.</p></div>' +
-      "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원에게만, 계약자 성명은 본인과 운영진에게만 보입니다. 게시판 작성자는 "닉네임 · 동"으로만 표시하고 호수는 보여주지 않습니다.</p>' +
+      "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원과 운영진에게만 보입니다. 게시판 작성자는 "닉네임 · 동"으로만 표시하고 호수는 보여주지 않습니다.</p>' +
       head("권리 행사") + '<p class="muted">위임동의 철회는 내 정보 화면에서 바로 할 수 있습니다. 회원 정보 열람 · 정정 · 삭제(탈퇴)는 운영진에게 요청하면 지체 없이 처리합니다.</p>' +
       head("파기 · 안전 조치") + '<p class="muted">보유 기간이 끝나거나 철회 · 탈퇴하면 데이터베이스에서 즉시 삭제합니다. 비밀번호는 암호화해 저장하고, 계약서 사진은 운영진만 열람할 수 있는 비공개 저장소에 두었다가 확인 즉시 삭제합니다. 로그인 상태 유지를 위해 브라우저 저장소에 로그인 정보를 저장합니다.</p>' +
       head("개인정보 보호책임자") + '<p class="muted">' + esc((S.privacyOfficer && S.privacyOfficer.role) || "협의회 운영진 대표") + (S.privacyOfficer && S.privacyOfficer.contact ? " · " + esc(S.privacyOfficer.contact) : " · 연락처는 공지사항으로 안내합니다") + '</p></div></div>' +
@@ -910,7 +931,7 @@
       try {
         await API.signIn(el("lHo").value, el("lPw").value);
         if (!API.profile) { location.hash = "signup"; location.reload(); return; }
-        location.href = API.isMember ? "consent.html" : "account.html";
+        location.href = API.isMember ? "index.html" : "account.html";
       } catch (err) { busy(btn, false); say("lMsg", API.errorText(err), true); }
     });
     el("fSignup").addEventListener("submit", async function (e) {

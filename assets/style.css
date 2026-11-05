@@ -394,7 +394,7 @@ textarea.out{width:100%;margin-top:12px;font-family:var(--f-num);font-size:12px;
 .acct:hover{border-color:var(--pine);color:var(--pine)}
 @media (max-width:900px){.acct{margin-left:auto}.acct+.head-cta+.menu-btn,.acct~.menu-btn{margin-left:0}}
 .auth-wrap{max-width:560px;width:100%;margin:0 auto;display:grid;gap:0}
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+.tabs{display:flex;flex-wrap:wrap;gap:0 4px;border-bottom:1px solid var(--line);margin-bottom:16px}
 .tabs button{font:inherit;font-size:15px;font-weight:600;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:10px 14px;cursor:pointer;white-space:nowrap}
 .tabs button[aria-selected="true"]{color:var(--pine);border-bottom-color:var(--pine)}
 .tabs .cnt{display:inline-block;margin-left:4px;font-family:var(--f-num);font-size:12px;color:var(--signal)}
@@ -488,3 +488,21 @@ dl.kv-common dd,.kvcards dd{margin:0;font-weight:500;overflow-wrap:anywhere}
 fieldset.consent-in{border:1px solid var(--pine);border-radius:10px;padding:12px 14px 6px;margin:14px 0;background:var(--pine-soft);min-width:0}
 fieldset.consent-in legend{font-weight:700;padding:0 6px;display:flex;gap:6px;align-items:center}
 .plain-list{margin:0;padding-left:18px;display:grid;gap:6px}
+/* 운영진 알림 */
+.banner.admin-alert{background:var(--signal-soft);color:var(--fg);border-bottom:1px solid var(--signal)}
+.banner.admin-alert a{color:var(--signal);font-weight:700}
+.acct .dot{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--signal);color:#fff;font-size:11px;font-weight:700;line-height:1}
+
+/* 계산기 표: 좁은 화면에서 글자 쪼개짐 방지 */
+#cPay td:first-child,#cPay td.num,table.spec thead th{white-space:nowrap}
+#cPay td:first-child .small{white-space:normal}
+@media (max-width:420px){#cPay td,#cPay th,table.spec thead th{padding:8px 5px;font-size:13px}}
+
+/* 좁은 화면: 여러 칸 표를 카드처럼 세로로 */
+@media (max-width:560px){
+  table.stack thead{display:none}
+  table.stack tr{display:block;padding:10px 0;border-bottom:1px solid var(--line)}
+  table.stack td{display:grid;grid-template-columns:5.5em 1fr;gap:8px;border:0;padding:3px 0}
+  table.stack td::before{content:attr(data-label);color:var(--muted);font-size:13px}
+  table.stack td:first-child{font-weight:700}
+}
