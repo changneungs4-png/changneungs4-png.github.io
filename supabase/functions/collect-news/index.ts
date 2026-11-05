@@ -116,7 +116,8 @@ export function tablesFrom(json) {
   return { tables: tables.filter((t) => { const sig = t.key + JSON.stringify(t.rows[0]); return !seen.has(sig) && seen.add(sig); }), attachments };
 }
 
-function ymd(d) { return d.getFullYear() + "." + String(d.getMonth() + 1).padStart(2, "0") + "." + String(d.getDate()).padStart(2, "0"); }
+// LH 목록 API는 YYYYMMDD 형식만 받습니다(점 구분은 0건).
+function ymd(d) { return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
 
 export async function collect(env, fetcher = fetch) {
   const items = [], errors = [];
@@ -130,7 +131,7 @@ export async function collect(env, fetcher = fetch) {
   }
   if (env.LH_API_KEY) {
     try {
-      const now = new Date(), from = new Date(now.getTime() - 3 * 365 * 864e5), to = now;
+      const now = new Date(), from = new Date(now.getTime() - 2 * 365 * 864e5), to = now;
       const u = "https://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1?serviceKey=" + encodeURIComponent(env.LH_API_KEY) +
         "&PG_SZ=100&PAGE=1&PAN_NM=" + encodeURIComponent("창릉") + "&PAN_ST_DT=" + ymd(from) + "&PAN_ED_DT=" + ymd(to);
       const r = await fetcher(u);
