@@ -302,9 +302,11 @@
     if (/^20\d{6}$/.test(t)) return t.slice(0, 4) + "." + t.slice(4, 6) + "." + t.slice(6);
     return t;
   }
+  var DS_NAMES = { dsEtcInfo: "기타 안내", dsSbdAhfl: "단지 첨부자료", dsSbd: "단지 정보", dsSplScdl: "공급 일정", dsCtrtPlc: "계약 장소", dsAhflInfo: "첨부파일" };
   function lhTables(x, only) {
     var ex = x.extra || {}, T = arr(ex.tables).filter(function (t) { return !only || t.key === only; });
     return T.map(function (t) {
+      if (/^ds[A-Z]/.test(t.title || "")) t = Object.assign({}, t, { title: DS_NAMES[t.title] || DS_NAMES[t.key] || "기타 정보" });
       var cols = arr(t.columns), rows = arr(t.rows).map(function (r) { return arr(r).map(cellText); });
       if (cols.length <= 4) {
         return '<div class="lh-table"><h4>' + esc(t.title) + '</h4><div class="tablebox"><table class="spec"><thead><tr>' + cols.map(function (c) { return "<th>" + esc(c.label) + "</th>"; }).join("") + "</tr></thead><tbody>" +
