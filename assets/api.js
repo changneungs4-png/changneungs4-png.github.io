@@ -6,16 +6,16 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v4";
+  var FORM_VERSION = "2026-11-v5";
   function phoneOk(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(String(v || "").replace(/\s/g, "")); }
   function checkConsent(c) {
-    if (!c) throw new Error("위임동의서를 작성해야 가입할 수 있습니다.");
+    if (!c) throw new Error("위임동의서를 작성하세요.");
     if (!c.signer || c.signer.trim().length < 2) throw new Error("위임동의서의 계약자 성명을 입력하세요.");
     if (!c.signature) throw new Error("위임장 서명 칸에 서명해 주세요.");
     if (c.contact && !phoneOk(c.phone)) throw new Error("연락처 동의를 했다면 휴대전화 번호를 바르게 입력하세요. (예: 010-1234-5678)");
     if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
   }
-  var st = { session: null, profile: null };
+  var st = { session: null, profile: null, openAt: new Date(((window.SITE || {}).consentOpenAt) || "2026-11-16T00:00:00+09:00") };
 
   var MSG = [
     [/invalid login credentials/i, "동 · 호수 또는 비밀번호가 맞지 않습니다."],
@@ -53,7 +53,7 @@
     return st.profile;
   }
   function checkFile(f) {
-    if (!f) throw new Error("계약서 사진을 첨부하세요.");
+    if (!f) throw new Error("당첨 조회 화면이나 계약서 사진을 첨부하세요.");
     if (!/^image\/(jpeg|png|webp|heic|heif)$|^application\/pdf$/.test(f.type)) throw new Error("사진(JPG · PNG · HEIC) 또는 PDF만 올릴 수 있습니다.");
     if (f.size > 5 * 1024 * 1024) throw new Error("파일이 너무 큽니다. 5MB 이하로 올려주세요.");
   }
@@ -71,8 +71,13 @@
     get session() { return st.session; },
     get profile() { return st.profile; },
     get loggedIn() { return !!st.session; },
-    /* 회원 = 승인 + 위임동의 (운영진은 예외). 위임을 철회하면 게시판 · 투표 · 민원 이용이 멈춤 */
-    get isMember() { return !!(st.profile && st.profile.status === "approved" && (st.profile.is_admin || st.hasAgreement)); },
+    /* 가입 회원 = 승인된 세대 (게시판 · 투표 결과 보기) */
+    get isMember() { return !!(st.profile && st.profile.status === "approved"); },
+    /* 위임 회원 = 승인 + 위임동의 (운영진은 예외): 투표 · 단체민원 참여, 세대별 현황 */
+    get isDelegate() { return !!(st.profile && st.profile.status === "approved" && (st.profile.is_admin || st.hasAgreement)); },
+    /* 위임장 제출 시작(공급계약 시작) */
+    get consentOpenAt() { return st.openAt; },
+    get consentOpen() { return Date.now() >= st.openAt.getTime(); },
     get isApproved() { return !!(st.profile && st.profile.status === "approved"); },
     get hasAgreement() { return !!st.hasAgreement; },
     get isAdmin() { return !!(st.profile && st.profile.status === "approved" && st.profile.is_admin); },
@@ -80,6 +85,7 @@
 
     init: async function () {
       if (!enabled) return st;
+      try { var o = await sb.rpc("consent_open_at"); if (!o.error && o.data) st.openAt = new Date(o.data); } catch (e) { /* 기본값 사용 */ }
       try {
         var r = await sb.auth.getSession();
         st.session = r.data && r.data.session;
@@ -101,7 +107,7 @@
     /* 로그인 계정의 세대 (아이디 = 동-호) */
     get accountUnit() { return st.session ? String(st.session.user.email || "").split("@")[0] : null; },
 
-    /* 가입: 세대로 계정 → 계약서 업로드 → 회원 정보(대기) → 위임동의서 */
+    /* 가입: 세대로 계정 → 확인 사진(당첨 조회 화면 · 계약서) 업로드 → 회원 정보(대기). 위임동의서는 공급계약 후 따로 */
     signUp: async function (o) {
       need();
       if (!validUnit(o.unit)) throw new Error("동과 호수를 고르세요.");
@@ -109,24 +115,20 @@
       if (o.password !== o.password2) throw new Error("비밀번호 확인이 일치하지 않습니다.");
       checkFile(o.file);
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
-      checkConsent(o.consent);
       if (await API.unitTaken(o.unit)) throw new Error("이 세대는 이미 가입되어 있습니다. 본인 세대인데 가입한 적이 없다면 운영진에게 문의하세요.");
       var r = await sb.auth.signUp({ email: emailOf(o.unit), password: o.password });
       must(r);
       if (!r.data.session) { var s = await sb.auth.signInWithPassword({ email: emailOf(o.unit), password: o.password }); must(s); st.session = s.data.session; }
       else st.session = r.data.session;
-      return API.completeProfile({ file: o.file, privacy: true, consent: o.consent });
+      return API.completeProfile({ file: o.file, privacy: true });
     },
     /* 계정은 있는데 회원 정보가 없을 때(가입 중단) 마무리 */
     completeProfile: async function (o) {
       need();
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
-      checkConsent(o.consent);
       var unit = API.accountUnit, path = await uploadContract(o.file);
       must(await sb.from("profiles").insert({ id: uid(), username: unit, unit_id: unit, contract_path: path }));
       await loadProfile();
-      try { await API.submitAgreement(o.consent); }
-      catch (e) { throw new Error("가입 신청은 되었지만 위임동의서 저장에 실패했습니다. 내 정보 화면에서 위임동의서를 다시 제출해 주세요. (" + API.errorText(e) + ")"); }
       return st.profile;
     },
     /* 반려 후 계약서 다시 내기 */
@@ -156,6 +158,7 @@
     submitAgreement: async function (o) {
       need();
       if (!st.profile || st.profile.status === "rejected") throw new Error("가입한 회원만 위임동의서를 낼 수 있습니다.");
+      if (!API.consentOpen) throw new Error("위임동의서는 공급계약을 마친 뒤(" + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터) 낼 수 있습니다.");
       checkConsent(o);
       var row = must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), signature: o.signature, agree_delegation: true, agree_privacy: true, agree_identity: true,
         agree_third_party: !!o.thirdParty, agree_contact: !!o.contact, phone: o.contact ? String(o.phone || "").trim() : null, form_version: FORM_VERSION }).select().single());
@@ -163,7 +166,7 @@
     },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
-    agreedUnits: async function () { need(); if (!API.isMember && !API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
+    agreedUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
 
     /* 게시판 */
     posts: async function () { need(); return must(await sb.from("posts").select("id,cat,title,author_id,author_label,created_at,comments(count)").order("id", { ascending: false }).limit(200)); },
