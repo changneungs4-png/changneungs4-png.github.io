@@ -6,9 +6,13 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v3";
+  var FORM_VERSION = "2026-11-v4";
+  function phoneOk(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(String(v || "").replace(/\s/g, "")); }
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성해야 가입할 수 있습니다.");
+    if (!c.signer || c.signer.trim().length < 2) throw new Error("위임동의서의 계약자 성명을 입력하세요.");
+    if (!c.signature) throw new Error("위임장 서명 칸에 서명해 주세요.");
+    if (c.contact && !phoneOk(c.phone)) throw new Error("연락처 동의를 했다면 휴대전화 번호를 바르게 입력하세요. (예: 010-1234-5678)");
     if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
   }
   var st = { session: null, profile: null };
@@ -153,7 +157,8 @@
       need();
       if (!st.profile || st.profile.status === "rejected") throw new Error("가입한 회원만 위임동의서를 낼 수 있습니다.");
       checkConsent(o);
-      var row = must(await sb.from("agreements").insert({ agree_delegation: true, agree_privacy: true, agree_identity: true, agree_third_party: !!o.thirdParty, form_version: FORM_VERSION }).select().single());
+      var row = must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), signature: o.signature, agree_delegation: true, agree_privacy: true, agree_identity: true,
+        agree_third_party: !!o.thirdParty, agree_contact: !!o.contact, phone: o.contact ? String(o.phone || "").trim() : null, form_version: FORM_VERSION }).select().single());
       st.hasAgreement = true; return row;
     },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
@@ -258,6 +263,34 @@
       },
       agreements: async function () { need(); return must(await sb.from("agreements").select("*").order("unit_id")); },
       log: async function () { need(); return must(await sb.from("agreement_log").select("*").order("id", { ascending: false }).limit(300)); },
+      /* 서면 위임장: 공식 메일로 받은 스캔본을 올리고 등록 */
+      registerPaper: async function (o) {
+        need();
+        if (!validUnit(o.unit)) throw new Error("세대를 고르세요.");
+        if (!o.signer || o.signer.trim().length < 2) throw new Error("서면 위임장의 계약자 성명을 입력하세요.");
+        if (o.contact && !phoneOk(o.phone)) throw new Error("연락처 동의 세대는 휴대전화 번호를 바르게 입력하세요.");
+        var f = o.file; if (!f) throw new Error("서면 위임장 스캔본(사진 · PDF)을 첨부하세요.");
+        if (f.size > 10 * 1024 * 1024) throw new Error("스캔본은 10MB 이하로 올려주세요.");
+        if (!/^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/.test(f.type || "")) throw new Error("사진(JPG · PNG) 또는 PDF 파일만 올릴 수 있습니다.");
+        var ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+        var path = o.unit + "/" + Date.now() + "." + ext;
+        must(await sb.storage.from("consents").upload(path, f, { contentType: f.type, upsert: false }));
+        var r = await sb.from("agreements").insert({ unit_id: o.unit, source: "paper", signer_name: o.signer.trim(), paper_path: path, agree_delegation: true, agree_privacy: true, agree_identity: true,
+          agree_third_party: !!o.thirdParty, agree_contact: !!o.contact, phone: o.contact ? String(o.phone || "").trim() : null, form_version: FORM_VERSION + "-paper",
+          signed_at: o.signedOn ? new Date(o.signedOn + "T12:00:00+09:00").toISOString() : null }).select().single();
+        if (r.error) { await sb.storage.from("consents").remove([path]); if (r.error.code === "23505") throw new Error("이미 위임동의가 있는 세대입니다."); throw r.error; }
+        return r.data;
+      },
+      paperUrl: async function (path) {
+        need(); var b = must(await sb.storage.from("consents").download(path));
+        var ext = String(path).split(".").pop().toLowerCase();
+        var type = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic", heif: "image/heif", pdf: "application/pdf" }[ext] || b.type;
+        return URL.createObjectURL(new Blob([b], { type: type }));
+      },
+      withdrawPaper: async function (a) {
+        need(); must(await sb.from("agreements").delete().eq("unit_id", a.unit_id).eq("source", "paper"));
+        if (a.paper_path) await sb.storage.from("consents").remove([a.paper_path]);
+      },
       memberLog: async function () { need(); return must(await sb.from("member_log").select("*").order("id", { ascending: false }).limit(300)); },
       createPoll: async function (o) {
         need(); var opts = (o.options || []).map(function (x) { return x.trim(); }).filter(Boolean);
