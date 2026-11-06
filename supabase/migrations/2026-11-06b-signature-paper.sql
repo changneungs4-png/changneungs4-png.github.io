@@ -50,7 +50,7 @@ begin
     if new.signer_name is null or char_length(new.signer_name) not between 2 and 30 then raise exception '계약자 성명을 입력하세요' using errcode = '22023'; end if;
     if new.signature is null then raise exception '위임장에 서명해 주세요' using errcode = '22023'; end if;
     if now() < public.consent_open_at() then
-      raise exception '위임장은 공급계약을 마친 뒤(% 부터) 제출할 수 있습니다', to_char(public.consent_open_at() at time zone 'Asia/Seoul', 'FMMM"월" FMDD"일"') using errcode = '42501';
+      raise exception '위임장은 공급계약이 시작되는 % 부터 제출할 수 있습니다', to_char(public.consent_open_at() at time zone 'Asia/Seoul', 'FMMM"월" FMDD"일"') using errcode = '42501';
     end if;
     -- 이 세대의 서면 위임장이 먼저 있으면, 그 스캔본을 이어받고 온라인 위임으로 바꿈
     select a.paper_path into pp from public.agreements a where a.unit_id = new.unit_id and a.source = 'paper';

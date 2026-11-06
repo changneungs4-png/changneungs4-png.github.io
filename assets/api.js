@@ -53,7 +53,7 @@
     return st.profile;
   }
   function checkFile(f) {
-    if (!f) throw new Error("당첨 조회 화면이나 계약서 사진을 첨부하세요.");
+    if (!f) throw new Error("계약서 사진을 첨부하세요.");
     if (!/^image\/(jpeg|png|webp|heic|heif)$|^application\/pdf$/.test(f.type)) throw new Error("사진(JPG · PNG · HEIC) 또는 PDF만 올릴 수 있습니다.");
     if (f.size > 5 * 1024 * 1024) throw new Error("파일이 너무 큽니다. 5MB 이하로 올려주세요.");
   }
@@ -75,7 +75,7 @@
     get isMember() { return !!(st.profile && st.profile.status === "approved"); },
     /* 위임 회원 = 승인 + 위임동의 (운영진은 예외): 투표 · 단체민원 참여, 세대별 현황 */
     get isDelegate() { return !!(st.profile && st.profile.status === "approved" && (st.profile.is_admin || st.hasAgreement)); },
-    /* 위임장 제출 시작(공급계약 시작) */
+    /* 가입 · 위임장 제출 시작(공급계약 시작) */
     get consentOpenAt() { return st.openAt; },
     get consentOpen() { return Date.now() >= st.openAt.getTime(); },
     get isApproved() { return !!(st.profile && st.profile.status === "approved"); },
@@ -107,7 +107,7 @@
     /* 로그인 계정의 세대 (아이디 = 동-호) */
     get accountUnit() { return st.session ? String(st.session.user.email || "").split("@")[0] : null; },
 
-    /* 가입: 세대로 계정 → 확인 사진(당첨 조회 화면 · 계약서) 업로드 → 회원 정보(대기). 위임동의서는 공급계약 후 따로 */
+    /* 가입: 세대로 계정 → 계약서 사진 업로드 → 회원 정보(대기). 가입 · 위임은 공급계약 시작 후. 위임동의서는 가입 뒤 따로 */
     signUp: async function (o) {
       need();
       if (!validUnit(o.unit)) throw new Error("동과 호수를 고르세요.");
@@ -115,6 +115,7 @@
       if (o.password !== o.password2) throw new Error("비밀번호 확인이 일치하지 않습니다.");
       checkFile(o.file);
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
+      if (!API.consentOpen) throw new Error("가입은 공급계약이 시작되는 " + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터 받습니다.");
       if (await API.unitTaken(o.unit)) throw new Error("이 세대는 이미 가입되어 있습니다. 본인 세대인데 가입한 적이 없다면 운영진에게 문의하세요.");
       var r = await sb.auth.signUp({ email: emailOf(o.unit), password: o.password });
       must(r);
@@ -158,7 +159,7 @@
     submitAgreement: async function (o) {
       need();
       if (!st.profile || st.profile.status === "rejected") throw new Error("가입한 회원만 위임동의서를 낼 수 있습니다.");
-      if (!API.consentOpen) throw new Error("위임동의서는 공급계약을 마친 뒤(" + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터) 낼 수 있습니다.");
+      if (!API.consentOpen) throw new Error("위임동의서는 공급계약이 시작되는 " + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터 낼 수 있습니다.");
       checkConsent(o);
       var row = must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), signature: o.signature, agree_delegation: true, agree_privacy: true, agree_identity: true,
         agree_third_party: !!o.thirdParty, agree_contact: !!o.contact, phone: o.contact ? String(o.phone || "").trim() : null, form_version: FORM_VERSION }).select().single());

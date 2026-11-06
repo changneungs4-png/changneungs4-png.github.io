@@ -707,7 +707,7 @@ begin
     if new.signer_name is null or char_length(new.signer_name) not between 2 and 30 then raise exception '계약자 성명을 입력하세요' using errcode = '22023'; end if;
     if new.signature is null then raise exception '위임장에 서명해 주세요' using errcode = '22023'; end if;
     if now() < public.consent_open_at() then
-      raise exception '위임장은 공급계약을 마친 뒤(% 부터) 제출할 수 있습니다', to_char(public.consent_open_at() at time zone 'Asia/Seoul', 'FMMM"월" FMDD"일"') using errcode = '42501';
+      raise exception '위임장은 공급계약이 시작되는 % 부터 제출할 수 있습니다', to_char(public.consent_open_at() at time zone 'Asia/Seoul', 'FMMM"월" FMDD"일"') using errcode = '42501';
     end if;
     -- 이 세대의 서면 위임장이 먼저 있으면, 그 스캔본을 이어받고 온라인 위임으로 바꿈
     select a.paper_path into pp from public.agreements a where a.unit_id = new.unit_id and a.source = 'paper';
@@ -780,13 +780,13 @@ create trigger agreements_queue_file after delete on public.agreements for each 
 notify pgrst, 'reload schema';
 
 -- 가입과 위임 분리 (2026-11-06)
--- · 가입 승인: 당첨 확인 화면 또는 계약서 사진. 위임장 없이도 승인됨
--- · 위임장: 공급계약(2026-11-16~) 후 제출
+-- · 가입 승인: 계약서 사진. 위임장 없이도 승인됨
+-- · 가입 · 위임장: 공급계약(2026-11-16~) 시작부터
 -- · 가입 회원: 게시판 읽기 · 쓰기 · 댓글, 투표 결과 보기
 -- · 위임 회원(위임장 제출 세대): + 투표 · 민원 참여, 세대별 위임 현황
 -- (2026-11-06-withdraw-and-logs.sql, 2026-11-06b-signature-paper.sql 다음에 실행)
 
--- 위임장 제출 시작 시각 (바꾸려면 SQL Editor에서 app_settings 값만 수정)
+-- 가입 · 위임장 제출 시작 시각 (바꾸려면 SQL Editor에서 app_settings 값만 수정)
 create table if not exists public.app_settings (key text primary key, value text not null);
 alter table public.app_settings enable row level security;
 revoke all on public.app_settings from anon, authenticated;
@@ -796,6 +796,19 @@ language sql stable security definer set search_path = public as $$
   select coalesce((select value::timestamptz from public.app_settings where key = 'consent_open_at'), timestamptz '2026-11-16 00:00:00+09');
 $$;
 grant execute on function public.consent_open_at() to anon, authenticated;
+
+-- 가입도 공급계약 시작부터 (계약 포기 세대가 섞이지 않게)
+create or replace function public.profiles_open_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_api_request() then return new; end if;
+  if now() < public.consent_open_at() then
+    raise exception '가입은 공급계약이 시작되는 % 부터 받습니다', to_char(public.consent_open_at() at time zone 'Asia/Seoul', 'FMMM"월" FMDD"일"') using errcode = '42501';
+  end if;
+  return new;
+end $$;
+drop trigger if exists profiles_open_guard on public.profiles;
+create trigger profiles_open_guard before insert on public.profiles for each row execute function public.profiles_open_guard();
 
 -- 가입 회원 = 승인된 세대
 create or replace function public.is_member() returns boolean
