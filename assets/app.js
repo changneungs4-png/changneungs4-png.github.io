@@ -444,8 +444,11 @@
       '<div class="two"><div>' + head("면적별 세대수", '<span class="note">모집공고 기준</span>') + areaBars() + "</div><div>" + head("단지 개요") + complexTable(arr(S.complex)) + "</div></div>";
   };
 
-  R.progress = function () {
-    var p = S.progress || {}, M = arr(S.progressMonthly), logs = arr(p.logs), chart;
+  R.progress = async function () {
+    var p = S.progress || {}, M = arr(S.progressMonthly), chart;
+    var V = LIVE ? arr(await API.visits()) : [];
+    var logs = V.map(function (v) { return { date: dotDate(v.visited_on), title: v.title, text: v.body, photos: livePhotos(arr(v.photos).sort(function (a, b) { return a.id - b.id; }).map(function (x) { return { id: x.id, cat: "현장 방문", title: v.title, taken_on: v.visited_on, path: x.path, width: x.width, height: x.height }; })) }; })
+      .concat(arr(p.logs)).sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
     if (M.length) {
       var W = 560, H = 200, pl = 36, pb = 28, pt = 16;
       var maxR = Math.max(10, Math.ceil(Math.max.apply(null, M.map(function (m) { return m.rate; })) / 5) * 5);
@@ -464,20 +467,48 @@
     C.innerHTML = "<div>" + head("월별 공정률", '<span class="note">LH 공정 보고 기준 누적</span>') + chart + "</div>" +
       ((p.overall == null && !arr(p.phases).length) ? "<div>" : '<div class="two"><div>' + head("공정 단계") + progressMeter() + phaseList() + "</div>") +
       "<div>" + head("현장 방문 기록") + (logs.length ? '<ol class="tl">' + logs.map(function (l, i) {
-        return '<li class="' + (i === 0 ? "now" : "done") + '"><span class="when">' + esc(l.date) + '</span><span class="dot"></span><span class="what"><b>' + esc(l.title) + "</b><span>" + esc(l.text) + "</span></span></li>";
+        return '<li class="' + (i === 0 ? "now" : "done") + '"><span class="when">' + esc(l.date) + '</span><span class="dot"></span><span class="what"><b>' + esc(l.title) + '</b><span class="pre">' + esc(l.text) + "</span>" +
+          (arr(l.photos).length ? '<span class="vthumbs">' + l.photos.map(function (ph, k) { return '<button type="button" class="vthumb" data-l="' + i + '" data-k="' + k + '" aria-label="사진 ' + (k + 1) + ' 크게 보기"><img src="' + esc(ph.src) + '" alt="" loading="lazy"></button>'; }).join("") + "</span>" : "") + "</span></li>";
       }).join("") + "</ol>" : empty("아직 현장 방문 기록이 없습니다", "협의회 현장 방문 후 기록을 올립니다.")) + "</div></div>";
+    C.querySelectorAll(".vthumb").forEach(function (b) { b.addEventListener("click", function () { lightbox(logs[Number(b.dataset.l)].photos, Number(b.dataset.k)); }); });
   };
 
-  R.gallery = function () {
-    var L = arr(S.gallery);
-    if (!L.length) { C.innerHTML = empty("아직 등록된 사진이 없습니다", "현장 방문 사진이 모이면 이곳에 올립니다."); return; }
+  /* 사진 크게 보기 (← → 키, 밀어서 넘기기, Esc 닫기) */
+  function lightbox(list, start) {
+    var i = start, box = document.createElement("div"); box.className = "lightbox"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
+    box.innerHTML = '<button type="button" class="lb-x" aria-label="닫기">×</button><button type="button" class="lb-p" aria-label="이전 사진">‹</button><figure><img alt=""><figcaption></figcaption></figure><button type="button" class="lb-n" aria-label="다음 사진">›</button>';
+    document.body.appendChild(box); document.body.classList.add("noscroll");
+    var img = box.querySelector("img"), cap = box.querySelector("figcaption");
+    function draw() { var g = list[i]; img.src = g.src; img.alt = g.title; cap.innerHTML = "<b>" + esc(g.title) + "</b>" + (g.date ? " <small>" + esc(g.date) + "</small>" : "") + ' <small class="lb-c">' + (i + 1) + " / " + list.length + "</small>"; box.querySelector(".lb-p").hidden = box.querySelector(".lb-n").hidden = list.length < 2; }
+    function go(d) { i = (i + d + list.length) % list.length; draw(); }
+    function close() { box.remove(); document.body.classList.remove("noscroll"); document.removeEventListener("keydown", key); }
+    function key(e) { if (e.key === "Escape") close(); else if (e.key === "ArrowLeft") go(-1); else if (e.key === "ArrowRight") go(1); }
+    box.querySelector(".lb-x").addEventListener("click", close);
+    box.querySelector(".lb-p").addEventListener("click", function () { go(-1); });
+    box.querySelector(".lb-n").addEventListener("click", function () { go(1); });
+    box.addEventListener("click", function (e) { if (e.target === box) close(); });
+    var x0 = null; box.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    box.addEventListener("touchend", function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); x0 = null; });
+    document.addEventListener("keydown", key); draw(); box.querySelector(".lb-x").focus();
+  }
+  function dotDate(d) { return d ? String(d).slice(0, 10).replace(/-/g, ".") : ""; }
+  function livePhotos(rows) { return arr(rows).map(function (p) { return { id: p.id, cat: p.cat, title: p.title, date: dotDate(p.taken_on), src: API.photoUrl(p.path), w: p.width, h: p.height }; }); }
+
+  R.gallery = async function () {
+    var L = (LIVE ? livePhotos(await API.photos()) : []).concat(arr(S.gallery).map(function (g) { return { cat: g.cat, title: g.title, date: g.date, src: g.src ? safeUrl(g.src) : "" }; }));
+    if (!L.length) { C.innerHTML = empty("아직 등록된 사진이 없습니다", "현장 방문 사진이 모이면 이곳에 올립니다." + (LIVE && API.isAdmin ? " 운영진 페이지 → 사진 · 방문에서 올릴 수 있습니다." : "")); return; }
     var cats = uniq(L.map(function (g) { return g.cat; }));
-    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("gCats", cats, "분류") + "</div>" +
-      '<div class="gallery" id="gList">' + L.map(function (g) {
-        var img = g.src ? '<img src="' + esc(safeUrl(g.src)) + '" alt="' + esc(g.title) + '" loading="lazy">' : '<div class="img"><span>' + esc(g.cat) + "</span></div>";
-        return '<figure class="ph" data-cat="' + esc(g.cat) + '">' + img + "<figcaption>" + esc(g.title) + "<small>" + esc(g.date) + "</small></figcaption></figure>";
+    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("gCats", cats, "분류") + '<span class="muted small">' + n(L.length) + "장</span></div>" +
+      '<div class="gallery" id="gList">' + L.map(function (g, i) {
+        var img = g.src ? '<button type="button" class="ph-open" data-i="' + i + '" aria-label="' + esc(g.title) + ' 크게 보기"><img src="' + esc(g.src) + '" alt="' + esc(g.title) + '" loading="lazy"' + (g.w ? ' width="' + g.w + '" height="' + g.h + '"' : "") + "></button>" : '<div class="img"><span>' + esc(g.cat) + "</span></div>";
+        return '<figure class="ph" data-cat="' + esc(g.cat) + '">' + img + "<figcaption>" + esc(g.title) + "<small>" + esc(g.date || "") + "</small></figcaption></figure>";
       }).join("") + "</div></div>";
     bindChips("gCats", filterBy("gList", "figure"));
+    el("gList").addEventListener("click", function (e) {
+      var b = e.target.closest(".ph-open"); if (!b) return;
+      var vis = [].slice.call(el("gList").querySelectorAll("figure")).filter(function (f) { return !f.hidden && f.style.display !== "none"; }).map(function (f) { var o = f.querySelector(".ph-open"); return o ? Number(o.dataset.i) : -1; }).filter(function (k) { return k >= 0; });
+      var list = vis.map(function (k) { return L[k]; }); lightbox(list, Math.max(0, vis.indexOf(Number(b.dataset.i))));
+    });
   };
 
   R.association = function () {
@@ -1097,7 +1128,7 @@
   R.admin = async function () {
     if (!LIVE || !API.loggedIn) { C.innerHTML = gate("login"); return; }
     if (!API.isAdmin) { C.innerHTML = empty("운영진만 볼 수 있습니다", ""); return; }
-    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["polls", "투표"], ["campaigns", "민원"], ["news", "자동 수집"]];
+    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["polls", "투표"], ["campaigns", "민원"], ["photos", "사진 · 방문"], ["news", "자동 수집"]];
     var cur = (location.hash || "#pending").slice(1); if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
     C.innerHTML = '<div class="tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '<span class="cnt" id="cnt-' + t[0] + '"></span></button>'; }).join("") + "</div>" +
       '<div id="adminBody"></div><p class="notice-box" id="admMsg" role="status" hidden></p>';
@@ -1253,6 +1284,55 @@
             catch (er) { busy(b, false); err(er); }
           });
           B.querySelectorAll(".togglenews").forEach(function (t) { t.addEventListener("click", async function () { try { await API.admin.setNewsHidden(Number(t.dataset.id), t.dataset.h === "1"); await show(); } catch (er) { err(er); } }); });
+        }
+        if (cur === "photos") {
+          var VS = await API.visits(), PH = await API.photos(), today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+          var catOpts = function (sel) { return API.photoCats.map(function (c) { return "<option" + (c === sel ? " selected" : "") + ">" + c + "</option>"; }).join(""); };
+          var warn = '<p class="muted small" style="margin:0 0 10px">사진은 누구나 볼 수 있습니다. <b>사람 얼굴 · 차량 번호판 · 서류</b>가 보이면 올리지 마세요. 올릴 때 자동으로 줄이고(긴 변 1600px) 촬영 위치 정보는 지웁니다. 한 번에 30장까지.</p>';
+          B.innerHTML = '<div class="two">' +
+            '<form class="panel" id="fVisit" novalidate><h3 style="margin-bottom:10px" id="vHead">현장 방문 기록 쓰기</h3>' +
+            '<div class="two" style="gap:12px"><div class="field"><label for="vDate">방문 날짜</label><input id="vDate" type="date" value="' + today + '"></div><div class="field"><label for="vTitle">제목</label><input id="vTitle" maxlength="120" placeholder="예: 11월 정기 현장 방문"></div></div>' +
+            '<div class="field"><label for="vBody">내용</label><textarea id="vBody" maxlength="5000" style="min-height:120px" placeholder="확인한 공정, LH 답변, 다음 확인할 것"></textarea></div>' +
+            '<div class="field"><label for="vFiles">사진 <span class="muted small">선택 · 여러 장 · 사진관 "현장 방문"에도 함께 올라감</span></label><input id="vFiles" type="file" accept="image/*" multiple></div>' + warn +
+            '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit" id="vSave">기록 올리기</button><button class="btn" type="button" id="vCancel" hidden>수정 취소</button></p><input type="hidden" id="vId"></form>' +
+            '<form class="panel" id="fPhoto" novalidate><h3 style="margin-bottom:10px">사진관에 사진 올리기</h3>' +
+            '<div class="two" style="gap:12px"><div class="field"><label for="phCat">분류</label><select id="phCat">' + catOpts("공사 현장") + '</select></div><div class="field"><label for="phDate">찍은 날짜</label><input id="phDate" type="date" value="' + today + '"></div></div>' +
+            '<div class="field"><label for="phTitle">제목 <span class="muted small">여러 장이면 모두 같은 제목</span></label><input id="phTitle" maxlength="120" placeholder="예: 403동 골조 공사"></div>' +
+            '<div class="field"><label for="phFiles">사진</label><input id="phFiles" type="file" accept="image/*" multiple></div>' + warn +
+            '<button class="btn solid" type="submit">사진 올리기</button></form></div>' +
+            head("현장 방문 기록", '<span class="note">' + n(VS.length) + "건</span>") +
+            (VS.length ? '<div class="tablebox"><table class="spec"><tbody>' + VS.map(function (v) { return '<tr><td class="num">' + dotDate(v.visited_on) + "</td><td><b>" + esc(v.title) + '</b><br><span class="muted small">' + esc(String(v.body || "").slice(0, 80)) + '</span></td><td class="num">사진 ' + arr(v.photos).length + '장</td><td><button type="button" class="linkbtn editv" data-id="' + v.id + '">수정</button> <button type="button" class="linkbtn delv" data-id="' + v.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("아직 방문 기록이 없습니다", "위 칸에 첫 기록을 남겨 보세요.")) +
+            head("사진관", '<span class="note">' + n(PH.length) + "장 · 제목 · 분류를 고치고 저장</span>") +
+            (PH.length ? '<div class="adm-photos">' + PH.map(function (p) { return '<div class="adm-ph" data-id="' + p.id + '"><img src="' + esc(API.photoUrl(p.path)) + '" alt="" loading="lazy"><input class="t" maxlength="120" value="' + esc(p.title) + '" aria-label="제목"><select class="c" aria-label="분류">' + catOpts(p.cat) + '</select><input class="d" type="date" value="' + esc(p.taken_on || "") + '" aria-label="날짜"><p class="cta-row" style="margin:0"><button type="button" class="linkbtn savep">저장</button><button type="button" class="linkbtn delp">삭제</button></p></div>'; }).join("") + "</div>" : empty("아직 사진이 없습니다", ""));
+          var prog = function (i, t) { say("admMsg", "사진 올리는 중… " + i + " / " + t); };
+          var report = function (r, what) { say("admMsg", what + (r.done.length ? " · 사진 " + r.done.length + "장" : "") + (r.fails.length ? " · 실패 " + r.fails.length + "장: " + r.fails.join(" / ") : ""), !!r.fails.length); };
+          function resetVisit() { el("vId").value = ""; el("vTitle").value = ""; el("vBody").value = ""; el("vFiles").value = ""; el("vDate").value = today; el("vHead").textContent = "현장 방문 기록 쓰기"; el("vSave").textContent = "기록 올리기"; el("vCancel").hidden = true; }
+          el("vCancel").addEventListener("click", resetVisit);
+          el("fVisit").addEventListener("submit", async function (e) {
+            e.preventDefault(); var btn = el("vSave"); busy(btn, true, "올리는 중…");
+            try { var id = Number(el("vId").value) || null; var r = await API.admin.saveVisit({ id: id, date: el("vDate").value, title: el("vTitle").value, body: el("vBody").value }, el("vFiles").files, prog); await show(); report(r, id ? "방문 기록을 고쳤습니다" : "방문 기록을 올렸습니다"); }
+            catch (er) { busy(btn, false); err(er); }
+          });
+          el("fPhoto").addEventListener("submit", async function (e) {
+            e.preventDefault(); var btn = this.querySelector("button[type=submit]"); busy(btn, true, "올리는 중…");
+            try { var r = await API.admin.addPhotos(el("phFiles").files, { cat: el("phCat").value, title: el("phTitle").value, takenOn: el("phDate").value }, prog); await show(); report(r, "사진관에 올렸습니다"); }
+            catch (er) { busy(btn, false); err(er); }
+          });
+          B.querySelectorAll(".editv").forEach(function (b) { b.addEventListener("click", function () {
+            var v = VS.filter(function (x) { return x.id === Number(b.dataset.id); })[0];
+            el("vId").value = v.id; el("vDate").value = v.visited_on; el("vTitle").value = v.title; el("vBody").value = v.body || "";
+            el("vHead").textContent = "방문 기록 고치기"; el("vSave").textContent = "고친 내용 저장"; el("vCancel").hidden = false; el("fVisit").scrollIntoView({ behavior: "smooth", block: "start" });
+          }); });
+          B.querySelectorAll(".delv").forEach(function (b) { b.addEventListener("click", async function () {
+            var v = VS.filter(function (x) { return x.id === Number(b.dataset.id); })[0];
+            if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제" + (arr(v.photos).length ? " (사진 " + v.photos.length + "장 포함)" : ""); return; }
+            try { await API.admin.deleteVisit(v); await show(); say("admMsg", "방문 기록을 삭제했습니다."); } catch (er) { err(er); }
+          }); });
+          B.querySelectorAll(".adm-ph").forEach(function (c) {
+            var p = PH.filter(function (x) { return x.id === Number(c.dataset.id); })[0];
+            c.querySelector(".savep").addEventListener("click", async function () { try { await API.admin.updatePhoto(p.id, { title: c.querySelector(".t").value, cat: c.querySelector(".c").value, takenOn: c.querySelector(".d").value }); say("admMsg", "사진 정보를 저장했습니다."); } catch (er) { err(er); } });
+            c.querySelector(".delp").addEventListener("click", async function () { var b = this; if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deletePhoto(p); c.remove(); say("admMsg", "사진을 삭제했습니다."); } catch (er) { err(er); } });
+          });
         }
         if (cur === "campaigns") {
           var CP = await API.campaigns(), ST = ["의견 모집", "접수 완료", "답변 완료"];

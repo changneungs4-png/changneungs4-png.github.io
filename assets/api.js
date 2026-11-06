@@ -65,6 +65,27 @@
     return path;
   }
 
+  /* 사진 줄이기: 긴 변 1600px JPEG. 다시 그리면서 촬영 위치(EXIF GPS) 같은 메타데이터가 빠짐 */
+  var CATS = ["현장 방문", "공사 현장", "모델하우스", "행사", "기타"];
+  async function shrink(f) {
+    if (!f || !/^image\//.test(f.type || "")) throw new Error("사진 파일만 올릴 수 있습니다. (" + (f && f.name) + ")");
+    if (f.size > 30 * 1024 * 1024) throw new Error("사진이 너무 큽니다(30MB 초과): " + f.name);
+    var src;
+    try { src = await createImageBitmap(f, { imageOrientation: "from-image" }); }
+    catch (e) {
+      src = await new Promise(function (ok, no) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { no(new Error("이 사진 형식은 열 수 없습니다: " + f.name + " (HEIC은 JPG로 바꿔 올려주세요)")); }; i.src = URL.createObjectURL(f); });
+    }
+    var w = src.width, h = src.height, k = Math.min(1, 1600 / Math.max(w, h));
+    w = Math.round(w * k); h = Math.round(h * k);
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(src, 0, 0, w, h);
+    var blob = await new Promise(function (ok) { c.toBlob(ok, "image/jpeg", 0.82); });
+    if (!blob) throw new Error("사진을 변환하지 못했습니다: " + f.name);
+    return { blob: blob, w: w, h: h };
+  }
+  function photoPath() { return new Date().getFullYear() + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + ".jpg"; }
+  function dateOk(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d || "")); }
+
   var API = {
     enabled: enabled,
     formVersion: FORM_VERSION,
@@ -185,6 +206,12 @@
     deletePost: async function (id) { need(); var d = must(await sb.from("posts").delete().eq("id", id).select("id")); if (!d.length) throw new Error("권한이 없습니다."); },
     addComment: async function (postId, body) { need(); if (!body || !body.trim()) throw new Error("댓글을 입력하세요."); return must(await sb.from("comments").insert({ post_id: postId, body: body.trim() }).select().single()); },
     deleteComment: async function (id) { need(); var d = must(await sb.from("comments").delete().eq("id", id).select("id")); if (!d.length) throw new Error("권한이 없습니다."); },
+
+    /* 사진관 · 현장 방문 (누구나 보기) */
+    photoCats: CATS,
+    photoUrl: function (path) { return CFG.supabaseUrl + "/storage/v1/object/public/gallery/" + String(path).split("/").map(encodeURIComponent).join("/"); },
+    photos: async function () { need(); return must(await sb.from("photos").select("*").order("taken_on", { ascending: false, nullsFirst: false }).order("id", { ascending: false }).limit(1000)); },
+    visits: async function () { need(); return must(await sb.from("visits").select("*, photos(id,path,title,width,height)").order("visited_on", { ascending: false }).order("id", { ascending: false }).limit(300)); },
 
     /* 자동 수집 소식 */
     news: async function (kind, limit) {
@@ -309,6 +336,51 @@
         must(await sb.from("campaigns").insert({ title: o.title.trim(), target: (o.target || "").trim(), description: (o.description || "").trim() }));
       },
       setCampaignStatus: async function (id, s) { need(); must(await sb.from("campaigns").update({ status: s }).eq("id", id)); },
+      /* 사진 올리기: 여러 장. 하나라도 실패하면 그 사진만 건너뛰고 결과를 알려줌 */
+      addPhotos: async function (files, o, onStep) {
+        need(); files = Array.prototype.slice.call(files || []);
+        if (!files.length) throw new Error("사진을 고르세요.");
+        if (files.length > 30) throw new Error("한 번에 30장까지 올릴 수 있습니다.");
+        if (CATS.indexOf(o.cat) < 0) throw new Error("분류를 고르세요.");
+        if (!o.title || !o.title.trim()) throw new Error("사진 제목을 입력하세요.");
+        if (o.takenOn && !dateOk(o.takenOn)) throw new Error("날짜를 바르게 고르세요.");
+        var done = [], fails = [];
+        for (var i = 0; i < files.length; i++) {
+          if (onStep) onStep(i + 1, files.length);
+          var path = null;
+          try {
+            var r = await shrink(files[i]); path = photoPath();
+            must(await sb.storage.from("gallery").upload(path, r.blob, { contentType: "image/jpeg", upsert: false }));
+            done.push(must(await sb.from("photos").insert({ cat: o.cat, title: o.title.trim().slice(0, 120), taken_on: o.takenOn || null, path: path, width: r.w, height: r.h, visit_id: o.visitId || null }).select().single()));
+          } catch (e) { if (path) await sb.storage.from("gallery").remove([path]).catch(function () {}); fails.push((files[i] && files[i].name) + ": " + kor(e)); }
+        }
+        return { done: done, fails: fails };
+      },
+      updatePhoto: async function (id, o) {
+        need(); if (!o.title || !o.title.trim()) throw new Error("사진 제목을 입력하세요."); if (CATS.indexOf(o.cat) < 0) throw new Error("분류를 고르세요.");
+        must(await sb.from("photos").update({ title: o.title.trim(), cat: o.cat, taken_on: o.takenOn || null }).eq("id", id));
+      },
+      deletePhoto: async function (p) {
+        need(); must(await sb.from("photos").delete().eq("id", p.id));
+        await sb.storage.from("gallery").remove([p.path]).catch(function () {});
+      },
+      saveVisit: async function (o, files, onStep) {
+        need();
+        if (!dateOk(o.date)) throw new Error("방문 날짜를 고르세요.");
+        if (!o.title || o.title.trim().length < 2) throw new Error("제목을 2자 이상 입력하세요.");
+        if ((o.body || "").length > 5000) throw new Error("내용은 5,000자까지 쓸 수 있습니다.");
+        var row = { visited_on: o.date, title: o.title.trim(), body: (o.body || "").trim() }, v;
+        if (o.id) v = must(await sb.from("visits").update(row).eq("id", o.id).select().single());
+        else v = must(await sb.from("visits").insert(row).select().single());
+        var res = { visit: v, done: [], fails: [] };
+        if (files && files.length) { var r = await API.admin.addPhotos(files, { cat: "현장 방문", title: v.title, takenOn: v.visited_on, visitId: v.id }, onStep); res.done = r.done; res.fails = r.fails; }
+        return res;
+      },
+      deleteVisit: async function (v) {
+        need(); var paths = (v.photos || []).map(function (p) { return p.path; });
+        must(await sb.from("visits").delete().eq("id", v.id));
+        if (paths.length) await sb.storage.from("gallery").remove(paths).catch(function () {});
+      },
       deleteCampaign: async function (id) { need(); must(await sb.from("campaigns").delete().eq("id", id)); }
     },
     errorText: kor

@@ -35,7 +35,7 @@ export async function run(env, fetcher = fetch, send) {
   return { pending: pending.length, sent: fresh.length, cleaned };
 }
 
-// 지울 목록(file_cleanup)에 오른 서면 스캔본을 저장소에서 삭제
+// 지울 목록(file_cleanup)에 오른 파일(서면 스캔본 · 사진관 사진)을 저장소에서 삭제
 export async function cleanup(env, fetcher, H, get) {
   let list;
   try { list = await get("file_cleanup?select=bucket,path&limit=200"); } catch (e) { if (/HTTP 404/.test(e.message)) return 0; throw e; }
@@ -43,7 +43,8 @@ export async function cleanup(env, fetcher, H, get) {
   for (const bucket of [...new Set(list.map((x) => x.bucket))]) {
     const queued = list.filter((x) => x.bucket === bucket).map((x) => x.path);
     // 아직 위임에 연결된 파일(서면 → 온라인 전환 등)은 지우지 않고 목록에서만 뺌
-    const inUse = new Set((await get("agreements?select=paper_path&paper_path=in.(" + queued.map((p) => '"' + p + '"').join(",") + ")")).map((x) => x.paper_path));
+    const ref = { consents: ["agreements", "paper_path"], gallery: ["photos", "path"] }[bucket];
+    const inUse = new Set(ref ? (await get(ref[0] + "?select=" + ref[1] + "&" + ref[1] + "=in.(" + queued.map((p) => '"' + p + '"').join(",") + ")")).map((x) => x[ref[1]]) : []);
     const paths = queued.filter((p) => !inUse.has(p));
     if (paths.length) {
     const r = await fetcher(env.SUPABASE_URL + "/storage/v1/object/" + bucket, { method: "DELETE", headers: H, body: JSON.stringify({ prefixes: paths }) });
