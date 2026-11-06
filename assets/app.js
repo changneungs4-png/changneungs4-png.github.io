@@ -446,7 +446,7 @@
 
   R.progress = async function () {
     var p = S.progress || {}, M = arr(S.progressMonthly), chart;
-    var V = LIVE ? arr(await API.visits()) : [];
+    var V = LIVE ? arr(await API.visits().catch(function () { return []; })) : [];
     var logs = V.map(function (v) { return { date: dotDate(v.visited_on), title: v.title, text: v.body, photos: livePhotos(arr(v.photos).sort(function (a, b) { return a.id - b.id; }).map(function (x) { return { id: x.id, cat: "현장 방문", title: v.title, taken_on: v.visited_on, path: x.path, width: x.width, height: x.height }; })) }; })
       .concat(arr(p.logs)).sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
     if (M.length) {
@@ -495,7 +495,7 @@
   function livePhotos(rows) { return arr(rows).map(function (p) { return { id: p.id, cat: p.cat, title: p.title, date: dotDate(p.taken_on), src: API.photoUrl(p.path), w: p.width, h: p.height }; }); }
 
   R.gallery = async function () {
-    var L = (LIVE ? livePhotos(await API.photos()) : []).concat(arr(S.gallery).map(function (g) { return { cat: g.cat, title: g.title, date: g.date, src: g.src ? safeUrl(g.src) : "" }; }));
+    var L = (LIVE ? livePhotos(await API.photos().catch(function () { return []; })) : []).concat(arr(S.gallery).map(function (g) { return { cat: g.cat, title: g.title, date: g.date, src: g.src ? safeUrl(g.src) : "" }; }));
     if (!L.length) { C.innerHTML = empty("아직 등록된 사진이 없습니다", "현장 방문 사진이 모이면 이곳에 올립니다." + (LIVE && API.isAdmin ? " 운영진 페이지 → 사진 · 방문에서 올릴 수 있습니다." : "")); return; }
     var cats = uniq(L.map(function (g) { return g.cat; }));
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("gCats", cats, "분류") + '<span class="muted small">' + n(L.length) + "장</span></div>" +
