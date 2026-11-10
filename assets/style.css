@@ -598,3 +598,5 @@ body.noscroll{overflow:hidden}
 .list.news .dups li{display:flex;align-items:baseline;gap:10px;grid-template-columns:none;padding:5px 0 5px 12px;border:0;min-width:0}
 .list.news .dups li a{font-weight:500;font-size:14px;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .list.news .dups li .muted{flex:0 0 auto;white-space:nowrap}
+.meter small.members{display:block;margin-top:2px;color:var(--muted)}
+.dong .dmem{margin:4px 0 0}

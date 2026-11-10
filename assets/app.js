@@ -41,7 +41,7 @@
   function siteAgreed() { var o = {}; arr(S.agreedUnits).forEach(function (id) { if (UNIT[id]) o[id] = 1; }); return o; }
   var AGREED = siteAgreed();
   var T = S.totalUnits || UNITS.length, NEED = Math.floor(T / 2) + 1;
-  var LIVE_AGREED = null;
+  var LIVE_AGREED = null, LIVE_MEMBERS = null;
   function agreedCount() { return LIVE_AGREED != null ? LIVE_AGREED : Object.keys(AGREED).length; }
 
   /* ── 메뉴 ── */
@@ -221,11 +221,12 @@
       return '<li class="' + esc(x.state || "") + '"><span class="when">' + esc(x.when) + '</span><span class="dot"></span><span class="what"><b>' + esc(x.title) + ("") + "</b>" + (x.desc ? "<span>" + (x.auto && x.src ? '<a href="' + esc(safeUrl(x.src)) + '" target="_blank" rel="noopener">' + esc(x.desc) + "</a>" : esc(x.desc)) + "</span>" : "") + "</span></li>";
     }).join("") + "</ol>";
   }
+  function memberLine(a, m) { return m != null ? '<small class="members">가입 ' + n(m) + "세대 · 위임 전 " + n(Math.max(0, m - a)) + "세대</small>" : ""; }
   function agreeMeter(compact) {
     var a = agreedCount(), p = pct(a, T);
     return '<div class="meter"><div class="row"><span>위임동의 세대</span><b class="num">' + n(a) + ' <small class="muted">/ ' + n(T) + "</small></b></div>" +
       '<div class="bar-track"><i style="width:' + p.toFixed(1) + '%"></i><span class="goal" style="left:' + pct(NEED, T).toFixed(1) + '%"></span></div>' +
-      "<small>" + (a ? "목표 과반(" + n(NEED) + "세대)까지 " + n(Math.max(0, NEED - a)) + "세대" + (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "") : (compact ? "위임동의 접수 전입니다" : "위임동의 접수 전입니다. 세로선이 목표인 과반(" + n(NEED) + "세대)입니다.")) + "</small></div>";
+      "<small>" + (a ? "목표 과반(" + n(NEED) + "세대)까지 " + n(Math.max(0, NEED - a)) + "세대" + (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "") : (compact ? "위임동의 접수 전입니다" : "위임동의 접수 전입니다. 세로선이 목표인 과반(" + n(NEED) + "세대)입니다.")) + "</small>" + memberLine(a, LIVE_MEMBERS) + "</div>";
   }
   function progressMeter() {
     var p = S.progress || {};
@@ -691,6 +692,7 @@
     var TYPES = uniq(UNITS.map(function (u) { return u.type; })).sort(), filt = "전체", stats = null, canSee = true, myUnit = null;
     if (LIVE) {
       stats = await API.stats();
+      var mst = await API.memberStats().catch(function () { return null; });
       canSee = API.isDelegate || API.isAdmin;
       AGREED = {};
       if (canSee) arr(await API.agreedUnits()).forEach(function (id) { AGREED[id] = 1; });
@@ -698,6 +700,7 @@
     }
     var sDong = {}; arr(stats).forEach(function (r) { sDong[r.dong] = r; });
     var liveTotal = stats ? stats.reduce(function (s, r) { return s + r.agreed; }, 0) : null;
+    var mDong = {}, mTotal = null; if (LIVE && mst) { mTotal = 0; mst.forEach(function (r) { mDong[r.dong] = r.members; mTotal += r.members; }); }
 
     C.innerHTML =
       '<div class="ag-summary" id="agSum"></div>' +
@@ -725,11 +728,12 @@
         '<div class="big"><b class="num">' + n(a) + '</b><span class="muted"> / ' + n(T) + "세대</span></div>" +
         '<div class="meter" style="margin:0;flex:1;min-width:240px"><div class="row"><span>전체 동의율</span><b class="num">' + p.toFixed(1) + '%</b></div>' +
         '<div class="bar-track"><i style="width:' + Math.min(100, p).toFixed(1) + '%"></i><span class="goal" style="left:' + pct(NEED, T).toFixed(1) + '%"></span></div>' +
-        "<small>" + (a >= NEED ? "목표 과반(" + n(NEED) + "세대)을 넘었습니다" : "목표 과반(" + n(NEED) + "세대)까지 " + n(NEED - a) + "세대") + (LIVE ? " · 실시간" : (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "")) + "</small></div>";
+        "<small>" + (a >= NEED ? "목표 과반(" + n(NEED) + "세대)을 넘었습니다" : "목표 과반(" + n(NEED) + "세대)까지 " + n(NEED - a) + "세대") + (LIVE ? " · 실시간" : (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "")) + "</small>" + memberLine(a, mTotal) + "</div>";
 
       el("agDongs").innerHTML = arr(S.layout).map(function (d) {
         var st = byDong[d.dong] || [0, 0], dp = pct(st[0], st[1]);
-        var top = '<header><h3>' + d.dong + '동</h3><span class="num">' + st[0] + "/" + st[1] + " · " + dp.toFixed(0) + "%</span></header>" + '<div class="mini"><i style="width:' + dp.toFixed(1) + '%"></i></div>';
+        var top = '<header><h3>' + d.dong + '동</h3><span class="num">' + st[0] + "/" + st[1] + " · " + dp.toFixed(0) + "%</span></header>" + '<div class="mini"><i style="width:' + dp.toFixed(1) + '%"></i></div>' +
+          (mTotal != null ? '<p class="dmem small muted">가입 ' + n(mDong[d.dong] || 0) + "세대</p>" : "");
         if (!canSee) return '<section class="dong" aria-label="' + d.dong + '동">' + top + "</section>";
         var maxF = Math.max.apply(null, d.lines.map(function (l) { return l[2]; })), cells = "";
         for (var f = maxF; f >= 1; f--) {
@@ -1458,6 +1462,7 @@
   }
   if (LIVE && ["home", "association"].indexOf(page) >= 0) {
     try { var sts = await API.stats(); LIVE_AGREED = sts.reduce(function (s, r) { return s + r.agreed; }, 0); } catch (e) { LIVE_AGREED = null; }
+    try { var ms = await API.memberStats(); LIVE_MEMBERS = ms ? ms.reduce(function (s, r) { return s + r.members; }, 0) : null; } catch (e) { LIVE_MEMBERS = null; }
   }
   if (R[page]) {
     try { await R[page](); if (page === "home") await homeNews(); }
