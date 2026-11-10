@@ -335,7 +335,8 @@ footer.foot .sitemap a:hover{color:var(--pine)}
 .banner{background:var(--signal-soft)}
 .banner a{color:var(--signal)}
 @media (max-width:760px){footer.foot .sitemap{grid-template-columns:1fr 1fr}}
-.grp:nth-last-child(-n+2) .panel{left:auto;right:0}
+/* 하위 메뉴는 모두 버튼 가운데 아래로 */
+.grp .panel{left:50%;right:auto;transform:translateX(-50%)}
 .drawer .btn{justify-content:center}
 
 /* agreement board */
