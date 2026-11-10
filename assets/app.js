@@ -255,6 +255,7 @@
   }
   function tile(x) {
     var inner = "<b>" + esc(x.title) + "</b><span>" + esc(x.desc) + (x.url ? "" : " · 개설 후 연결") + "</span>";
+    if (x.url && x.url.charAt(0) === "#") return '<a class="tile" href="' + esc(x.url) + '">' + inner + "</a>";   // 같은 페이지 안
     return x.url ? '<a class="tile" href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + inner + "</a>" : '<div class="tile pending">' + inner + "</div>";
   }
   function newsRows(list) {
@@ -874,19 +875,44 @@
     });
   };
 
-  R.links = function () {
+  /* 입주민 오픈채팅: 위임 세대에게만 입장 주소 · 비밀번호 */
+  async function chatBox() {
+    var box = el("chat"); if (!box) return;
+    var h = head("입주민 오픈채팅", '<span class="note">위임동의 세대 전용</span>'), body;
+    if (!LIVE) body = '<p class="muted">회원 기능이 연결되면 위임동의를 마친 세대에게 입장 정보를 보여드립니다.</p>';
+    else if (!API.isDelegate && !API.isAdmin) {
+      body = '<div class="panel chat-lock"><b>위임동의를 마친 세대에게만 입장 정보를 알려드립니다</b><p class="muted small" style="margin:6px 0 10px">비밀번호가 걸린 채팅방입니다. ' +
+        (!API.loggedIn ? "로그인한 뒤 위임동의서를 내면 이 칸에 입장 주소와 비밀번호가 나옵니다." : API.consentOpen ? "위임동의서를 내면 바로 이 칸에 입장 주소와 비밀번호가 나옵니다." : esc(consentOpenLabel()) + " 공급계약 후 위임동의서를 내면 이 칸에 나옵니다.") + "</p>" +
+        '<p class="cta-row" style="margin:0">' + (!API.loggedIn ? '<a class="btn solid" href="login.html">로그인</a>' : API.consentOpen ? '<a class="btn solid" href="consent.html">위임동의서 제출</a>' : "") + "</p></div>";
+    } else {
+      var c = await API.chatInfo().catch(function () { return null; });
+      if (!c || !c.url) body = '<div class="panel chat-lock"><b>채팅방을 준비하고 있습니다</b><p class="muted small" style="margin:6px 0 0">열리면 이 칸에 입장 주소와 비밀번호가 나옵니다.</p></div>';
+      else body = '<div class="panel chat-open"><p class="cta-row" style="margin:0 0 12px"><a class="btn solid" href="' + esc(safeUrl(c.url)) + '" target="_blank" rel="noopener">채팅방 입장하기</a></p>' +
+        (c.password ? '<div class="chat-pw"><span class="muted small">입장 비밀번호</span><b class="num" id="chatPw">' + esc(c.password) + '</b><button type="button" class="btn" id="chatCopy">복사</button></div>' : "") +
+        '<p class="muted small" style="margin:10px 0 0">비밀번호는 위임 세대끼리만 나눠 주세요. 바뀌면 이 칸에 새 비밀번호가 나옵니다.</p></div>';
+    }
+    box.innerHTML = h + body;
+    var cp = el("chatCopy");
+    if (cp) cp.addEventListener("click", function () {
+      var t = el("chatPw").textContent, done = function () { cp.textContent = "복사했습니다"; };
+      try { navigator.clipboard.writeText(t).then(done, function () { window.getSelection().selectAllChildren(el("chatPw")); }); } catch (e) { window.getSelection().selectAllChildren(el("chatPw")); }
+    });
+  }
+  R.links = async function () {
     var CT = arr(S.contacts);
-    C.innerHTML = "<div>" + head("바로가기") + '<div class="tiles">' + arr(S.links).map(tile).join("") + "</div></div>" +
+    C.innerHTML = "<div>" + head("바로가기") + '<div class="tiles">' + arr(S.links).map(tile).join("") + "</div></div>" + '<div id="chat"></div>' +
       (CT.length ? "<div>" + head("문의처") + '<div class="tablebox"><table class="spec kv">' + CT.map(function (c) { return "<tr><th>" + esc(c[0]) + '</th><td class="num sel-all">' + esc(c[1]) + "</td></tr>"; }).join("") + "</table></div></div>" : "") +
       '<div class="two"><div>' + (arr(S.links).some(function (l) { return /카페/.test(l.title) && l.url; })
         ? head("공식 카페 가입") + '<ol class="steps">' +
           "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
           '<li><div><b>입주예정자 확인</b><span>입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 카페에 계약서를 따로 올리지 않아도 됩니다.</span></div></li>' +
-          "<li><div><b>오픈채팅 참여</b><span>공지에 있는 참여 코드로 입장합니다.</span></div></li></ol>"
+          '<li><div><b>오픈채팅 참여</b><span>위임동의를 마친 세대는 <a href="#chat">아래 오픈채팅 칸</a>에서 입장 주소와 비밀번호를 볼 수 있습니다.</span></div></li></ol>'
         : head("입주예정자 확인") + '<p class="muted">입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 동·호수를 고르고 계약서 사진을 올리면 운영진이 확인합니다. 공식 카페와 오픈채팅은 개설되면 이곳에 연결합니다.</p>') + "</div>" +
       "<div>" + head("휴대폰 홈 화면에 추가") +
       '<p class="muted"><b class="fg">아이폰(사파리)</b> 하단 공유 버튼을 누르고 "홈 화면에 추가"를 선택합니다.</p>' +
       '<p class="muted"><b class="fg">안드로이드(크롬)</b> 오른쪽 위 메뉴에서 "홈 화면에 추가"를 선택합니다.</p></div></div>';
+    await chatBox();
+    if (location.hash === "#chat") el("chat").scrollIntoView();
   };
 
   R.calculator = function () {
@@ -1276,10 +1302,16 @@
           var M = await API.admin.profiles(), O = await API.admin.orphans(), q = "", AGU = {}, AGN = {};
           arr(await API.admin.agreements().catch(function () { return []; })).forEach(function (a) { if (a.user_id) AGU[a.user_id] = a; AGN[a.unit_id] = a; });
           var agOf = function (p) { return AGU[p.id] || AGN[p.unit_id] || null; };
-          B.innerHTML = '<div class="toolbar"><div class="chips" id="mSt"><button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + '</button><button type="button" class="chip" data-s="approved" aria-pressed="false">승인</button><button type="button" class="chip" data-s="pending" aria-pressed="false">대기</button><button type="button" class="chip" data-s="rejected" aria-pressed="false">반려</button><button type="button" class="chip" data-s="agreed" aria-pressed="false">위임 완료</button><button type="button" class="chip" data-s="noagree" aria-pressed="false">승인 · 위임 전</button></div>' +
+          var CI = await API.chatInfo().catch(function () { return null; }) || {};
+          B.innerHTML = '<form class="panel chat-admin" id="fChat" novalidate><h3 style="margin-bottom:10px">입주민 오픈채팅 입장 정보 <span class="muted small">위임 세대에게만 보임</span></h3>' +
+            '<div class="two" style="gap:12px"><div class="field"><label for="chUrl">채팅방 주소</label><input id="chUrl" placeholder="https://open.kakao.com/o/..." value="' + esc(CI.url || "") + '"></div>' +
+            '<div class="field"><label for="chPw">입장 비밀번호</label><input id="chPw" maxlength="40" value="' + esc(CI.password || "") + '"></div></div>' +
+            '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit">저장</button>' + (CI.updated_at ? '<span class="muted small">마지막 변경 ' + fmtTime(CI.updated_at) + "</span>" : "") + '</p></form>' +
+            '<div class="toolbar"><div class="chips" id="mSt"><button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + '</button><button type="button" class="chip" data-s="approved" aria-pressed="false">승인</button><button type="button" class="chip" data-s="pending" aria-pressed="false">대기</button><button type="button" class="chip" data-s="rejected" aria-pressed="false">반려</button><button type="button" class="chip" data-s="agreed" aria-pressed="false">위임 완료</button><button type="button" class="chip" data-s="noagree" aria-pressed="false">승인 · 위임 전</button></div>' +
             '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>위임동의</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
             head("가입 · 승인 기록", '<span class="note">최근 100건 · 지우지 않고 보관</span>') + '<div class="tablebox"><table class="spec"><tbody id="mLog"><tr><td class="muted">불러오는 중…</td></tr></tbody></table></div>' +
             (O.length ? head("가입 중단 계정", '<span class="note">계정만 있고 계약서 사진이 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : "");
+          el("fChat").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.setChatInfo(el("chUrl").value, el("chPw").value); say("admMsg", "오픈채팅 입장 정보를 저장했습니다. 위임 세대의 카페 · 바로가기 화면에 바로 나옵니다."); } catch (er) { err(er); } });
           var sf = "", WHO = {}; M.forEach(function (p) { WHO[p.id] = p.unit_id; });
           var ACT = { signup: "가입 신청", approve: "승인", reject: "반려", reapply: "재신청", revoke: "승인 취소", admin_on: "운영진 지정", admin_off: "운영진 해제", "delete": "계정 삭제" };
           API.admin.memberLog().then(function (L) {

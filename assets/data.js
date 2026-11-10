@@ -149,8 +149,8 @@ window.SITE = {
   links: [
     { title: "LH 청약플러스", desc: "분양 공고 · 당첨 조회 · 계약 안내", url: "https://apply.lh.or.kr" },
     { title: "청약홈", desc: "입주자모집공고문 원문", url: "https://www.applyhome.co.kr" },
-    { title: "공식 네이버 카페", desc: "입주예정자 소통 (개설 예정)", url: "" },
-    { title: "입주민 오픈채팅", desc: "입주예정자 대상 (개설 예정)", url: "" },
+    { title: "공식 네이버 카페", desc: "입주예정자 소통 · 정보 나눔", url: "https://cafe.naver.com/crs4" },
+    { title: "입주민 오픈채팅", desc: "위임동의 세대 전용 · 입장 정보는 아래에서", url: "#chat" },
     { title: "위택스", desc: "취득세 신고 · 납부", url: "https://www.wetax.go.kr" },
     { title: "고양특례시청", desc: "창릉신도시 도시계획 · 교통 소식", url: "https://www.goyang.go.kr" }
   ],

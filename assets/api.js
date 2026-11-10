@@ -189,6 +189,8 @@
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
     memberUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; var r = await sb.rpc("member_units"); return r.error ? [] : r.data; },
+    /* 입주민 오픈채팅 입장 정보 (위임 회원 · 운영진만) */
+    chatInfo: async function () { need(); if (!API.isDelegate && !API.isAdmin) return null; var r = await sb.rpc("chat_info_get"); if (r.error) return null; return (r.data || [])[0] || null; },
     memberStats: async function () { need(); var r = await sb.rpc("member_stats"); return r.error ? null : r.data; },
     agreedUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
 
@@ -382,6 +384,12 @@
         need(); var paths = (v.photos || []).map(function (p) { return p.path; });
         must(await sb.from("visits").delete().eq("id", v.id));
         if (paths.length) await sb.storage.from("gallery").remove(paths).catch(function () {});
+      },
+      setChatInfo: async function (url, pw) {
+        need(); url = String(url || "").trim(); pw = String(pw || "").trim();
+        if (url && !/^https:\/\//.test(url)) throw new Error("채팅방 주소는 https:// 로 시작해야 합니다.");
+        if (pw.length > 40) throw new Error("비밀번호는 40자까지 넣을 수 있습니다.");
+        must(await sb.rpc("chat_info_set", { p_url: url, p_password: pw }));
       },
       deleteCampaign: async function (id) { need(); must(await sb.from("campaigns").delete().eq("id", id)); }
     },

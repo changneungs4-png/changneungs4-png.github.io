@@ -641,3 +641,8 @@ body.noscroll{overflow:hidden}
   /* 위임동의서: 제출 칸으로 이동 */
   .jump-side{display:flex;margin-bottom:12px}
 }
+/* 입주민 오픈채팅 */
+.chat-pw{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:10px 14px}
+.chat-pw b{font-size:20px;letter-spacing:.06em;user-select:all}
+.chat-lock b{display:block}
+.chat-admin{margin-bottom:20px}
