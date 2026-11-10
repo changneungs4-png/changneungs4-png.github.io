@@ -205,13 +205,18 @@ function ymd(d) { return d.getFullYear() + String(d.getMonth() + 1).padStart(2, 
 
 export async function collect(env, fetcher = fetch) {
   const items = [], errors = [];
+  // 구글 뉴스는 기간마다 돌려주는 기사가 달라서(긴 기간엔 최근 기사가 빠지기도 함) 7일 · 30일 · 120일을 모두 봄
   for (const { topic, q, loose } of NEWS_QUERIES) {
-    try {
-      const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " when:120d");
-      const r = await fetcher(u, { headers: { "user-agent": "changneung-s4-news-bot" } });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      items.push(...parseRss(await r.text(), topic, !!loose));
-    } catch (e) { errors.push("뉴스(" + q + "): " + e.message); }
+    let fails = 0, last = "";
+    for (const w of ["when:7d", "when:30d", "when:120d"]) {
+      try {
+        const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " " + w);
+        const r = await fetcher(u, { headers: { "user-agent": "changneung-s4-news-bot" } });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        items.push(...parseRss(await r.text(), topic, !!loose));
+      } catch (e) { fails++; last = e.message; }
+    }
+    if (fails === 3) errors.push("뉴스(" + q + "): " + last);
   }
   const daum = [];
   if (env.KAKAO_REST_API_KEY) {
