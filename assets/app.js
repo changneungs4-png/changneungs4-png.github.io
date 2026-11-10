@@ -413,9 +413,10 @@
   }
   /* 기사 주제: S-4 / 교통(고양은평선 · GTX 창릉역 등) / 창릉 */
   var S4_RE = /S\s*[-‐–—]?\s*4(?![0-9])/i, TRAFFIC_RE = /고양은평선|창릉역|GTX|지하철|도시철도|광역버스|교통|도로/;
+  var S4_CONTEXT = /본청약|사전청약|분양가|중도금|일반\s*청약|입주예정자|입주\s*예정자|비대위|59㎡|74㎡|84㎡/, NOT_S4 = /지분적립형|이익공유형|신혼희망|임대|토지|용지|상가/;
   function topicOf(x) {
     if (x.kind === "lh") return "LH";
-    if (x.topic === "S-4" || S4_RE.test(x.title)) return "S-4";
+    if (S4_RE.test(x.title) || (x.topic === "S-4" && S4_CONTEXT.test(x.title) && !NOT_S4.test(x.title))) return "S-4";
     if (x.topic === "교통" || TRAFFIC_RE.test(x.title)) return "교통";
     return "창릉";
   }

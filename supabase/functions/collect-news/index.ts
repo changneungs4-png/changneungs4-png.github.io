@@ -13,12 +13,18 @@ const NEWS_QUERIES = [
   { topic: "S-4", q: '고양창릉 S-4블록' },
   { topic: "S-4", q: '창릉 S-3 S-4' },
   { topic: "S-4", q: '고양창릉 S-4 사전청약' },
+  { topic: "S-4", q: '고양창릉 S4' },
+  { topic: "S-4", q: '창릉 S4 분양가' },
+  { topic: "S-4", q: '창릉 S4 비대위' },
   { topic: "창릉", q: '창릉신도시' },
   { topic: "창릉", q: '고양창릉' },
   { topic: "교통", q: '고양은평선' },
   { topic: "교통", q: '"창릉역"' }
 ];
 const S4_RE = /S\s*[-‐–—]?\s*4(?![0-9])/i;
+// 제목에 S-4가 없어도 S-4 검색에 잡힌 기사 중 우리 단지 분양 이야기로 볼 수 있는 것
+const S4_CONTEXT = /본청약|사전청약|분양가|중도금|일반\s*청약|입주예정자|입주\s*예정자|비대위|59㎡|74㎡|84㎡/;
+const NOT_S4 = /지분적립형|이익공유형|신혼희망|임대|토지|용지|상가/;
 const OTHER_BLOCK_MENTION = /(?:^|[^A-Za-z])(?:S\s*[-‐–—]?\s*(?!4(?!\d))\d+|A\s*[-‐–—]?\s*\d+)/i;   // S-2, S-41, A-3 등 다른 블록
 const TRAFFIC_RE = /고양은평선|창릉역|GTX|지하철|도시철도|광역버스|교통|도로/;
 const BLOCK_OTHER = /(S\s*-?\s*[1-35-9]|A\s*-?\s*\d)\s*블록/i;
@@ -48,7 +54,7 @@ export function parseRss(xml, topic) {
     if (!/창릉/.test(title) && !/고양은평선/.test(title)) continue;      // 창릉 · 고양은평선 관련만
     if (topic === "교통" && !isTraffic) continue;                          // 교통 검색어는 교통 기사만
     // S-4 검색어로 찾은 기사: 본문에 S-4가 있는 기사라 제목에 없어도 우리 단지 소식(다른 블록 단독 기사만 제외)
-    const isS4 = S4_RE.test(title) || (topic === "S-4" && /창릉/.test(title) && !OTHER_BLOCK_MENTION.test(title) && !isTraffic);
+    const isS4 = S4_RE.test(title) || (topic === "S-4" && /창릉/.test(title) && S4_CONTEXT.test(title) && !NOT_S4.test(title) && !OTHER_BLOCK_MENTION.test(title) && !isTraffic);
     if (topic === "S-4" && !isS4) continue;
     if (topic === "창릉" && BLOCK_OTHER.test(title) && !isS4) continue;   // 다른 블록 단독 기사 제외
     const d = pub ? new Date(pub) : null;
@@ -187,12 +193,12 @@ export async function collect(env, fetcher = fetch) {
   if (news.length) {   // 기사: 이미 있으면 그대로 둠
     const r = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?on_conflict=url", { method: "POST", headers: { ...H, prefer: "resolution=ignore-duplicates,return=representation" }, body: JSON.stringify(news) });
     if (!r.ok) errors.push("저장(기사): HTTP " + r.status + " " + (await r.text()).slice(0, 200)); else inserted += (await r.json()).length;
-    // 예전에 '창릉'으로 저장된 기사가 S-4 · 교통 검색에 잡히면 주제만 고침
-    for (const t of ["S-4", "교통"]) {
+    // 이미 저장된 기사도 이번 분류(S-4 · 교통 · 창릉)로 주제를 맞춤
+    for (const t of ["S-4", "교통", "창릉"]) {
       const urls = news.filter((x) => x.topic === t).map((x) => x.url);
       for (let i = 0; i < urls.length; i += 40) {
         const part = urls.slice(i, i + 40).map((u) => '"' + u.replace(/"/g, '\\"') + '"').join(",");
-        const u = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?kind=eq.news&topic=eq.%EC%B0%BD%EB%A6%89&url=in.(" + encodeURIComponent(part) + ")", { method: "PATCH", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ topic: t }) });
+        const u = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?kind=eq.news&topic=neq." + encodeURIComponent(t) + "&url=in.(" + encodeURIComponent(part) + ")", { method: "PATCH", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ topic: t }) });
         if (!u.ok) errors.push("주제 갱신: HTTP " + u.status);
       }
     }
