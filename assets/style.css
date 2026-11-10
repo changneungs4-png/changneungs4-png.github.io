@@ -624,7 +624,7 @@ body.noscroll{overflow:hidden}
   summary{padding-block:6px}
   .btn{min-height:40px}
   input[type=checkbox],input[type=radio]{width:20px;height:20px;flex:0 0 auto}
-  footer.foot .sitemap a{display:inline-block;padding:6px 0}
+  footer.foot .sitemap a{display:block;padding:6px 0}
   /* 하위 메뉴 가로 스크롤 힌트 */
   .subnav{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent);padding-right:24px}
   /* 게시판: 표 대신 카드형 줄 */
