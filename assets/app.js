@@ -453,7 +453,7 @@
     if (LIVE) { try { auto = await API.news("news", 400); } catch (e) { auto = []; } }
     var known = {}; curated.forEach(function (x) { known[x.url] = 1; });
     var COMMUNITY = /(^|\.)(fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr)$/i;
-    var all = curated.concat(auto.filter(function (x) { var h = ""; try { h = new URL(x.url).hostname; } catch (e) {} return !known[x.url] && !COMMUNITY.test(h); }))
+    var all = curated.concat(auto.filter(function (x) { var h = ""; try { h = new URL(x.url).hostname; } catch (e) {} return !known[x.url] && !COMMUNITY.test(h) && !/프리미엄콘텐츠|에펨코리아|디시인사이드|fmkorea|dcinside/i.test(x.source || ""); }))
       .sort(function (a, b) { return String(b.published_at || "").localeCompare(String(a.published_at || "")); });
     var T = ["S-4", "교통", "창릉"], shown = 30, cur = "전체";
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nwTopic", T, "주제") + '<span class="muted small" id="nwCount"></span></div><div id="nwList"></div>' +
