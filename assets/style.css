@@ -568,3 +568,11 @@ body.noscroll{overflow:hidden}
 .lhkv dt{font-size:12px;color:var(--muted)}
 .lhkv dd{margin:2px 0 0;font-weight:600;font-size:14px;overflow-wrap:anywhere}
 .lhrep{margin-top:14px}
+/* 언론보도: 주제 · 같은 소식 묶음 */
+.tag.water{background:var(--water-soft);color:var(--water)}
+.list.news .desc{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.dups{display:inline-block;font-size:13px;color:var(--muted);margin-left:4px}
+.dups summary{cursor:pointer;list-style:none;text-decoration:underline;text-underline-offset:2px}
+.dups summary::-webkit-details-marker{display:none}
+.dups ul{margin:6px 0 0;padding-left:16px;display:grid;gap:4px}
+.dups[open]{display:block;margin:6px 0 0}

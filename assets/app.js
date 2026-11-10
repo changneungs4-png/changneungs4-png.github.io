@@ -61,7 +61,7 @@
     admin: ["ADMIN", "운영진", "가입 승인, 위임동의 명단, 투표 · 민원을 관리합니다."],
     notice: ["NOTICE", "공지사항", "협의회와 LH의 안내입니다."],
     schedule: ["SCHEDULE", "주요 일정", "청약부터 입주까지의 흐름입니다."],
-    news: ["MEDIA", "언론보도", "고양창릉 S-4블록 관련 언론 보도입니다."],
+    news: ["MEDIA", "언론보도", "S-4블록 · 창릉신도시 · 교통(고양은평선 · GTX 창릉역) 관련 기사입니다."],
     floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
     progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
     gallery: ["PHOTO", "우리 단지 사진관", "현장과 주변 모습입니다."],
@@ -272,7 +272,7 @@
   async function homeNews() {
     if (!LIVE || page !== "home") return;
     try {
-      var L = await API.news(null, 4); if (!L.length) return;
+      var L = clusterNews(await API.news(null, 30)).slice(0, 4); if (!L.length) return;
       el("homeNews").innerHTML = '<section class="band"><div class="wrap">' + head("새 소식", more("news.html", "전체 기사") ) + autoRows(L) + "</div></section>";
     } catch (e) {}
   }
@@ -411,25 +411,60 @@
       return '<li><a href="' + esc(safeUrl(o.url)) + '" target="_blank" rel="noopener">' + esc(o.title) + '</a> <span class="muted small num">' + esc(o.published_at ? fmtDate(o.published_at) : "") + "</span></li>";
     }).join("") + "</ul></details>" : "");
   }
+  /* 기사 주제: S-4 / 교통(고양은평선 · GTX 창릉역 등) / 창릉 */
+  var S4_RE = /S\s*[-‐–—]?\s*4(?![0-9])/i, TRAFFIC_RE = /고양은평선|창릉역|GTX|지하철|도시철도|광역버스|교통|도로/;
+  function topicOf(x) {
+    if (x.kind === "lh") return "LH";
+    if (x.topic === "S-4" || S4_RE.test(x.title)) return "S-4";
+    if (x.topic === "교통" || TRAFFIC_RE.test(x.title)) return "교통";
+    return "창릉";
+  }
   function autoRows(list) {
     return '<ul class="list news">' + list.map(function (x) {
-      var d = x.published_at ? fmtDate(x.published_at) : "";
+      var d = x.published_at ? fmtDate(x.published_at) : (x.date || ""), tp = topicOf(x), dup = arr(x.dups);
       return '<li><span class="src">' + esc(x.source) + '<br><span class="num">' + esc(d) + '</span></span><span class="t"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a>" +
-        '<p><span class="tag' + (x.topic === "S-4" || (x.extra && x.extra.s4) ? " hot" : "") + '">' + esc(x.kind === "lh" ? (x.extra && x.extra.status ? x.extra.status : "LH 공고") : x.topic === "S-4" ? "S-4" : "창릉") + "</span>" + (x.kind === "lh" && x.extra && x.extra.closes ? ' <span class="muted small">마감 ' + esc(x.extra.closes) + "</span>" : "") + "</p>" + (x.kind === "lh" ? '<p class="small"><a href="notice.html">공지사항에서 공고 요약 보기 →</a></p>' : "") + "</span></li>";
+        (x.desc ? '<span class="desc">' + esc(x.desc) + "</span>" : "") +
+        '<p><span class="tag' + (tp === "S-4" || (x.extra && x.extra.s4) ? " hot" : tp === "교통" ? " water" : "") + '">' + esc(tp === "LH" ? (x.extra && x.extra.status ? x.extra.status : "LH 공고") : tp) + "</span>" + (x.kind === "lh" && x.extra && x.extra.closes ? ' <span class="muted small">마감 ' + esc(x.extra.closes) + "</span>" : "") +
+        (dup.length ? ' <details class="dups"><summary>같은 소식 ' + dup.length + "건</summary><ul>" + dup.map(function (y) { return '<li><a href="' + esc(safeUrl(y.url)) + '" target="_blank" rel="noopener">' + esc(y.title) + '</a> <span class="muted small">' + esc(y.source) + "</span></li>"; }).join("") + "</ul></details>" : "") +
+        "</p></span></li>";
     }).join("") + "</ul>";
   }
-  R.news = async function () {
-    var L = arr(S.news), auto = [];
-    if (LIVE) { try { auto = await API.news("news"); } catch (e) { auto = []; } }
-    var known = {}; L.forEach(function (x) { known[x.url] = 1; });
-    auto = auto.filter(function (x) { return !known[x.url]; });
-    C.innerHTML = (LIVE ? "<div>" + head("관련 기사") +
-        '<div class="toolbar">' + chips("nwTopic", ["S-4", "창릉"], "주제") + "</div>" +
-        (auto.length ? '<div id="nwList">' + autoRows(auto) + "</div>" : empty("아직 관련 기사가 없습니다", "")) + "</div>" : "") +
-      "<div>" + head(LIVE ? "주요 보도 (협의회 정리)" : "언론 보도", '<span class="note">' + L.length + "건 · 최신순</span>") + newsRows(L) + "</div>";
-    if (LIVE && auto.length) bindChips("nwTopic", function (t) {
-      el("nwList").innerHTML = autoRows(t === "전체" ? auto : auto.filter(function (x) { return x.topic === t; }));
+  /* 비슷한 제목(같은 사건을 여러 언론이 낸 기사)을 하나로 묶음 */
+  function grams(t) { t = String(t).replace(/[^0-9A-Za-z가-힣]/g, ""); var g = {}; for (var i = 0; i < t.length - 1; i++) g[t.substr(i, 2)] = 1; return g; }
+  function sim(a, b) { var n = 0, ka = Object.keys(a), kb = Object.keys(b).length; ka.forEach(function (k) { if (b[k]) n++; }); return n / Math.max(1, ka.length + kb - n); }
+  function clusterNews(list) {
+    var out = [];
+    list.forEach(function (x) {
+      var g = grams(x.title), t = x.published_at ? +new Date(x.published_at) : 0, hit = null;
+      for (var i = out.length - 1; i >= 0 && i >= out.length - 40; i--) {
+        var c = out[i]; if (Math.abs(c._t - t) > 3 * 864e5) continue;
+        if (sim(c._g, g) >= 0.3) { hit = c; break; }
+      }
+      if (hit) hit.dups.push(x); else out.push(Object.assign({}, x, { _g: g, _t: t, dups: [] }));
     });
+    return out;
+  }
+  R.news = async function () {
+    var curated = arr(S.news).map(function (x) {
+      var m = String(x.date || "").match(/^(\d{4})\.(\d{2})(?:\.(\d{2}))?/);
+      return { kind: "news", topic: "S-4", title: x.title, url: x.url, source: x.src, desc: x.desc, date: x.date, published_at: m ? m[1] + "-" + m[2] + "-" + (m[3] || "01") + "T12:00:00+09:00" : null };
+    }), auto = [];
+    if (LIVE) { try { auto = await API.news("news", 400); } catch (e) { auto = []; } }
+    var known = {}; curated.forEach(function (x) { known[x.url] = 1; });
+    var all = curated.concat(auto.filter(function (x) { return !known[x.url]; }))
+      .sort(function (a, b) { return String(b.published_at || "").localeCompare(String(a.published_at || "")); });
+    var T = ["S-4", "교통", "창릉"], shown = 30, cur = "전체";
+    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nwTopic", T, "주제") + '<span class="muted small" id="nwCount"></span></div><div id="nwList"></div>' +
+      '<p class="cta-row" style="justify-content:center"><button type="button" class="btn" id="nwMore" hidden>더 보기</button></p></div>';
+    function draw() {
+      var L = clusterNews(cur === "전체" ? all : all.filter(function (x) { return topicOf(x) === cur; }));
+      el("nwList").innerHTML = L.length ? autoRows(L.slice(0, shown)) : empty("기사가 없습니다", "");
+      el("nwCount").textContent = n(L.length) + "건";
+      el("nwMore").hidden = L.length <= shown;
+    }
+    bindChips("nwTopic", function (t) { cur = t; shown = 30; draw(); });
+    el("nwMore").addEventListener("click", function () { shown += 30; draw(); });
+    draw();
   };
 
   R.floorplan = function () {

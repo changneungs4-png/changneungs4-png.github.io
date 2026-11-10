@@ -10,9 +10,13 @@
 const NEWS_QUERIES = [
   { topic: "S-4", q: '고양창릉 "S-4"' },
   { topic: "S-4", q: '창릉 S4블록' },
-  { topic: "창릉", q: '창릉신도시' }
+  { topic: "창릉", q: '창릉신도시' },
+  { topic: "창릉", q: '고양창릉' },
+  { topic: "교통", q: '고양은평선' },
+  { topic: "교통", q: '"창릉역"' }
 ];
 const S4_RE = /S\s*[-‐–—]?\s*4(?![0-9])/i;
+const TRAFFIC_RE = /고양은평선|창릉역|GTX|지하철|도시철도|광역버스|교통|도로/;
 const BLOCK_OTHER = /(S\s*-?\s*[1-35-9]|A\s*-?\s*\d)\s*블록/i;
 
 export function decode(s) {
@@ -36,12 +40,14 @@ export function parseRss(xml, topic) {
     const pub = tag(it, "pubDate");
     if (source && title.endsWith(" - " + source)) title = title.slice(0, -(source.length + 3)).trim();
     if (!title || !/^https?:\/\//.test(link)) continue;
-    if (!/창릉/.test(title)) continue;                                   // 창릉 관련만
+    const isTraffic = /고양은평선|창릉역/.test(title) || (/창릉/.test(title) && TRAFFIC_RE.test(title));
+    if (!/창릉/.test(title) && !/고양은평선/.test(title)) continue;      // 창릉 · 고양은평선 관련만
+    if (topic === "교통" && !isTraffic) continue;                          // 교통 검색어는 교통 기사만
     const isS4 = S4_RE.test(title);
     if (topic === "S-4" && !isS4) continue;                               // S-4 검색어는 제목에 S-4가 있어야
     if (topic === "창릉" && BLOCK_OTHER.test(title) && !isS4) continue;   // 다른 블록 단독 기사 제외
     const d = pub ? new Date(pub) : null;
-    out.push({ kind: "news", topic: isS4 ? "S-4" : "창릉", title: title.slice(0, 300), url: link, source: source.slice(0, 60), published_at: d && !isNaN(+d) ? d.toISOString() : null, extra: {} });
+    out.push({ kind: "news", topic: isS4 ? "S-4" : isTraffic ? "교통" : "창릉", title: title.slice(0, 300), url: link, source: source.slice(0, 60), published_at: d && !isNaN(+d) ? d.toISOString() : null, extra: {} });
   }
   return out;
 }
