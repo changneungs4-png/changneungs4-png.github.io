@@ -16,6 +16,10 @@ const NEWS_QUERIES = [
   { topic: "S-4", q: '고양창릉 S4' },
   { topic: "S-4", q: '창릉 S4 분양가' },
   { topic: "S-4", q: '창릉 S4 비대위' },
+  // 본문에 "S4블록"이 나오는 분양가 기사(제목엔 창릉이 없을 수 있음)
+  { topic: "S-4", q: '"S4블록"', loose: true },
+  { topic: "S-4", q: '"S4블록" 분양가', loose: true },
+  { topic: "S-4", q: '"S-4블록" 고양', loose: true },
   { topic: "창릉", q: '창릉신도시' },
   { topic: "창릉", q: '고양창릉' },
   { topic: "교통", q: '고양은평선' },
@@ -60,7 +64,7 @@ const NEWS_HOSTS = {
   "kbs.co.kr": "KBS", "imbc.com": "MBC", "sbs.co.kr": "SBS", "jtbc.co.kr": "JTBC", "ytn.co.kr": "YTN", "mbn.co.kr": "MBN", "sbsbiz.co.kr": "SBS Biz", "korea.kr": "대한민국 정책브리핑",
   "v.daum.net": "다음뉴스", "n.news.naver.com": "네이버뉴스", "news.naver.com": "네이버뉴스",
 };
-const NOT_NEWS_HOST = /(^|\.)(blog\.|cafe\.|tistory\.com|brunch\.co\.kr|youtube\.com|namu\.wiki|wikipedia\.org|instagram\.com|facebook\.com|kin\.naver\.com|post\.naver\.com|velog\.io|medium\.com|fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr|land\.naver\.com|threads\.net|x\.com|twitter\.com)/i;
+const NOT_NEWS_HOST = /(^|\.)(blog\.|cafe\.|tistory\.com|brunch\.co\.kr|youtube\.com|namu\.wiki|wikipedia\.org|instagram\.com|facebook\.com|kin\.naver\.com|post\.naver\.com|velog\.io|medium\.com|fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr|land\.naver\.com|threads\.net|x\.com|twitter\.com|applepie\.one|apt\.|calgary)/i;
 const NEWS_PATH = /articleView|\/news\/|\/article\/|\/view\/|newsView|news_view|\/NewsView|\/arti\/|\/read\.|idxno=|\/\d{8,}/i;
 function newsSource(u) {
   let h; try { h = new URL(u).hostname.replace(/^(www|m|mobile)\./, ""); } catch { return null; }
@@ -96,7 +100,8 @@ export function parseKakao(json, topic, now = Date.now(), stat = null) {
 }
 
 // 구글 뉴스 RSS → 기사 목록
-export function parseRss(xml, topic) {
+const HOUSING_RE = /분양가|분상제|분양가상한제|국평|공공분양|공공택지|사전청약|본청약|청약|공사비|신도시|입주/;
+export function parseRss(xml, topic, loose = false) {
   const out = [];
   const items = String(xml || "").match(/<item>[\s\S]*?<\/item>/gi) || [];
   for (const it of items) {
@@ -105,6 +110,13 @@ export function parseRss(xml, topic) {
     if (source && title.endsWith(" - " + source)) title = title.slice(0, -(source.length + 3)).trim();
     if (!title || !/^https?:\/\//.test(link)) continue;
     const isTraffic = /고양은평선|창릉역/.test(title) || (/창릉/.test(title) && TRAFFIC_RE.test(title));
+    // loose: 따옴표로 "S4블록"을 찾은 결과 → 제목에 창릉이 없어도 분양 · 주택 기사면 S-4
+    if (loose) {
+      if (isTraffic || !(S4_RE.test(title) || /창릉/.test(title) || HOUSING_RE.test(title)) || OTHER_BLOCK_MENTION.test(title)) continue;
+      const d0 = pub ? new Date(pub) : null;
+      out.push({ kind: "news", topic: "S-4", title: title.slice(0, 300), url: link, source: source.slice(0, 60), published_at: d0 && !isNaN(+d0) ? d0.toISOString() : null, extra: {} });
+      continue;
+    }
     if (!/창릉/.test(title) && !/고양은평선/.test(title)) continue;      // 창릉 · 고양은평선 관련만
     if (topic === "교통" && !isTraffic) continue;                          // 교통 검색어는 교통 기사만
     // S-4 검색어로 찾은 기사: 본문에 S-4가 있는 기사라 제목에 없어도 우리 단지 소식(다른 블록 단독 기사만 제외)
@@ -193,12 +205,12 @@ function ymd(d) { return d.getFullYear() + String(d.getMonth() + 1).padStart(2, 
 
 export async function collect(env, fetcher = fetch) {
   const items = [], errors = [];
-  for (const { topic, q } of NEWS_QUERIES) {
+  for (const { topic, q, loose } of NEWS_QUERIES) {
     try {
       const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " when:120d");
       const r = await fetcher(u, { headers: { "user-agent": "changneung-s4-news-bot" } });
       if (!r.ok) throw new Error("HTTP " + r.status);
-      items.push(...parseRss(await r.text(), topic));
+      items.push(...parseRss(await r.text(), topic, !!loose));
     } catch (e) { errors.push("뉴스(" + q + "): " + e.message); }
   }
   const daum = [];

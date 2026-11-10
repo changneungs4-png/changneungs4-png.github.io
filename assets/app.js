@@ -452,8 +452,8 @@
     }), auto = [];
     if (LIVE) { try { auto = await API.news("news", 400); } catch (e) { auto = []; } }
     var known = {}; curated.forEach(function (x) { known[x.url] = 1; });
-    var COMMUNITY = /(^|\.)(fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr)$/i;
-    var all = curated.concat(auto.filter(function (x) { var h = ""; try { h = new URL(x.url).hostname; } catch (e) {} return !known[x.url] && !COMMUNITY.test(h) && !/프리미엄콘텐츠|에펨코리아|디시인사이드|fmkorea|dcinside/i.test(x.source || ""); }))
+    var COMMUNITY = /(^|\.)(fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr|applepie\.one)$/i;
+    var all = curated.concat(auto.filter(function (x) { var h = ""; try { h = new URL(x.url).hostname; } catch (e) {} return !known[x.url] && !COMMUNITY.test(h) && !/프리미엄콘텐츠|에펨코리아|디시인사이드|fmkorea|dcinside|Calgary/i.test(x.source || ""); }))
       .sort(function (a, b) { return String(b.published_at || "").localeCompare(String(a.published_at || "")); });
     var T = ["S-4", "교통", "창릉"], shown = 30, cur = "전체";
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nwTopic", T, "주제") + '<span class="muted small" id="nwCount"></span></div><div id="nwList"></div>' +
@@ -461,7 +461,8 @@
     function draw() {
       var L = clusterNews(cur === "전체" ? all : all.filter(function (x) { return topicOf(x) === cur; }));
       el("nwList").innerHTML = L.length ? autoRows(L.slice(0, shown)) : empty("기사가 없습니다", "");
-      el("nwCount").textContent = n(L.length) + "건";
+      var tot = L.reduce(function (k, c) { return k + 1 + c.dups.length; }, 0);
+      el("nwCount").textContent = n(L.length) + "건" + (tot > L.length ? " · 기사 " + n(tot) + "건" : "");
       el("nwMore").hidden = L.length <= shown;
     }
     bindChips("nwTopic", function (t) { cur = t; shown = 30; draw(); });
