@@ -1,0 +1,22 @@
+{
+  "source": "https://apply.lh.or.kr/lhapply/land/cwsttInfo.do",
+  "site": "고양창릉 S-4",
+  "info": {
+    "households": 1024,
+    "start": "2026-03-31",
+    "end": "2029-10-14",
+    "rate": 2.48,
+    "builder": "요진건설(주)",
+    "type": "분양주택"
+  },
+  "reports": [
+    {
+      "date": "2026.11.04",
+      "rate": 2.48,
+      "text": "토공사(터파기 및 흙막이 공사) 진행 중",
+      "photo": null,
+      "photoTitle": "고양창릉 S-4BL 전경사진 입니다."
+    }
+  ],
+  "updatedAt": "2026-11-10T04:40:00.000Z"
+}

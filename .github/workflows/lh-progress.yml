@@ -1,0 +1,43 @@
+# LH 청약플러스 '공사진행현황'(공정률 · 공정 내용 · 현장 사진)을 매일 읽어 사이트에 반영합니다.
+# 바뀐 내용이 있으면 assets/lh-progress.json 과 assets/lh/ 사진을 커밋 → 사이트가 다시 배포됩니다.
+# 바로 반영하려면: GitHub → Actions → "LH 공사진행현황 가져오기" → Run workflow
+name: LH 공사진행현황 가져오기
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/scripts/read-progress.mjs", ".github/workflows/lh-progress.yml"]
+  schedule:
+    - cron: "47 22 * * *"   # 한국 07:47
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: lh-progress
+  cancel-in-progress: false
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: 공사진행현황 읽기
+        run: node supabase/scripts/read-progress.mjs
+      - name: 바뀌었으면 커밋
+        run: |
+          git add assets/lh-progress.json assets/lh
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "LH 공사진행현황 갱신 ($(node -p "const d=require('./assets/lh-progress.json'); d.info.rate+'%, '+(d.reports[0]||{}).date"))"
+          git pull --rebase -q origin main
+          git push -q origin HEAD:main
+          echo "changed=1" >> "$GITHUB_OUTPUT"
+        id: commit
+      - name: 사이트 다시 배포
+        if: steps.commit.outputs.changed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" --silent || echo "배포 요청 실패(다음 커밋 때 반영됩니다)"

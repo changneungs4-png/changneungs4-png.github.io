@@ -88,7 +88,7 @@
     }).join("") + "</nav>" +
     (!LIVE ? '<a class="acct" id="acctLink" href="login.html">로그인</a>' : "") +
     (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isDelegate ? "" : API.profile.status === "pending" ? " · 승인 대기" : API.profile.status === "rejected" ? " · 반려" : " · 위임 전") : "가입 마무리") : "로그인") + "</a>" : "") +
-    '<a class="btn solid head-cta" href="' + (LIVE && !API.loggedIn ? "login.html#signup" : "agreement.html") + '">' + (LIVE && !API.loggedIn ? "회원가입 · 위임동의" : "위임동의 현황") + "</a>" +
+    '<a class="btn solid head-cta" href="' + (LIVE && !API.loggedIn ? "login.html#signup" : "agreement.html") + '">' + (LIVE && !API.loggedIn ? "회원가입" : "위임동의 현황") + "</a>" +
     '<button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="drawer">메뉴</button></div>' +
     '<nav class="wrap drawer" id="drawer" aria-label="전체 메뉴" hidden>' + (!LIVE ? '<a class="btn solid" href="login.html" style="justify-content:center">로그인 · 회원가입</a>' : "") + (LIVE ? '<a class="btn' + (API.loggedIn ? "" : " solid") + '" href="' + (API.loggedIn ? "account.html" : "login.html") + '" style="justify-content:center">' + (API.loggedIn ? "내 정보" : "로그인 · 회원가입") + "</a>" : "") + GROUPS.map(function (g) {
       return "<div><h4>" + g.name + '</h4><div class="dl">' + g.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "</a>"; }).join("") + "</div></div>";
@@ -241,7 +241,7 @@
       '<div class="eyebrow">고양창릉 공공주택지구 · LH 공공분양</div>' +
       "<h1>창릉 S-4<small>입주예정자협의회</small></h1>" +
       '<p class="lead">창릉천 물길과 서오릉 숲 사이, ' + n(T) + '세대가 함께 만들어갈 새 동네입니다. 공지와 일정, 공사 진행과 위임동의 현황을 이곳에서 확인하세요.</p>' +
-      '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="account.html">내 정보 · 위임동의</a>' : '<a class="btn solid" href="login.html#signup">회원가입 · 위임동의</a>') : '<a class="btn solid" href="links.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
+      '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="account.html">내 정보 · 위임동의</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') : '<a class="btn solid" href="links.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
       '<aside class="status" aria-label="단지 현황"><div class="top"><div><b class="num">' + dd + "</b></div><span>" + ddl + "<br>16개 동 · " + n(T) + "세대</span></div>" +
       agreeMeter(true) + progressMeter() +
       '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
@@ -464,13 +464,22 @@
         '<div class="tablebox"><table class="spec"><thead><tr><th>월</th><th class="r">누적 공정률</th><th class="r">증감</th></tr></thead><tbody>' +
         M.slice().reverse().map(function (m, i, a) { var prev = a[i + 1]; return '<tr><td class="num">' + esc(m.ym) + '</td><td class="r num">' + m.rate + '%</td><td class="r num">' + (prev ? "+" + (m.rate - prev.rate).toFixed(1) + "%p" : "-") + "</td></tr>"; }).join("") + "</tbody></table></div>";
     } else chart = empty("아직 공정 보고가 없습니다", "LH 공정률이 공개되면 월별로 기록합니다. 시공사는 요진건설산업(주)입니다.");
+    var LR = LHP ? arr(LHP.reports) : [], lhPh = LR.filter(function (r) { return r.photo; }).map(function (r) { return { title: r.date + " " + (r.text || "공정 사진"), date: r.rate + "%", src: r.photo }; });
+    var lhBox = LHP && LHP.info ? '<div class="two"><div>' + head("LH 공사진행현황", '<a class="more" href="https://apply.lh.or.kr/lhapply/land/cwsttInfo.do" target="_blank" rel="noopener">LH청약플러스 →</a>') + progressMeter() +
+        '<dl class="kv lhkv"><div><dt>착공</dt><dd class="num">' + esc(dotDate(LHP.info.start)) + '</dd></div><div><dt>준공 예정</dt><dd class="num">' + esc(dotDate(LHP.info.end)) + '</dd></div><div><dt>시공사</dt><dd>' + esc(LHP.info.builder || "") + "</dd></div></dl>" +
+        (LR.length ? '<ol class="tl lhrep">' + LR.map(function (r, i) {
+          var k = lhPh.findIndex(function (x) { return x.src === r.photo; });
+          return '<li class="' + (i === 0 ? "now" : "done") + '"><span class="when">' + esc(r.date) + '</span><span class="dot"></span><span class="what"><b>공정률 ' + esc(r.rate) + "%</b><span>" + esc(r.text) + "</span>" +
+            (r.photo ? '<span class="vthumbs"><button type="button" class="vthumb lhthumb" data-k="' + k + '" aria-label="' + esc(r.date) + ' 공정 사진 크게 보기"><img src="' + esc(r.photo) + '" alt="" loading="lazy"></button></span>' : "") + "</span></li>";
+        }).join("") + "</ol>" : "") + '<p class="muted small" style="margin:8px 0 0">LH청약플러스 공사진행현황을 매일 아침 자동으로 가져옵니다.</p></div>' : null;
     C.innerHTML = "<div>" + head("월별 공정률", '<span class="note">LH 공정 보고 기준 누적</span>') + chart + "</div>" +
-      ((p.overall == null && !arr(p.phases).length) ? "<div>" : '<div class="two"><div>' + head("공정 단계") + progressMeter() + phaseList() + "</div>") +
+      (lhBox ? lhBox : (p.overall == null && !arr(p.phases).length) ? "<div>" : '<div class="two"><div>' + head("공정 단계") + progressMeter() + phaseList() + "</div>") +
       "<div>" + head("현장 방문 기록") + (logs.length ? '<ol class="tl">' + logs.map(function (l, i) {
         return '<li class="' + (i === 0 ? "now" : "done") + '"><span class="when">' + esc(l.date) + '</span><span class="dot"></span><span class="what"><b>' + esc(l.title) + '</b><span class="pre">' + esc(l.text) + "</span>" +
           (arr(l.photos).length ? '<span class="vthumbs">' + l.photos.map(function (ph, k) { return '<button type="button" class="vthumb" data-l="' + i + '" data-k="' + k + '" aria-label="사진 ' + (k + 1) + ' 크게 보기"><img src="' + esc(ph.src) + '" alt="" loading="lazy"></button>'; }).join("") + "</span>" : "") + "</span></li>";
       }).join("") + "</ol>" : empty("아직 현장 방문 기록이 없습니다", "협의회 현장 방문 후 기록을 올립니다.")) + "</div></div>";
-    C.querySelectorAll(".vthumb").forEach(function (b) { b.addEventListener("click", function () { lightbox(logs[Number(b.dataset.l)].photos, Number(b.dataset.k)); }); });
+    C.querySelectorAll(".vthumb:not(.lhthumb)").forEach(function (b) { b.addEventListener("click", function () { lightbox(logs[Number(b.dataset.l)].photos, Number(b.dataset.k)); }); });
+    C.querySelectorAll(".lhthumb").forEach(function (b) { b.addEventListener("click", function () { lightbox(lhPh, Math.max(0, Number(b.dataset.k))); }); });
   };
 
   /* 사진 크게 보기 (← → 키, 밀어서 넘기기, Esc 닫기) */
@@ -1351,6 +1360,22 @@
     await counts(); await show();
   };
 
+  /* LH 공사진행현황 (매일 GitHub Actions가 assets/lh-progress.json 갱신) */
+  var LHP = null;
+  if (["home", "progress"].indexOf(page) >= 0 && location.protocol !== "file:") {
+    try {
+      var lr = await fetch("assets/lh-progress.json?h=" + Math.floor(Date.now() / 600000), { cache: "no-cache" });
+      if (lr.ok) LHP = await lr.json();
+    } catch (e) { LHP = null; }
+    if (LHP && LHP.info && LHP.info.rate != null) {
+      var rp = arr(LHP.reports), last = rp[0];
+      S.progress = Object.assign({}, S.progress, { overall: LHP.info.rate, asOf: "LH 공사진행현황 " + (last ? last.date : "") + " 기준" });
+      var byYm = {};
+      rp.slice().reverse().forEach(function (r) { if (typeof r.rate === "number") byYm[r.date.slice(0, 7)] = r.rate; });
+      var ms = Object.keys(byYm).sort().map(function (k) { return { ym: k, rate: byYm[k] }; });
+      if (ms.length) S.progressMonthly = ms;
+    }
+  }
   if (LIVE && ["home", "association"].indexOf(page) >= 0) {
     try { var sts = await API.stats(); LIVE_AGREED = sts.reduce(function (s, r) { return s + r.agreed; }, 0); } catch (e) { LIVE_AGREED = null; }
   }
