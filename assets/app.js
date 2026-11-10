@@ -1326,7 +1326,7 @@
             }).join("") + "</tbody></table></div>" : empty("아직 수집된 소식이 없습니다", "\"지금 수집\"을 눌러 바로 가져올 수 있습니다."));
           el("collectNow").addEventListener("click", async function () {
             var b = this; busy(b, true, "수집 중…");
-            try { var res = await API.admin.collectNow(); await show(); say("admMsg", "찾은 소식 " + res.found + "건, 새로 올린 소식 " + res.inserted + "건" + (res.errors && res.errors.length ? " · 일부 실패: " + res.errors.join(" / ") : "")); }
+            try { var res = await API.admin.collectNow(); await show(); say("admMsg", "찾은 소식 " + res.found + "건, 새로 올린 소식 " + res.inserted + "건" + (res.daum && res.daum.length ? " · 다음 검색 " + res.daum.map(function (d) { return d.q + " " + d.raw + "→" + d.news + "→" + d.kept; }).join(", ") : "") + (res.errors && res.errors.length ? " · 일부 실패: " + res.errors.join(" / ") : "")); }
             catch (er) { busy(b, false); err(er); }
           });
           B.querySelectorAll(".togglenews").forEach(function (t) { t.addEventListener("click", async function () { try { await API.admin.setNewsHidden(Number(t.dataset.id), t.dataset.h === "1"); await show(); } catch (er) { err(er); } }); });

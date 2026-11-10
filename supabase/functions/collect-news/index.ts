@@ -74,16 +74,19 @@ function around(text, re, n = 160) {
   const st = Math.max(0, m.index - 50); return (st ? "…" : "") + text.slice(st, st + n) + (st + n < text.length ? "…" : "");
 }
 const S4_NEAR = /창릉[^.。…]{0,20}S\s*[-‐–—]?\s*4(?![0-9])|S\s*[-‐–—]?\s*4(?![0-9])\s*블록/i;
-export function parseKakao(json, topic, now = Date.now()) {
+export function parseKakao(json, topic, now = Date.now(), stat = null) {
   const out = [];
   for (const d of (json && json.documents) || []) {
+    if (stat) stat.raw++;
     const title = decode(d.title), text = title + " " + decode(d.contents), url = String(d.url || "");
     if (!title || !/^https?:\/\//.test(url)) continue;
     const source = newsSource(url); if (!source) continue;
+    if (stat) stat.news++;
     const t = d.datetime ? new Date(d.datetime) : null;
     if (t && !isNaN(+t) && now - +t > 120 * 864e5) continue;
     let tp = null, re = null;
-    if (S4_NEAR.test(text) && /창릉/.test(text)) { tp = "S-4"; re = S4_NEAR; }
+    // 요약이 검색어 앞뒤만 잘라 와서 'S4'와 '창릉'이 떨어져 있을 수 있음 → 둘 다 있으면 S-4
+    if (S4_NEAR.test(text) || (/고양\s*창릉|창릉\s*(신도시|지구|공공)/.test(text) && S4_RE.test(text))) { tp = "S-4"; re = S4_NEAR.test(text) ? S4_NEAR : S4_RE; }
     else if (topic === "교통" && /고양은평선|창릉역/.test(text) && /창릉|고양은평선/.test(text)) { tp = "교통"; re = /고양은평선|창릉역/; }
     if (!tp) continue;
     out.push({ kind: "news", topic: tp, title: title.slice(0, 300), url: url.slice(0, 1000), source: source.slice(0, 60), published_at: t && !isNaN(+t) ? t.toISOString() : null,
@@ -198,13 +201,20 @@ export async function collect(env, fetcher = fetch) {
       items.push(...parseRss(await r.text(), topic));
     } catch (e) { errors.push("뉴스(" + q + "): " + e.message); }
   }
+  const daum = [];
   if (env.KAKAO_REST_API_KEY) {
     for (const { topic, q } of KAKAO_QUERIES) {
+      const stat = { q, raw: 0, news: 0, kept: 0 };
       try {
-        const r = await fetcher("https://dapi.kakao.com/v2/search/web?sort=recency&size=50&query=" + encodeURIComponent(q), { headers: { authorization: "KakaoAK " + env.KAKAO_REST_API_KEY } });
-        if (!r.ok) throw new Error("HTTP " + r.status + " " + (await r.text()).slice(0, 120));
-        items.push(...parseKakao(await r.json(), topic));
+        for (let page = 1; page <= 3; page++) {      // 최신순 150건까지
+          const r = await fetcher("https://dapi.kakao.com/v2/search/web?sort=recency&size=50&page=" + page + "&query=" + encodeURIComponent(q), { headers: { authorization: "KakaoAK " + env.KAKAO_REST_API_KEY } });
+          if (!r.ok) throw new Error("HTTP " + r.status + " " + (await r.text()).slice(0, 120));
+          const j = await r.json(), got = parseKakao(j, topic, Date.now(), stat);
+          stat.kept += got.length; items.push(...got);
+          if (!j.meta || j.meta.is_end) break;
+        }
       } catch (e) { errors.push("다음 검색(" + q + "): " + e.message); }
+      daum.push(stat);
     }
   }
   if (env.LH_API_KEY) {
@@ -269,7 +279,7 @@ export async function collect(env, fetcher = fetch) {
     const r = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?on_conflict=url", { method: "POST", headers: { ...H, prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(lh) });
     if (!r.ok) errors.push("저장(LH): HTTP " + r.status + " " + (await r.text()).slice(0, 200)); else inserted += lh.filter((x) => !had.has(x.url)).length;
   }
-  return { found: uniq.length, inserted, detailed, errors };
+  return { found: uniq.length, inserted, detailed, errors, daum };
 }
 
 // 호출 권한: pg_cron(비밀 헤더) 또는 로그인한 운영진
