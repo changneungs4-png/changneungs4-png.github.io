@@ -416,7 +416,7 @@
   var S4_CONTEXT = /본청약|사전청약|분양가|중도금|일반\s*청약|입주예정자|입주\s*예정자|비대위|59㎡|74㎡|84㎡/, NOT_S4 = /지분적립형|이익공유형|신혼희망|임대|토지|용지|상가/;
   function topicOf(x) {
     if (x.kind === "lh") return "LH";
-    if (S4_RE.test(x.title) || (x.topic === "S-4" && S4_CONTEXT.test(x.title) && !NOT_S4.test(x.title))) return "S-4";
+    if (S4_RE.test(x.title) || (x.topic === "S-4" && ((x.extra && x.extra.via === "daum") || (S4_CONTEXT.test(x.title) && !NOT_S4.test(x.title))))) return "S-4";
     if (x.topic === "교통" || TRAFFIC_RE.test(x.title)) return "교통";
     return "창릉";
   }
@@ -452,7 +452,8 @@
     }), auto = [];
     if (LIVE) { try { auto = await API.news("news", 400); } catch (e) { auto = []; } }
     var known = {}; curated.forEach(function (x) { known[x.url] = 1; });
-    var all = curated.concat(auto.filter(function (x) { return !known[x.url]; }))
+    var COMMUNITY = /(^|\.)(fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr)$/i;
+    var all = curated.concat(auto.filter(function (x) { var h = ""; try { h = new URL(x.url).hostname; } catch (e) {} return !known[x.url] && !COMMUNITY.test(h); }))
       .sort(function (a, b) { return String(b.published_at || "").localeCompare(String(a.published_at || "")); });
     var T = ["S-4", "교통", "창릉"], shown = 30, cur = "전체";
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nwTopic", T, "주제") + '<span class="muted small" id="nwCount"></span></div><div id="nwList"></div>' +

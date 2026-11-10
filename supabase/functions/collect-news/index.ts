@@ -60,7 +60,7 @@ const NEWS_HOSTS = {
   "kbs.co.kr": "KBS", "imbc.com": "MBC", "sbs.co.kr": "SBS", "jtbc.co.kr": "JTBC", "ytn.co.kr": "YTN", "mbn.co.kr": "MBN", "sbsbiz.co.kr": "SBS Biz", "korea.kr": "대한민국 정책브리핑",
   "v.daum.net": "다음뉴스", "n.news.naver.com": "네이버뉴스", "news.naver.com": "네이버뉴스",
 };
-const NOT_NEWS_HOST = /(^|\.)(blog\.|cafe\.|tistory\.com|brunch\.co\.kr|youtube\.com|namu\.wiki|wikipedia\.org|instagram\.com|facebook\.com|kin\.naver\.com|post\.naver\.com|velog\.io|medium\.com)/i;
+const NOT_NEWS_HOST = /(^|\.)(blog\.|cafe\.|tistory\.com|brunch\.co\.kr|youtube\.com|namu\.wiki|wikipedia\.org|instagram\.com|facebook\.com|kin\.naver\.com|post\.naver\.com|velog\.io|medium\.com|fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr|land\.naver\.com|threads\.net|x\.com|twitter\.com)/i;
 const NEWS_PATH = /articleView|\/news\/|\/article\/|\/view\/|newsView|news_view|\/NewsView|\/arti\/|\/read\.|idxno=|\/\d{8,}/i;
 function newsSource(u) {
   let h; try { h = new URL(u).hostname.replace(/^(www|m|mobile)\./, ""); } catch { return null; }
