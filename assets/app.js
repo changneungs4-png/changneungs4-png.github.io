@@ -106,6 +106,14 @@
       var open = !g.classList.contains("open"); closeAll();
       if (open) { g.classList.add("open"); this.setAttribute("aria-expanded", "true"); }
     });
+    /* 다른 메뉴로 마우스를 옮기면 앞서 눌러 둔 메뉴는 닫음 (겹쳐 보이지 않게) */
+    g.addEventListener("mouseenter", function () {
+      grps.forEach(function (o) {
+        if (o === g) return;
+        o.classList.remove("open"); o.querySelector("button").setAttribute("aria-expanded", "false");
+        var a = document.activeElement; if (a && o.contains(a)) a.blur();
+      });
+    });
   });
   document.addEventListener("click", function (e) { if (!e.target.closest(".grp")) closeAll(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") { var a = document.activeElement; if (a && a.closest && a.closest(".grp")) a.blur(); closeAll(); } });
