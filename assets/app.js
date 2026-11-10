@@ -145,12 +145,43 @@
     try { navigator.clipboard.writeText(url).then(function () { btn.textContent = "주소를 복사했습니다"; }, fail); } catch (e) { fail(); }
   });
 
+
+  /* 페이지별 선 그림 (장식) — 페이지 성격을 한눈에 */
+  var ART = (function () {
+    var P = function (d) { return '<path d="' + d + '"/>'; }, R = function (x, y, w, h, r) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' + (r ? ' rx="' + r + '"' : "") + "/>"; }, Cc = function (x, y, r) { return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '"/>'; };
+    var grid = function (x0, y0, cols, rows, w, h, gap, on) { var o = ""; for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) { var k = r * cols + c; o += '<rect x="' + (x0 + c * (w + gap)) + '" y="' + (y0 + r * (h + gap)) + '" width="' + w + '" height="' + h + '" rx="1.5"' + (on && on.indexOf(k) >= 0 ? ' class="f"' : "") + "/>"; } return o; };
+    return {
+      notice: P("M40 70 L120 40 L120 130 L40 100 Z") + R(22, 70, 18, 30, 3) + P("M60 104 L70 140 L86 140 L78 110") + P("M140 60 Q160 85 140 110") + P("M156 48 Q186 85 156 122"),
+      schedule: R(30, 30, 180, 120, 8) + P("M30 58 H210") + P("M70 20 V40 M170 20 V40") + grid(44, 70, 7, 3, 16, 16, 8, [3, 9, 16]),
+      news: R(30, 26, 150, 124, 4) + P("M46 46 H164 M46 60 H164") + R(46, 74, 56, 40, 2) + P("M112 78 H164 M112 90 H164 M112 102 H150 M46 126 H164 M46 138 H130") + P("M180 50 H206 V140 Q206 150 196 150 H180"),
+      floorplan: R(24, 24, 192, 132, 2) + P("M24 92 H96 V156 M96 92 V24 M96 70 H150 V24 M150 70 V112 H216 M150 112 V156") + P("M96 120 Q116 120 116 140") + P("M150 40 Q166 40 166 56"),
+      progress: P("M30 150 H220") + R(60, 70, 50, 80) + R(116, 96, 44, 54) + grid(68, 78, 3, 5, 10, 8, 6) + P("M180 150 V22 M168 22 H228 M180 34 L210 22 M222 22 V60") + R(214, 60, 16, 12, 2) + P("M160 96 V60 L200 60"),
+      gallery: R(30, 34, 180, 116, 8) + P("M30 128 L84 84 L118 112 L150 86 L210 130") + Cc(170, 62, 12),
+      association: Cc(80, 66, 18) + P("M48 140 Q48 98 80 98 Q112 98 112 140") + Cc(150, 58, 22) + P("M112 140 Q112 92 150 92 Q188 92 188 140") + Cc(196, 78, 14) + P("M176 140 Q178 108 196 108 Q216 108 218 140"),
+      consent: R(50, 20, 130, 150, 6) + P("M70 46 H160 M70 62 H160 M70 78 H140 M70 94 H160") + P("M72 134 Q86 112 96 132 T120 128 Q132 120 150 134") + P("M168 150 L210 108 L222 120 L180 162 L164 166 Z"),
+      agreement: grid(30, 26, 8, 5, 18, 18, 5, [1, 2, 5, 9, 10, 12, 13, 18, 20, 21, 22, 27, 29, 33, 34, 36, 38]),
+      participate: R(60, 80, 120, 80, 6) + P("M60 104 H180") + R(100, 20, 44, 66, 3) + P("M110 44 L118 52 L134 34") + P("M96 92 H148"),
+      board: R(24, 30, 120, 70, 14) + P("M50 100 L44 124 L72 100") + R(100, 84, 120, 64, 14) + P("M190 148 L198 168 L172 148") + P("M46 56 H120 M46 74 H100 M122 108 H196 M122 124 H176"),
+      links: R(36, 70, 80, 40, 20) + R(124, 70, 80, 40, 20) + P("M96 90 H144"),
+      calculator: R(60, 20, 120, 150, 10) + R(78, 38, 84, 30, 4) + grid(78, 82, 4, 4, 15, 14, 8, [15]),
+      checklist: R(40, 30, 22, 22, 4) + R(40, 76, 22, 22, 4) + R(40, 122, 22, 22, 4) + P("M45 41 L50 47 L58 36 M45 87 L50 93 L58 82") + P("M80 41 H200 M80 87 H180 M80 133 H160"),
+      documents: P("M30 50 H90 L104 64 H210 V150 H30 Z") + P("M30 76 H210") + R(60, 30, 120, 30, 3),
+      faq: Cc(90, 84, 46) + P("M76 72 Q76 56 92 56 Q108 56 108 70 Q108 82 92 88 V98") + Cc(92, 112, 2.5) + Cc(176, 64, 24) + P("M168 58 Q168 50 176 50 Q184 50 184 58 Q184 64 176 68 V74") + Cc(176, 82, 1.5),
+      login: R(70, 76, 100, 80, 10) + P("M90 76 V56 Q90 30 120 30 Q150 30 150 56 V76") + Cc(120, 110, 8) + P("M120 118 V134"),
+      account: Cc(120, 66, 28) + P("M64 160 Q64 108 120 108 Q176 108 176 160"),
+      privacy: P("M120 22 L186 46 V92 Q186 140 120 164 Q54 140 54 92 V46 Z") + P("M96 92 L114 110 L148 74"),
+      admin: Cc(120, 90, 26) + P("M120 30 V48 M120 132 V150 M60 90 H78 M162 90 H180 M78 48 L91 61 M149 119 L162 132 M78 132 L91 119 M149 61 L162 48"),
+      links_: ""
+    };
+  })();
   /* ── page head ── */
   if (HEAD[page]) {
     var h = HEAD[page], ph = document.createElement("section");
     var sub = myGroup && myGroup.items.length > 1 ? '<nav class="subnav" aria-label="' + myGroup.name + ' 메뉴">' + myGroup.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "</a>"; }).join("") + "</nav>" : "";
-    ph.className = "page-head" + (sub ? "" : " solo");
-    ph.innerHTML = '<div class="wrap"><div class="eyebrow">' + (myGroup ? myGroup.name + " · " : "") + h[0] + "</div><h1>" + h[1] + "</h1><p>" + h[2] + "</p>" + sub + "</div>";
+    var gi = myGroup ? GROUPS.indexOf(myGroup) : -1;
+    ph.className = "page-head" + (sub ? "" : " solo") + " g" + (gi < 0 ? "x" : gi);
+    ph.innerHTML = '<div class="wrap"><div class="eyebrow">' + (myGroup ? myGroup.name + " · " : "") + h[0] + "</div><h1>" + h[1] + "</h1><p>" + h[2] + "</p>" + sub + "</div>" +
+      (ART[page] ? '<svg class="head-art" viewBox="0 0 240 180" aria-hidden="true" focusable="false">' + ART[page] + "</svg>" : "");
     main.insertBefore(ph, main.firstChild);
   }
   var C = el("content");
