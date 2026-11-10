@@ -64,7 +64,7 @@ const NEWS_HOSTS = {
   "kbs.co.kr": "KBS", "imbc.com": "MBC", "sbs.co.kr": "SBS", "jtbc.co.kr": "JTBC", "ytn.co.kr": "YTN", "mbn.co.kr": "MBN", "sbsbiz.co.kr": "SBS Biz", "korea.kr": "대한민국 정책브리핑",
   "v.daum.net": "다음뉴스", "n.news.naver.com": "네이버뉴스", "news.naver.com": "네이버뉴스",
 };
-const NOT_NEWS_HOST = /(^|\.)(blog\.|cafe\.|tistory\.com|brunch\.co\.kr|youtube\.com|namu\.wiki|wikipedia\.org|instagram\.com|facebook\.com|kin\.naver\.com|post\.naver\.com|velog\.io|medium\.com|fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr|land\.naver\.com|threads\.net|x\.com|twitter\.com|applepie\.one|apt\.|calgary)/i;
+const NOT_NEWS_HOST = /(^|\.)(blog\.|cafe\.|tistory\.com|brunch\.co\.kr|youtube\.com|namu\.wiki|wikipedia\.org|instagram\.com|facebook\.com|kin\.naver\.com|post\.naver\.com|velog\.io|medium\.com|fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr|land\.naver\.com|threads\.net|x\.com|twitter\.com|applepie\.one|apt\.|calgary|mimint\.co\.kr|busynews\.net)/i;
 const NEWS_PATH = /articleView|\/news\/|\/article\/|\/view\/|newsView|news_view|\/NewsView|\/arti\/|\/read\.|idxno=|\/\d{8,}/i;
 function newsSource(u) {
   let h; try { h = new URL(u).hostname.replace(/^(www|m|mobile)\./, ""); } catch { return null; }
@@ -278,8 +278,8 @@ export async function collect(env, fetcher = fetch) {
     // 이미 저장된 기사도 이번 분류(S-4 · 교통 · 창릉)로 주제를 맞춤
     for (const t of ["S-4", "교통", "창릉"]) {
       const urls = news.filter((x) => x.topic === t).map((x) => x.url);
-      for (let i = 0; i < urls.length; i += 40) {
-        const part = urls.slice(i, i + 40).map((u) => '"' + u.replace(/"/g, '\\"') + '"').join(",");
+      for (let i = 0; i < urls.length; i += 8) {
+        const part = urls.slice(i, i + 8).map((u) => '"' + u.replace(/"/g, '\\"') + '"').join(",");
         const u = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?kind=eq.news&topic=neq." + encodeURIComponent(t) + "&url=in.(" + encodeURIComponent(part) + ")", { method: "PATCH", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ topic: t }) });
         if (!u.ok) errors.push("주제 갱신: HTTP " + u.status);
       }
