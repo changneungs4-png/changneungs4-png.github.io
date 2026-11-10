@@ -424,7 +424,7 @@
     return '<ul class="list news">' + list.map(function (x) {
       var d = x.published_at ? fmtDate(x.published_at) : (x.date || ""), tp = topicOf(x), dup = arr(x.dups);
       return '<li><span class="src">' + esc(x.source) + '<br><span class="num">' + esc(d) + '</span></span><span class="t"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a>" +
-        (x.desc ? '<span class="desc">' + esc(x.desc) + "</span>" : "") +
+        (x.desc || (x.extra && x.extra.snippet) ? '<span class="desc">' + esc(x.desc || x.extra.snippet) + "</span>" : "") +
         '<p><span class="tag' + (tp === "S-4" || (x.extra && x.extra.s4) ? " hot" : tp === "교통" ? " water" : "") + '">' + esc(tp === "LH" ? (x.extra && x.extra.status ? x.extra.status : "LH 공고") : tp) + "</span>" + (x.kind === "lh" && x.extra && x.extra.closes ? ' <span class="muted small">마감 ' + esc(x.extra.closes) + "</span>" : "") +
         (dup.length ? ' <details class="dups"><summary>같은 소식 ' + dup.length + "건</summary><ul>" + dup.map(function (y) { return '<li><a href="' + esc(safeUrl(y.url)) + '" target="_blank" rel="noopener">' + esc(y.title) + '</a> <span class="muted small">' + esc(y.source) + "</span></li>"; }).join("") + "</ul></details>" : "") +
         "</p></span></li>";

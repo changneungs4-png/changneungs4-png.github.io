@@ -41,6 +41,57 @@ function tag(block, name) {
   return m ? decode(m[1]) : "";
 }
 
+// 다음(카카오) 웹문서 검색: 본문 요약까지 와서, 제목엔 없고 본문에만 'S4'가 나오는 기사도 찾음
+const KAKAO_QUERIES = [
+  { topic: "S-4", q: "고양창릉 S4" },
+  { topic: "S-4", q: "창릉 S4블록" },
+  { topic: "S-4", q: "창릉 S-4블록" },
+  { topic: "교통", q: "고양은평선" },
+  { topic: "교통", q: "창릉역 GTX" },
+];
+// 언론사 주소 → 이름 (목록에 없는 곳은 기사 주소 모양일 때만 받음)
+const NEWS_HOSTS = {
+  "newsis.com": "뉴시스", "yna.co.kr": "연합뉴스", "yonhapnewstv.co.kr": "연합뉴스TV", "donga.com": "동아일보", "chosun.com": "조선일보", "joongang.co.kr": "중앙일보",
+  "hani.co.kr": "한겨레", "khan.co.kr": "경향신문", "mk.co.kr": "매일경제", "hankyung.com": "한국경제", "sedaily.com": "서울경제", "mt.co.kr": "머니투데이",
+  "edaily.co.kr": "이데일리", "fnnews.com": "파이낸셜뉴스", "asiae.co.kr": "아시아경제", "heraldcorp.com": "헤럴드경제", "news1.kr": "뉴스1", "newspim.com": "뉴스핌",
+  "bizwatch.co.kr": "비즈워치", "biz.chosun.com": "조선비즈", "hankookilbo.com": "한국일보", "seoul.co.kr": "서울신문", "kmib.co.kr": "국민일보", "segye.com": "세계일보",
+  "munhwa.com": "문화일보", "kyeonggi.com": "경기일보", "kgnews.co.kr": "경기신문", "joongboo.com": "중부일보", "mygoyang.com": "고양신문", "inews24.com": "아이뉴스24",
+  "asiatime.co.kr": "아시아타임즈", "newdaily.co.kr": "뉴데일리", "dailian.co.kr": "데일리안", "etoday.co.kr": "이투데이", "ajunews.com": "아주경제", "dnews.co.kr": "대한경제",
+  "kbs.co.kr": "KBS", "imbc.com": "MBC", "sbs.co.kr": "SBS", "jtbc.co.kr": "JTBC", "ytn.co.kr": "YTN", "mbn.co.kr": "MBN", "sbsbiz.co.kr": "SBS Biz", "korea.kr": "대한민국 정책브리핑",
+  "v.daum.net": "다음뉴스", "n.news.naver.com": "네이버뉴스", "news.naver.com": "네이버뉴스",
+};
+const NOT_NEWS_HOST = /(^|\.)(blog\.|cafe\.|tistory\.com|brunch\.co\.kr|youtube\.com|namu\.wiki|wikipedia\.org|instagram\.com|facebook\.com|kin\.naver\.com|post\.naver\.com|velog\.io|medium\.com)/i;
+const NEWS_PATH = /articleView|\/news\/|\/article\/|\/view\/|newsView|news_view|\/NewsView|\/arti\/|\/read\.|idxno=|\/\d{8,}/i;
+function newsSource(u) {
+  let h; try { h = new URL(u).hostname.replace(/^(www|m|mobile)\./, ""); } catch { return null; }
+  if (NOT_NEWS_HOST.test(h)) return null;
+  for (const k of Object.keys(NEWS_HOSTS)) if (h === k || h.endsWith("." + k)) return NEWS_HOSTS[k];
+  return NEWS_PATH.test(u) ? h : null;
+}
+// 요약에서 검색어 둘레만 남김
+function around(text, re, n = 160) {
+  const m = re.exec(text); if (!m) return text.slice(0, n);
+  const st = Math.max(0, m.index - 50); return (st ? "…" : "") + text.slice(st, st + n) + (st + n < text.length ? "…" : "");
+}
+const S4_NEAR = /창릉[^.。…]{0,20}S\s*[-‐–—]?\s*4(?![0-9])|S\s*[-‐–—]?\s*4(?![0-9])\s*블록/i;
+export function parseKakao(json, topic, now = Date.now()) {
+  const out = [];
+  for (const d of (json && json.documents) || []) {
+    const title = decode(d.title), text = title + " " + decode(d.contents), url = String(d.url || "");
+    if (!title || !/^https?:\/\//.test(url)) continue;
+    const source = newsSource(url); if (!source) continue;
+    const t = d.datetime ? new Date(d.datetime) : null;
+    if (t && !isNaN(+t) && now - +t > 120 * 864e5) continue;
+    let tp = null, re = null;
+    if (S4_NEAR.test(text) && /창릉/.test(text)) { tp = "S-4"; re = S4_NEAR; }
+    else if (topic === "교통" && /고양은평선|창릉역/.test(text) && /창릉|고양은평선/.test(text)) { tp = "교통"; re = /고양은평선|창릉역/; }
+    if (!tp) continue;
+    out.push({ kind: "news", topic: tp, title: title.slice(0, 300), url: url.slice(0, 1000), source: source.slice(0, 60), published_at: t && !isNaN(+t) ? t.toISOString() : null,
+      extra: { snippet: around(decode(d.contents), re).slice(0, 240), via: "daum" } });
+  }
+  return out;
+}
+
 // 구글 뉴스 RSS → 기사 목록
 export function parseRss(xml, topic) {
   const out = [];
@@ -147,6 +198,15 @@ export async function collect(env, fetcher = fetch) {
       items.push(...parseRss(await r.text(), topic));
     } catch (e) { errors.push("뉴스(" + q + "): " + e.message); }
   }
+  if (env.KAKAO_REST_API_KEY) {
+    for (const { topic, q } of KAKAO_QUERIES) {
+      try {
+        const r = await fetcher("https://dapi.kakao.com/v2/search/web?sort=recency&size=50&query=" + encodeURIComponent(q), { headers: { authorization: "KakaoAK " + env.KAKAO_REST_API_KEY } });
+        if (!r.ok) throw new Error("HTTP " + r.status + " " + (await r.text()).slice(0, 120));
+        items.push(...parseKakao(await r.json(), topic));
+      } catch (e) { errors.push("다음 검색(" + q + "): " + e.message); }
+    }
+  }
   if (env.LH_API_KEY) {
     try {
       const now = new Date(), from = new Date(now.getTime() - 2 * 365 * 864e5), to = now;
@@ -249,6 +309,6 @@ export async function handle(req, env, fetcher = fetch) {
 if (typeof Deno !== "undefined" && Deno.serve) {
   Deno.serve((req) => handle(req, {
     SUPABASE_URL: Deno.env.get("SUPABASE_URL"), SUPABASE_SERVICE_ROLE_KEY: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-    SUPABASE_ANON_KEY: Deno.env.get("SUPABASE_ANON_KEY"), CRON_SECRET: Deno.env.get("CRON_SECRET"), LH_API_KEY: Deno.env.get("LH_API_KEY")
+    SUPABASE_ANON_KEY: Deno.env.get("SUPABASE_ANON_KEY"), CRON_SECRET: Deno.env.get("CRON_SECRET"), LH_API_KEY: Deno.env.get("LH_API_KEY"), KAKAO_REST_API_KEY: Deno.env.get("KAKAO_REST_API_KEY")
   }));
 }
