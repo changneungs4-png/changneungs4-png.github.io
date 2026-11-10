@@ -56,24 +56,24 @@
   var HEAD = {
     login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의, 게시판, 투표에 참여할 수 있습니다."],
     account: ["MY PAGE", "내 정보", "가입 상태와 위임동의 내역을 확인합니다."],
-    consent: ["CONSENT", "위임동의서", "공급계약을 마친 계약자가 제출하며, 위임동의 현황판에 반영됩니다."],
+    consent: ["CONSENT", "위임동의서", "공급계약을 마친 계약자가 제출합니다."],
     privacy: ["PRIVACY", "개인정보처리방침", "협의회가 어떤 정보를 왜 받고, 언제 지우는지 안내합니다."],
     admin: ["ADMIN", "운영진", "가입 승인, 위임동의 명단, 투표 · 민원을 관리합니다."],
-    notice: ["NOTICE", "공지사항", "협의회와 LH의 안내를 모았습니다."],
-    schedule: ["SCHEDULE", "주요 일정", "청약부터 입주까지의 흐름입니다. 확정되지 않은 일정은 확정되는 대로 갱신합니다."],
+    notice: ["NOTICE", "공지사항", "협의회와 LH의 안내입니다."],
+    schedule: ["SCHEDULE", "주요 일정", "청약부터 입주까지의 흐름입니다."],
     news: ["MEDIA", "언론보도", "고양창릉 S-4블록 관련 언론 보도입니다."],
     floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
     progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
-    gallery: ["PHOTO", "우리 단지 사진관", "현장과 주변 모습을 기록합니다."],
+    gallery: ["PHOTO", "우리 단지 사진관", "현장과 주변 모습입니다."],
     association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH와 관계 기관에 전달하는 자발적 모임입니다."],
-    agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수 배치표에 위임동의를 받은 세대를 표시합니다. 칸을 누르면 세대 정보가 보입니다."],
+    agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수별 위임동의 현황입니다."],
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
     board: ["COMMUNITY", "자유게시판", "입주예정자끼리 정보와 이야기를 나눕니다."],
     links: ["LINKS", "카페 · 바로가기", "공식 카페와 자주 쓰는 기관 사이트입니다."],
     calculator: ["CALCULATOR", "분양대금 · 취득세 계산기", "분양가와 옵션 금액을 넣으면 회차별 납부액과 예상 취득세를 계산합니다."],
     checklist: ["PRE-INSPECTION", "사전점검 체크리스트", "사전점검 날 공간별로 확인할 항목입니다. 체크한 내용은 이 기기에만 저장됩니다."],
     documents: ["ARCHIVE", "자료실", "공고문 원문과 협의회가 정리한 자료입니다."],
-    faq: ["FAQ", "자주 묻는 질문", "협의회, 계약, 대출, 입주에 관한 질문을 정리했습니다."]
+    faq: ["FAQ", "자주 묻는 질문", "협의회, 계약, 대출, 입주에 관한 질문입니다."]
   };
 
   /* ── header ── */
@@ -179,7 +179,7 @@
   function timeline(list) {
     if (!list.length) return empty("등록된 일정이 없습니다", "");
     return '<ol class="tl">' + list.map(function (x) {
-      return '<li class="' + esc(x.state || "") + '"><span class="when">' + esc(x.when) + '</span><span class="dot"></span><span class="what"><b>' + esc(x.title) + (x.auto ? ' <span class="tag auto">자동</span>' : "") + "</b>" + (x.desc ? "<span>" + (x.auto && x.src ? '<a href="' + esc(safeUrl(x.src)) + '" target="_blank" rel="noopener">' + esc(x.desc) + "</a>" : esc(x.desc)) + "</span>" : "") + "</span></li>";
+      return '<li class="' + esc(x.state || "") + '"><span class="when">' + esc(x.when) + '</span><span class="dot"></span><span class="what"><b>' + esc(x.title) + ("") + "</b>" + (x.desc ? "<span>" + (x.auto && x.src ? '<a href="' + esc(safeUrl(x.src)) + '" target="_blank" rel="noopener">' + esc(x.desc) + "</a>" : esc(x.desc)) + "</span>" : "") + "</span></li>";
     }).join("") + "</ol>";
   }
   function agreeMeter(compact) {
@@ -190,7 +190,7 @@
   }
   function progressMeter() {
     var p = S.progress || {};
-    if (p.overall == null) return '<div class="meter"><div class="row"><span>전체 공정률</span><b class="num">—</b></div><div class="bar-track water"><i style="width:0%"></i></div><small>LH 공정 보고가 나오면 갱신합니다</small></div>';
+    if (p.overall == null) return '<div class="meter"><div class="row"><span>전체 공정률</span><b class="num">—</b></div><div class="bar-track water"><i style="width:0%"></i></div></div>';
     return '<div class="meter"><div class="row"><span>전체 공정률</span><b class="num">' + p.overall + '%</b></div><div class="bar-track water"><i style="width:' + Math.min(100, p.overall) + '%"></i></div><small>' + esc(p.asOf) + "</small></div>";
   }
   function phaseList() {
@@ -251,7 +251,7 @@
       "<div>" + head("다가오는 일정", more("schedule.html", "전체 일정")) + timeline(upcoming) + "</div></div></section>" +
 
       '<div id="homeNews"></div>' +
-      '<section class="band first"><div class="wrap">' + head("처음 오셨나요?", '<span class="note">3단계면 협의회 활동에 참여할 수 있습니다</span>') +
+      '<section class="band first"><div class="wrap">' + head("처음 오셨나요?") +
       '<ol class="steps steps-row">' +
       (LIVE ? '<li><div><b><a href="login.html#signup">공급계약 후 회원가입</a></b><span>' + esc(consentOpenLabel()) + ' 계약이 시작되면 동·호수를 고르고 계약서 사진을 올려 가입합니다. 승인되면 게시판을 쓸 수 있습니다.</span></div></li>' +
         '<li><div><b><a href="consent.html">위임동의서</a></b><span>가입 뒤 계약자 성명과 서명으로 위임장을 냅니다. 승인 대기 중에도 낼 수 있습니다.</span></div></li>' +
@@ -278,7 +278,7 @@
   }
   R.notice = async function () {
     var L = arr(S.notices), lh = await lhItems();
-    var lhBlock = LIVE ? "<div>" + head("LH 공고", '<span class="note">LH 청약플러스에서 매일 자동으로 가져옵니다</span>') + (lh.length ? lhPanel(lh) : empty("아직 수집된 LH 공고가 없습니다", "S-4 관련 공고가 올라오면 자동으로 표시됩니다.")) + "</div>" : "";
+    var lhBlock = LIVE ? "<div>" + head("LH 공고") + (lh.length ? lhPanel(lh) : empty("아직 LH 공고가 없습니다", "")) + "</div>" : "";
     if (!L.length) { C.innerHTML = empty("아직 공지가 없습니다", "새 공지가 올라오면 이곳에 표시됩니다.") + lhBlock; return; }
     var cats = uniq(L.map(function (x) { return x.cat; }));
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nCats", cats, "분류") + '<span class="muted small">총 ' + L.length + "건</span></div>" +
@@ -295,13 +295,13 @@
     if (LIVE) {
       try {
         var L = (await lhItems()).filter(function (x) { return x.extra && x.extra.s4 && arr(x.extra.tables).some(function (t) { return t.key === "dsSplScdl"; }); });
-        if (L.length) lhs = "<div>" + head("LH 공식 일정 (S-4)", '<span class="note">LH 공고에서 매일 자동으로 가져옵니다</span>') + L.slice(0, 1).map(function (x) {
+        if (L.length) lhs = "<div>" + head("LH 공식 일정 (S-4)") + L.slice(0, 1).map(function (x) {
           return '<div class="lh-sched"><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener"><b>' + esc(x.title) + "</b></a>" + lhTables(x, "dsSplScdl") + "</div>";
         }).join("") + "</div>";
       } catch (e) { lhs = ""; }
     }
     var merged = await mergedSchedule(), hasAuto = merged.some(function (x) { return x.auto; });
-    C.innerHTML = '<div class="two"><div>' + head("전체 일정", '<span class="note">' + (hasAuto ? "LH 공고문에서 읽은 날짜를 자동 반영" : "모집공고 기준") + "</span>") + timeline(merged) + "</div>" +
+    C.innerHTML = '<div class="two"><div>' + head("전체 일정") + timeline(merged) + "</div>" +
       "<div>" + head("분양대금 납부 구조") + '<div class="tablebox"><table class="spec"><thead><tr><th>회차</th><th class="r">비율</th><th>시기</th></tr></thead><tbody>' +
       '<tr><td>계약금</td><td class="r num">10%</td><td>계약 시 (2026.11.16–19)</td></tr>' +
       [1, 2, 3, 4, 5, 6].map(function (i) { return "<tr><td>중도금 " + i + '회</td><td class="r num">10%</td><td>공사 기간 중 (계약서 기준)</td></tr>'; }).join("") +
@@ -359,7 +359,7 @@
     var by = {}, L = (await lhItems()).filter(function (x) { return x.extra && x.extra.s4 && x.parsed && arr(x.parsed.events).length; });
     // 오래된 공고 → 최신 정정공고 순으로 덮어써서, 최신 공고의 날짜가 남게 함
     L.sort(function (a, b) { return String(a.published_at || "") < String(b.published_at || "") ? -1 : 1; });
-    L.forEach(function (x) { arr(x.parsed.events).forEach(function (e) { by[canon(e.label)] = { when: whenOf(e), title: e.label, desc: "LH 공고문 자동 반영 · " + (e.file || x.title), state: stateOf(e), start: e.start, auto: true, src: x.url }; }); });
+    L.forEach(function (x) { arr(x.parsed.events).forEach(function (e) { by[canon(e.label)] = { when: whenOf(e), title: e.label, desc: "LH 공고문 · " + (e.file || x.title), state: stateOf(e), start: e.start, auto: true, src: x.url }; }); });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
   }
   async function mergedSchedule() {
@@ -382,10 +382,10 @@
   }
   function parsedBlock(x) {
     var P = x.parsed; if (!P || (!arr(P.events).length && !arr(P.facts).length)) return "";
-    return '<div class="lh-parsed"><div class="eyebrow">공고문 자동 요약</div>' +
+    return '<div class="lh-parsed"><div class="eyebrow">공고문 요약</div>' +
       (arr(P.events).length ? '<div class="tablebox"><table class="spec"><thead><tr><th>일정</th><th>날짜</th><th>공고문 원문</th></tr></thead><tbody>' + P.events.map(function (e) { return "<tr><td>" + esc(e.label) + '</td><td class="num">' + esc(whenOf(e)) + '</td><td class="muted small">' + esc(e.evidence) + "</td></tr>"; }).join("") + "</tbody></table></div>" : "") +
       (arr(P.facts).length ? '<ul class="facts">' + P.facts.map(function (f) { return "<li><b>" + esc(f.label) + "</b> " + esc(f.text) + "</li>"; }).join("") + "</ul>" : "") +
-      '<p class="muted small">' + esc(arr(P.files).map(function (f) { return f.name; }).join(", ")) + "에서 자동으로 읽었습니다 · " + fmtTime(P.parsed_at) + ". 정확한 내용은 공고문 원문을 확인하세요.</p></div>";
+      '<p class="muted small">' + "정확한 내용은 공고문 원문을 확인하세요.</p></div>";
   }
   function keyDates(x) {
     var P = x.parsed, by = {};
@@ -405,7 +405,7 @@
       (arr(P.facts).length ? '<details class="lh-more"><summary>주요 내용 ' + P.facts.length + "가지 (전매제한 · 거주의무 · 계약금 등)</summary>" + '<ul class="facts">' + P.facts.map(function (f) { return "<li><b>" + esc(f.label) + "</b> " + esc(f.text) + "</li>"; }).join("") + "</ul></details>" : "") +
       (K.length ? '<details class="lh-more"><summary>날짜가 나온 공고문 원문 문장 보기</summary><ul class="evid">' + K.map(function (e) { return "<li><b>" + esc(e.label) + '</b> <span class="num">' + esc(whenOf(e)) + "</span><br>" + esc(e.evidence) + "</li>"; }).join("") + "</ul></details>" : "") +
       lhDetail(x) +
-      (P.parsed_at ? '<p class="muted small">' + esc(arr(P.files).map(function (f) { return f.name; }).join(", ")) + " 자동 읽기 · " + fmtTime(P.parsed_at) + ". 정확한 내용은 공고문 원문을 확인하세요.</p>" : "") + "</article>";
+      (P.parsed_at ? '<p class="muted small">' + "정확한 내용은 공고문 원문을 확인하세요.</p>" : "") + "</article>";
     var older = L.slice(1);
     return card + (older.length ? '<details class="lh-more lh-older"><summary>이전 공고 ' + older.length + "건</summary><ul>" + older.map(function (o) {
       return '<li><a href="' + esc(safeUrl(o.url)) + '" target="_blank" rel="noopener">' + esc(o.title) + '</a> <span class="muted small num">' + esc(o.published_at ? fmtDate(o.published_at) : "") + "</span></li>";
@@ -423,9 +423,9 @@
     if (LIVE) { try { auto = await API.news("news"); } catch (e) { auto = []; } }
     var known = {}; L.forEach(function (x) { known[x.url] = 1; });
     auto = auto.filter(function (x) { return !known[x.url]; });
-    C.innerHTML = (LIVE ? "<div>" + head("자동 수집 기사", '<span class="note">매일 아침 구글 뉴스에서 "창릉" 관련 기사를 모읍니다 · 제목과 링크만</span>') +
+    C.innerHTML = (LIVE ? "<div>" + head("관련 기사") +
         '<div class="toolbar">' + chips("nwTopic", ["S-4", "창릉"], "주제") + "</div>" +
-        (auto.length ? '<div id="nwList">' + autoRows(auto) + "</div>" : empty("아직 수집된 기사가 없습니다", "매일 아침 7시쯤 새 기사를 찾습니다.")) + "</div>" : "") +
+        (auto.length ? '<div id="nwList">' + autoRows(auto) + "</div>" : empty("아직 관련 기사가 없습니다", "")) + "</div>" : "") +
       "<div>" + head(LIVE ? "주요 보도 (협의회 정리)" : "언론 보도", '<span class="note">' + L.length + "건 · 최신순</span>") + newsRows(L) + "</div>";
     if (LIVE && auto.length) bindChips("nwTopic", function (t) {
       el("nwList").innerHTML = autoRows(t === "전체" ? auto : auto.filter(function (x) { return x.topic === t; }));
@@ -463,7 +463,7 @@
       chart = '<div class="tablebox"><svg class="chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="월별 누적 공정률">' + grid + bars + "</svg></div>" +
         '<div class="tablebox"><table class="spec"><thead><tr><th>월</th><th class="r">누적 공정률</th><th class="r">증감</th></tr></thead><tbody>' +
         M.slice().reverse().map(function (m, i, a) { var prev = a[i + 1]; return '<tr><td class="num">' + esc(m.ym) + '</td><td class="r num">' + m.rate + '%</td><td class="r num">' + (prev ? "+" + (m.rate - prev.rate).toFixed(1) + "%p" : "-") + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    } else chart = empty("아직 공정 보고가 없습니다", "LH 공정률이 공개되면 월별로 기록합니다. 시공사는 요진건설산업(주)입니다.");
+    } else chart = empty("아직 공정 보고가 없습니다", "");
     var LR = LHP ? arr(LHP.reports) : [], lhPh = LR.filter(function (r) { return r.photo; }).map(function (r) { return { title: r.date + " " + (r.text || "공정 사진"), date: r.rate + "%", src: r.photo }; });
     var lhBox = LHP && LHP.info ? '<div class="two"><div>' + head("LH 공사진행현황", '<a class="more" href="https://apply.lh.or.kr/lhapply/land/cwsttInfo.do" target="_blank" rel="noopener">LH청약플러스 →</a>') + progressMeter() +
         '<dl class="kv lhkv"><div><dt>착공</dt><dd class="num">' + esc(dotDate(LHP.info.start)) + '</dd></div><div><dt>준공 예정</dt><dd class="num">' + esc(dotDate(LHP.info.end)) + '</dd></div><div><dt>시공사</dt><dd>' + esc(LHP.info.builder || "") + "</dd></div></dl>" +
@@ -471,13 +471,13 @@
           var k = lhPh.findIndex(function (x) { return x.src === r.photo; });
           return '<li class="' + (i === 0 ? "now" : "done") + '"><span class="when">' + esc(r.date) + '</span><span class="dot"></span><span class="what"><b>공정률 ' + esc(r.rate) + "%</b><span>" + esc(r.text) + "</span>" +
             (r.photo ? '<span class="vthumbs"><button type="button" class="vthumb lhthumb" data-k="' + k + '" aria-label="' + esc(r.date) + ' 공정 사진 크게 보기"><img src="' + esc(r.photo) + '" alt="" loading="lazy"></button></span>' : "") + "</span></li>";
-        }).join("") + "</ol>" : "") + '<p class="muted small" style="margin:8px 0 0">LH청약플러스 공사진행현황을 매일 아침 자동으로 가져옵니다.</p></div>' : null;
+        }).join("") + "</ol>" : "") + "</div>" : null;
     C.innerHTML = "<div>" + head("월별 공정률", '<span class="note">LH 공정 보고 기준 누적</span>') + chart + "</div>" +
       (lhBox ? lhBox : (p.overall == null && !arr(p.phases).length) ? "<div>" : '<div class="two"><div>' + head("공정 단계") + progressMeter() + phaseList() + "</div>") +
       "<div>" + head("현장 방문 기록") + (logs.length ? '<ol class="tl">' + logs.map(function (l, i) {
         return '<li class="' + (i === 0 ? "now" : "done") + '"><span class="when">' + esc(l.date) + '</span><span class="dot"></span><span class="what"><b>' + esc(l.title) + '</b><span class="pre">' + esc(l.text) + "</span>" +
           (arr(l.photos).length ? '<span class="vthumbs">' + l.photos.map(function (ph, k) { return '<button type="button" class="vthumb" data-l="' + i + '" data-k="' + k + '" aria-label="사진 ' + (k + 1) + ' 크게 보기"><img src="' + esc(ph.src) + '" alt="" loading="lazy"></button>'; }).join("") + "</span>" : "") + "</span></li>";
-      }).join("") + "</ol>" : empty("아직 현장 방문 기록이 없습니다", "협의회 현장 방문 후 기록을 올립니다.")) + "</div></div>";
+      }).join("") + "</ol>" : empty("아직 현장 방문 기록이 없습니다", "")) + "</div></div>";
     C.querySelectorAll(".vthumb:not(.lhthumb)").forEach(function (b) { b.addEventListener("click", function () { lightbox(logs[Number(b.dataset.l)].photos, Number(b.dataset.k)); }); });
     C.querySelectorAll(".lhthumb").forEach(function (b) { b.addEventListener("click", function () { lightbox(lhPh, Math.max(0, Number(b.dataset.k))); }); });
   };
@@ -505,7 +505,7 @@
 
   R.gallery = async function () {
     var L = (LIVE ? livePhotos(await API.photos().catch(function () { return []; })) : []).concat(arr(S.gallery).map(function (g) { return { cat: g.cat, title: g.title, date: g.date, src: g.src ? safeUrl(g.src) : "" }; }));
-    if (!L.length) { C.innerHTML = empty("아직 등록된 사진이 없습니다", "현장 방문 사진이 모이면 이곳에 올립니다." + (LIVE && API.isAdmin ? " 운영진 페이지 → 사진 · 방문에서 올릴 수 있습니다." : "")); return; }
+    if (!L.length) { C.innerHTML = empty("아직 등록된 사진이 없습니다", LIVE && API.isAdmin ? "운영진 페이지 → 사진 · 방문에서 올릴 수 있습니다." : ""); return; }
     var cats = uniq(L.map(function (g) { return g.cat; }));
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("gCats", cats, "분류") + '<span class="muted small">' + n(L.length) + "장</span></div>" +
       '<div class="gallery" id="gList">' + L.map(function (g, i) {
