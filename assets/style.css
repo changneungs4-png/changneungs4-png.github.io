@@ -653,3 +653,10 @@ body.noscroll{overflow:hidden}
 #sheet p{margin:0}
 #sheet .sheet-x{position:absolute;top:8px;right:8px;width:36px;height:36px;border:0;background:none;font-size:24px;color:var(--muted);cursor:pointer}
 @media (min-width:641px){#sheet{align-items:center}#sheet .sheet-box{border-radius:16px}}
+/* 위임동의 철회 알림 */
+.banner.admin-alert .wd{color:var(--signal)}
+.wd-box{border-color:var(--signal);margin-bottom:16px}
+.wd-box .cnt-b{display:inline-block;min-width:22px;padding:0 6px;border-radius:999px;background:var(--signal);color:#fff;font-size:13px;text-align:center}
+.wd-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.wd-list li{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}
+.wd-list li .linkbtn{margin-left:auto}

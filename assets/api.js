@@ -385,6 +385,9 @@
         must(await sb.from("visits").delete().eq("id", v.id));
         if (paths.length) await sb.storage.from("gallery").remove(paths).catch(function () {});
       },
+      /* 운영진이 아직 확인하지 않은 위임동의 철회 */
+      withdrawals: async function () { need(); var r = await sb.rpc("withdrawals_unacked"); return r.error ? [] : (r.data || []); },
+      ackWithdrawals: async function (ids) { need(); must(await sb.rpc("withdrawals_ack", { p_ids: ids })); },
       setChatInfo: async function (url, pw) {
         need(); url = String(url || "").trim(); pw = String(pw || "").trim();
         if (url && !/^https:\/\//.test(url)) throw new Error("채팅방 주소는 https:// 로 시작해야 합니다.");

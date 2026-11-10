@@ -1,4 +1,4 @@
-// 새 가입 신청이 있으면 협의회 메일로 알립니다. (GitHub Actions에서 30분마다 실행)
+// 새 가입 신청 · 위임동의 철회가 있으면 협의회 메일로 알립니다. (GitHub Actions에서 30분마다 실행)
 // 환경 변수: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GMAIL_USER, GMAIL_APP_PASSWORD, (선택) NOTIFY_TO, SITE_URL
 // 메일에는 세대(동 · 호)와 신청 시각만 넣고, 계약서 사진 등은 넣지 않습니다.
 
@@ -16,10 +16,40 @@ export function buildMail(fresh, allPending, consented, site) {
   return { subject, text };
 }
 
+export function buildWithdrawMail(rows, site) {
+  const subject = "[창릉 S-4 입예협] 위임동의 철회 " + rows.length + "건";
+  const text = "위임동의를 철회한 세대가 있습니다.\n\n" + rows.map((r) => "· " + unitLabel(r.unit_id) + " — " + kst(r.at) + " 철회").join("\n") +
+    "\n\n확인: " + site + "/admin.html#agreements\n오픈채팅 비밀번호를 바꾸는 것을 권장합니다(운영진 페이지 > 회원).\n\n— 이 메일은 자동으로 보냈습니다.";
+  return { subject, text };
+}
+
+// 새로 생긴 '본인 철회'를 한 번만 메일로 (다시 위임한 세대는 제외). 알린 기록은 notified_at
+export async function notifyWithdrawals(env, fetcher, H, get, send) {
+  let rows;
+  try { rows = await get("agreement_log?select=id,unit_id,user_id,by_user,at&action=eq.withdraw&notified_at=is.null&order=at.asc&limit=200"); }
+  catch (e) { if (/HTTP 4\d\d/.test(e.message) && /notified_at/.test(e.message)) return { withdrawals: 0, note: "철회 알림 DB 설정 전" }; throw e; }
+  if (!rows.length) return { withdrawals: 0 };
+  const units = [...new Set(rows.map((r) => r.unit_id))];
+  const back = new Set((await get("agreements?select=unit_id&unit_id=in.(" + units.map((u) => '"' + u + '"').join(",") + ")")).map((x) => x.unit_id));
+  const self = rows.filter((r) => r.by_user && r.by_user === r.user_id && !back.has(r.unit_id));
+  if (self.length && !send) return { withdrawals: self.length, sent: 0, skipped: "메일 설정 없음" };
+  if (self.length) await send(buildWithdrawMail(self, env.SITE_URL || "https://changneungs4-png.github.io"));
+  const p = await fetcher(env.SUPABASE_URL + "/rest/v1/agreement_log?id=in.(" + rows.map((r) => r.id).join(",") + ")", { method: "PATCH", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ notified_at: new Date().toISOString() }) });
+  if (!p.ok) throw new Error("철회 알림 기록 실패 HTTP " + p.status);
+  return { withdrawals: self.length, sent: self.length };
+}
+
 export async function run(env, fetcher = fetch, send) {
   const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" };
   const get = async (path) => { const r = await fetcher(env.SUPABASE_URL + "/rest/v1/" + path, { headers: H }); if (!r.ok) throw new Error(path.split("?")[0] + " HTTP " + r.status + " " + (await r.text()).slice(0, 200)); return r.json(); };
   const cleaned = await cleanup(env, fetcher, H, get).catch((e) => "정리 실패: " + e.message);
+  const wd = await notifyWithdrawals(env, fetcher, H, get, send).catch((e) => ({ error: e.message }));
+  const res = await signups(env, fetcher, H, get, send);
+  return { ...res, cleaned, withdraw: wd };
+}
+
+async function signups(env, fetcher, H, get, send) {
+  const cleaned = undefined;
   const pending = await get("profiles?select=id,unit_id,created_at&status=eq.pending&order=created_at.asc");
   if (!pending.length) return { pending: 0, sent: 0, cleaned };
   const done = new Set((await get("signup_notices?select=profile_id")).map((x) => x.profile_id));

@@ -120,16 +120,20 @@
 
   /* ── 운영진 알림: 승인 대기 가입 신청 ── */
   if (LIVE && API.isAdmin && page !== "admin") {
-    API.admin.profiles("pending").then(function (L) {
-      if (!L || !L.length) return;
+    Promise.all([API.admin.profiles("pending").catch(function () { return []; }), API.admin.withdrawals().catch(function () { return []; })]).then(function (r) {
+      var L = r[0] || [], W = r[1] || [], n2 = L.length + W.length;
+      if (!n2) return;
+      var parts = [];
+      if (L.length) parts.push('가입 신청 ' + L.length + '건이 승인을 기다리고 있습니다. <a href="admin.html#pending">확인하기 →</a>');
+      if (W.length) parts.push('<b class="wd">위임동의 철회 ' + W.length + '건</b>(' + W.slice(0, 3).map(function (w) { return esc(w.unit_id); }).join(", ") + (W.length > 3 ? " 외" : "") + ') <a href="admin.html#agreements">확인하기 →</a>');
       var ab = document.createElement("div");
       ab.className = "banner admin-alert";
       ab.setAttribute("role", "status");
-      ab.innerHTML = '<div class="wrap"><span><b>운영진 알림</b> · 가입 신청 ' + L.length + '건이 승인을 기다리고 있습니다. <a href="admin.html#pending">확인하기 →</a></span></div>';
+      ab.innerHTML = '<div class="wrap"><span><b>운영진 알림</b> · ' + parts.join(" · ") + "</span></div>";
       header.after(ab);
-      document.title = "(" + L.length + ") " + document.title;
-      var al = el("acctLink"); if (al) al.insertAdjacentHTML("beforeend", ' <span class="dot" aria-label="가입 신청 ' + L.length + '건">' + L.length + "</span>");
-    }).catch(function () {});
+      document.title = "(" + n2 + ") " + document.title;
+      var al = el("acctLink"); if (al) al.insertAdjacentHTML("beforeend", ' <span class="dot" aria-label="운영진 알림 ' + n2 + '건">' + n2 + "</span>");
+    });
   }
 
   /* ── banner ── */
@@ -1276,7 +1280,10 @@
     var B = el("adminBody");
     function err(e) { say("admMsg", API.errorText(e), true); }
     function csv(rows) { return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\n"); }
-    async function counts() { try { var pd = await API.admin.profiles("pending"); el("cnt-pending").textContent = pd.length ? " " + pd.length : ""; } catch (e) {} }
+    async function counts() {
+      try { var pd = await API.admin.profiles("pending"); el("cnt-pending").textContent = pd.length ? " " + pd.length : ""; } catch (e) {}
+      try { var wd = await API.admin.withdrawals(); el("cnt-agreements").textContent = wd.length ? " " + wd.length : ""; } catch (e) {}
+    }
 
     async function show() {
       say("admMsg", ""); B.innerHTML = '<p class="muted">불러오는 중…</p>';
@@ -1369,14 +1376,17 @@
           });
         }
         if (cur === "agreements") {
-          var A = await API.admin.agreements(), lg = await API.admin.log(), PS = {};
+          var A = await API.admin.agreements(), lg = await API.admin.log(), PS = {}, WD = await API.admin.withdrawals().catch(function () { return []; });
           try { arr(await API.admin.profiles()).forEach(function (p) { PS[p.id] = p.status; }); } catch (e) {}
           var counted = function (a) { return a.source === "paper" || PS[a.user_id] === "approved"; };
           var how = function (a) { return a.source === "paper" ? "서면" : "온라인"; };
           var rows = [["세대", "동", "호", "타입", "계약자 성명", "방식", "제출일시", "현황 반영", "제3자 제공", "연락처(동의 세대)", "문서 번호"]].concat(A.map(function (a) { var u = UNIT[a.unit_id] || {};
             return [a.unit_id, u.dong, u.ho, u.type, a.signer_name || "", how(a), fmtTime(a.signed_at), counted(a) ? "반영" : "승인 전", a.agree_third_party ? "동의" : "미동의", a.agree_contact ? a.phone || "" : "", String(a.doc_hash || "").slice(0, 16)]; }));
           var text = csv(rows), OK3 = A.filter(function (a) { return counted(a) && a.agree_third_party; });
-          B.innerHTML = '<div class="toolbar"><b>' + n(A.filter(counted).length) + "세대 반영</b> <span class=\"muted small\">(제출 " + n(A.length) + "세대 · 서면 " + n(A.filter(function (a) { return a.source === "paper"; }).length) + ')</span>' +
+          var wdBox = WD.length ? '<div class="panel wd-box"><h3 style="margin-bottom:6px">확인하지 않은 위임동의 철회 <span class="cnt-b">' + WD.length + '</span></h3><p class="muted small" style="margin:0 0 8px">철회가 있으면 오픈채팅 비밀번호를 바꾸는 것을 권장합니다(회원 탭).</p>' +
+            '<ul class="wd-list">' + WD.map(function (w) { return '<li><b class="num">' + esc(w.unit_id) + '</b><span class="muted small">' + esc(unitLabel(w.unit_id)) + " · " + fmtTime(w.at) + (w.by_self ? " · 본인 철회" : "") + '</span><button type="button" class="linkbtn wdack" data-id="' + w.id + '">확인</button></li>'; }).join("") + "</ul>" +
+            '<p class="cta-row" style="margin:8px 0 0"><button type="button" class="btn" id="wdAll">모두 확인</button></p></div>' : "";
+          B.innerHTML = wdBox + '<div class="toolbar"><b>' + n(A.filter(counted).length) + "세대 반영</b> <span class=\"muted small\">(제출 " + n(A.length) + "세대 · 서면 " + n(A.filter(function (a) { return a.source === "paper"; }).length) + ')</span>' +
             '<div class="cta-row" style="margin:0"><button type="button" class="btn" id="wiAll">기관 제출용 위임장 출력 (' + OK3.length + ')</button><button type="button" class="btn" id="csvCopy">CSV 복사</button><button type="button" class="btn" id="csvDl">CSV 내려받기</button></div></div>' +
             '<details class="panel lh-more" id="paperBox"><summary>서면 위임장 등록 <span class="muted small">공식 메일로 받은 위임장</span></summary><form id="fPaper" novalidate style="margin-top:12px">' + unitPicker("pp") +
             '<div class="two" style="gap:12px"><div class="field"><label for="ppName">계약자 성명</label><input id="ppName" maxlength="30"></div><div class="field"><label for="ppDate">서명일</label><input id="ppDate" type="date"></div></div>' +
@@ -1407,6 +1417,9 @@
             if (d) { if (d.dataset.confirm !== "1") { d.dataset.confirm = "1"; d.textContent = "한 번 더 누르면 철회 · 원본 삭제"; return; }
               try { await API.admin.withdrawPaper(byU[d.dataset.u]); await show(); say("admMsg", d.dataset.u + " 서면 위임을 철회하고 원본을 삭제했습니다."); } catch (er) { err(er); } }
           });
+          var ackDo = async function (ids) { try { await API.admin.ackWithdrawals(ids); await show(); counts(); say("admMsg", "철회를 확인했습니다."); } catch (er) { err(er); } };
+          B.querySelectorAll(".wdack").forEach(function (b) { b.addEventListener("click", function () { ackDo([Number(b.dataset.id)]); }); });
+          if (el("wdAll")) el("wdAll").addEventListener("click", function () { ackDo(WD.map(function (w) { return w.id; })); });
           el("wiAll").addEventListener("click", function () {
             if (!OK3.length) { say("admMsg", "제3자 제공에 동의한 세대가 없습니다."); return; }
             showPrint('<article class="wi-doc wi-list"><h1>고양창릉 S-4블록 입주예정자협의회 위임 세대 명단</h1><p class="muted">위임 반영 ' + n(A.filter(counted).length) + "세대 중 제3자 제공 동의 " + n(OK3.length) + "세대 · 출력 " + esc(fmtTime(new Date().toISOString())) + "</p>" +
