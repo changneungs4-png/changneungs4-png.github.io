@@ -136,7 +136,7 @@
   if (S.banner && store("hide:" + S.banner.id) !== new Date().toDateString()) {
     var bn = document.createElement("div");
     bn.className = "banner";
-    bn.innerHTML = '<div class="wrap"><span>' + esc(S.banner.text) + (S.banner.link ? ' <a href="' + esc(safeUrl(S.banner.link)) + '">' + esc(S.banner.linkText || "자세히") + " →</a>" : "") + '</span><button type="button" id="bnClose">오늘 하루 보지 않기</button></div>';
+    bn.innerHTML = '<div class="wrap"><span>' + esc(S.banner.text) + (S.banner.link ? ' <a href="' + esc(safeUrl(S.banner.link)) + '">' + esc(S.banner.linkText || "자세히") + " →</a>" : "") + '</span><button type="button" id="bnClose" aria-label="오늘 하루 보지 않기"><span class="lg">오늘 하루 보지 않기</span><span class="sm" aria-hidden="true">×</span></button></div>';
     header.after(bn);
     el("bnClose").addEventListener("click", function () { store("hide:" + S.banner.id, new Date().toDateString()); bn.remove(); });
   }
@@ -191,6 +191,8 @@
     ph.innerHTML = '<div class="wrap"><div class="eyebrow">' + (myGroup ? myGroup.name + " · " : "") + h[0] + "</div><h1>" + h[1] + "</h1><p>" + h[2] + "</p>" + sub + "</div>" +
       (ART[page] ? '<svg class="head-art" viewBox="0 0 240 180" aria-hidden="true" focusable="false">' + ART[page] + "</svg>" : "");
     main.insertBefore(ph, main.firstChild);
+    var sn = ph.querySelector(".subnav"), act = sn && sn.querySelector('[aria-current="page"]');
+    if (act && act.offsetLeft + act.offsetWidth > sn.clientWidth) sn.scrollLeft = act.offsetLeft - 24;   // 휴대폰: 지금 페이지 메뉴가 보이게
   }
   var C = el("content");
 
@@ -538,7 +540,7 @@
     var logs = V.map(function (v) { return { date: dotDate(v.visited_on), title: v.title, text: v.body, photos: livePhotos(arr(v.photos).sort(function (a, b) { return a.id - b.id; }).map(function (x) { return { id: x.id, cat: "현장 방문", title: v.title, taken_on: v.visited_on, path: x.path, width: x.width, height: x.height }; })) }; })
       .concat(arr(p.logs)).sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
     if (M.length) {
-      var W = 560, H = 200, pl = 36, pb = 28, pt = 16;
+      var narrow = window.innerWidth < 600, W = narrow ? 340 : 560, H = narrow ? 190 : 200, pl = 36, pb = 28, pt = 16;   // 휴대폰에서는 좁은 그림으로 그려 글자가 작아지지 않게
       var maxR = Math.max(10, Math.ceil(Math.max.apply(null, M.map(function (m) { return m.rate; })) / 5) * 5);
       var bw = (W - pl - 12) / M.length, y = function (v) { return pt + (H - pt - pb) * (1 - v / maxR); };
       var grid = [0, maxR / 2, maxR].map(function (v) { return '<line x1="' + pl + '" x2="' + (W - 4) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="g"/><text x="' + (pl - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + "%</text>"; }).join("");
@@ -834,7 +836,7 @@
       (L.length ? '<div class="tablebox"><table class="spec board"><thead><tr><th class="r">번호</th><th>분류</th><th>제목</th><th>작성자</th><th class="r">날짜</th></tr></thead><tbody id="bList">' +
         L.map(function (b) {
           var cc = b.comments && b.comments[0] ? b.comments[0].count : 0;
-          return '<tr data-no="' + b.id + '" data-cat="' + esc(b.cat) + '" tabindex="0"><td class="r num">' + b.id + '</td><td><span class="tag">' + esc(b.cat) + '</span></td><td class="title">' + esc(b.title) + (cc ? ' <span class="muted num">[' + cc + "]</span>" : "") + "</td><td>" + esc(b.author_label) + '</td><td class="r num">' + fmtDate(b.created_at).slice(5) + "</td></tr>";
+          return '<tr data-no="' + b.id + '" data-cat="' + esc(b.cat) + '" tabindex="0"><td class="r num no">' + b.id + '</td><td class="cat"><span class="tag">' + esc(b.cat) + '</span></td><td class="title">' + esc(b.title) + (cc ? ' <span class="muted num">[' + cc + "]</span>" : "") + '</td><td class="who">' + esc(b.author_label) + '</td><td class="r num when">' + fmtDate(b.created_at).slice(5) + "</td></tr>";
         }).join("") + "</tbody></table></div>" : empty("아직 게시글이 없습니다", "첫 글을 남겨주세요.")) + "</div>" +
       '<div id="write">' + head("글쓰기", '<span class="note">작성자: ' + esc(API.profile.nickname ? API.profile.nickname + " · " + API.profile.unit_id : API.profile.unit_id) + ' · <a href="account.html">닉네임 설정</a></span>') +
       '<form class="panel" id="wForm"><div class="field"><label for="wCat">분류</label><select id="wCat">' + cats.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div>" +
@@ -1199,22 +1201,26 @@
     ["연락처 수집 · 이용 (선택)", "수집 항목: 휴대전화 번호\n목적: 협의회 공지와 긴급 연락 (사전점검 · 입주 일정 등)\n보유 기간: 철회 · 탈퇴 · 협의회 해산 시 즉시 파기\n동의하지 않아도 위임에는 영향이 없습니다."]
   ];
 
+  /* 휴대폰: 긴 동의서 위에 '제출 칸으로 이동' 버튼 */
+  function consentLayout(form, side) {
+    return '<a class="btn jump-side" href="#consentSide">아래 제출 칸으로 이동 ↓</a><div class="two consent-grid"><div>' + form + '</div><div id="consentSide">' + side + "</div></div>";
+  }
   R.consent = async function () {
     var form = '<article class="consent-doc"><h2>고양창릉 S-4블록 입주예정자협의회 위임동의서</h2><p class="muted small">양식 버전 ' + esc(API.formVersion || "2026-11-v1") + "</p>" +
       CONSENT.map(function (c, i) { return "<section><h3>" + (i + 1) + ". " + esc(c[0]) + '</h3><p class="body">' + esc(c[1]) + "</p></section>"; }).join("") + "</article>" +
       '<div class="panel paper-box"><b>온라인이 어려우신가요?</b><p class="muted small" style="margin:6px 0 10px">공급계약을 마친 뒤 서면 위임장 양식을 인쇄해 작성 · 서명하고, 사진이나 스캔본을 협의회 공식 메일 <b>changneung.s4@gmail.com</b> 으로 보내 주세요. 운영진이 확인해 등록합니다. 주민등록번호는 적지 마세요.</p><button type="button" class="btn" id="blankForm">서면 양식 인쇄 · PDF 저장</button></div>';
     function bindBlank() { var b = el("blankForm"); if (b) b.addEventListener("click", window.S4_showBlankForm); }
-    if (!LIVE) { C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + gate("member") + "</div></div>"; bindBlank(); return; }
+    if (!LIVE) { C.innerHTML = consentLayout(form, gate("member")); bindBlank(); return; }
     var pf = API.profile, g = !API.loggedIn || !pf || pf.status === "rejected" ? gate("member") : "";
-    if (g) { C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + g + "</div></div>"; bindBlank(); return; }
+    if (g) { C.innerHTML = consentLayout(form, g); bindBlank(); return; }
     var ag = await API.myAgreement(), p = API.profile;
-    if (!ag && !API.consentOpen) { C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + delegateNote(true) + "</div></div>"; bindBlank(); return; }
+    if (!ag && !API.consentOpen) { C.innerHTML = consentLayout(form, delegateNote(true)); bindBlank(); return; }
     var side = ag
       ? '<div class="panel done"><div class="eyebrow">제출 완료</div><h3>' + esc(unitLabel(p.unit_id)) + '</h3><p>' + fmtTime(ag.signed_at) + ' 제출</p><p class="muted small">' + (p.status === "approved" ? "위임동의 현황판에 반영되었습니다." : "운영진이 가입을 승인하면 위임동의 현황판에 반영됩니다.") +  ' 철회는 내 정보에서 할 수 있습니다.</p><p class="cta-row"><button type="button" class="btn solid" id="myWi">내 위임장 보기 · 인쇄</button><a class="btn" href="agreement.html">현황판 보기</a><a class="btn" href="account.html">내 정보</a></p></div>'
       : '<form class="panel" id="fAg" novalidate><div class="eyebrow">제출 세대</div><h3 style="margin:4px 0 14px">' + esc(unitLabel(p.unit_id)) + "</h3>" + consentFields("a", false) +
         '<button class="btn solid wide" type="submit">위임동의서 제출</button><p class="notice-box" id="aMsg" role="alert" hidden></p>' +
         '<p class="muted small" style="margin:10px 0 0">제출 일시 · 세대 · 문서 번호는 서버가 기록합니다. 제출 후 내 위임장을 PDF로 저장할 수 있습니다.</p></form>';
-    C.innerHTML = '<div class="two consent-grid"><div>' + form + "</div><div>" + side + "</div></div>";
+    C.innerHTML = consentLayout(form, side);
     bindBlank();
     if (ag) { el("myWi").addEventListener("click", function () { showPrint(wiDoc(ag), "내 위임장"); }); return; }
     bindConsent("a");

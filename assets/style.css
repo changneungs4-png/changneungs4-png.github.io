@@ -605,3 +605,39 @@ body.noscroll{overflow:hidden}
 .sw.mem{background:var(--water-soft);border:1.5px solid var(--water)}
 .bar-track.member i{background:var(--water)}
 .bar-track.member{background:var(--water-soft)}
+
+/* ── 휴대폰 손보기 ── */
+.jump-side{display:none}
+.banner #bnClose .sm{display:none}
+@media (max-width:640px){
+  /* 입력칸 16px: 아이폰이 입력할 때 화면을 확대하지 않게 */
+  .field input,.field select,.field textarea,.find input,input.reason,.adm-ph input,.adm-ph select{font-size:16px}
+  /* 상단 띠: 짧게, 닫기는 × */
+  .banner{font-size:13px;line-height:1.45}
+  .banner .wrap{flex-wrap:nowrap;align-items:flex-start;padding-block:7px}
+  .banner #bnClose{flex:0 0 auto;width:32px;height:32px;margin:-4px -8px 0 0;text-decoration:none;font-size:22px;line-height:1;color:var(--muted)}
+  .banner #bnClose .lg{display:none}.banner #bnClose .sm{display:inline}
+  /* 누르기 쉬운 크기 */
+  .chip{min-height:36px;padding-inline:14px}
+  .linkbtn{padding:6px 2px}
+  a.more{display:inline-block;padding:6px 0}
+  summary{padding-block:6px}
+  .btn{min-height:40px}
+  input[type=checkbox],input[type=radio]{width:20px;height:20px;flex:0 0 auto}
+  footer.foot .sitemap a{display:inline-block;padding:6px 0}
+  /* 하위 메뉴 가로 스크롤 힌트 */
+  .subnav{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent);padding-right:24px}
+  /* 게시판: 표 대신 카드형 줄 */
+  table.board thead{display:none}
+  table.board,table.board tbody{display:block}
+  table.board tr{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;padding:12px 4px;border-bottom:1px solid var(--line)}
+  table.board td{display:block;padding:0;border:0;background:none}
+  table.board td.no{display:none}
+  table.board td.cat{grid-row:1;grid-column:1}
+  table.board td.title{grid-row:1;grid-column:2;min-width:0;font-weight:600}
+  table.board td.who,table.board td.when{grid-row:2;font-size:13px;color:var(--muted);text-align:left}
+  table.board td.who{grid-column:2}
+  table.board td.when{grid-column:2;justify-self:end}
+  /* 위임동의서: 제출 칸으로 이동 */
+  .jump-side{display:flex;margin-bottom:12px}
+}
