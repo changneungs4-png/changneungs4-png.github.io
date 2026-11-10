@@ -620,7 +620,7 @@
     return '<div class="empty"><b>' + esc(title) + "</b><span>" + esc(body) + "</span>" + (cta ? '<p class="cta-row" style="margin-top:8px">' + cta + "</p>" : "") + "</div>";
   }
   function busy(btn, on, label) { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.l = btn.textContent; btn.textContent = label || "처리 중…"; } else if (btn.dataset.l) btn.textContent = btn.dataset.l; }
-  function say(id, msg, bad) { var m = el(id); if (!m) return; m.hidden = !msg; m.textContent = msg || ""; m.classList.toggle("bad", !!bad); }
+  function say(id, msg, bad) { var m = el(id); if (!m) return; m.hidden = !msg; m.textContent = msg || ""; m.classList.toggle("bad", !!bad); if (msg && id === "admMsg" && m.scrollIntoView) { var r = m.getBoundingClientRect(); if (r.top < 0 || r.bottom > window.innerHeight) m.scrollIntoView({ behavior: "smooth", block: "center" }); } }
   function fmtDate(s) { if (!s) return ""; var d = new Date(s); return d.getFullYear() + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + ("0" + d.getDate()).slice(-2); }
   function fmtTime(s) { var d = new Date(s); return fmtDate(s) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
   function unitLabel(id) { var u = UNIT[id]; return u ? u.dong + "동 " + u.ho + "호 (" + u.type + ")" : id; }
@@ -1178,7 +1178,7 @@
     var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["polls", "투표"], ["campaigns", "민원"], ["photos", "사진 · 방문"], ["news", "자동 수집"]];
     var cur = (location.hash || "#pending").slice(1); if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
     C.innerHTML = '<div class="tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '<span class="cnt" id="cnt-' + t[0] + '"></span></button>'; }).join("") + "</div>" +
-      '<div id="adminBody"></div><p class="notice-box" id="admMsg" role="status" hidden></p>';
+      '<p class="notice-box" id="admMsg" role="status" hidden></p><div id="adminBody"></div>';
     C.querySelector(".tabs").addEventListener("click", function (e) { var b = e.target.closest("button[data-t]"); if (!b) return; cur = b.dataset.t; history.replaceState(null, "", "#" + cur); C.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x === b); }); show(); });
     var B = el("adminBody");
     function err(e) { say("admMsg", API.errorText(e), true); }
