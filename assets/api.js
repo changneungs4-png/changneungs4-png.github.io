@@ -160,10 +160,10 @@
       must(await sb.from("profiles").update({ contract_path: path, status: "pending" }).eq("id", uid()));
       await loadProfile(); return st.profile;
     },
-    /* 게시판 표시 이름 (비우면 "403동 입주예정자") */
+    /* 게시판 표시 이름 (비우면 "403-1804", 정하면 "닉네임 · 403-1804") */
     updateNickname: async function (nick) {
       need(); nick = (nick || "").trim();
-      if (nick && (nick.length < 2 || nick.length > 20)) throw new Error("닉네임은 2~20자로 입력하세요. 비워 두면 \"동 입주예정자\"로 표시됩니다.");
+      if (nick && (nick.length < 2 || nick.length > 20)) throw new Error("닉네임은 2~20자로 입력하세요. 비워 두면 동-호수만 표시됩니다.");
       must(await sb.from("profiles").update({ nickname: nick || null }).eq("id", uid())); await loadProfile();
     },
     changePassword: async function (pw, pw2) {
