@@ -875,44 +875,50 @@
     });
   };
 
-  /* 입주민 오픈채팅: 위임 세대에게만 입장 주소 · 비밀번호 */
-  async function chatBox() {
-    var box = el("chat"); if (!box) return;
-    var h = head("입주민 오픈채팅", '<span class="note">위임동의 세대 전용</span>'), body;
-    if (!LIVE) body = '<p class="muted">회원 기능이 연결되면 위임동의를 마친 세대에게 입장 정보를 보여드립니다.</p>';
-    else if (!API.isDelegate && !API.isAdmin) {
-      body = '<div class="panel chat-lock"><b>위임동의를 마친 세대에게만 입장 정보를 알려드립니다</b><p class="muted small" style="margin:6px 0 10px">비밀번호가 걸린 채팅방입니다. ' +
-        (!API.loggedIn ? "로그인한 뒤 위임동의서를 내면 이 칸에 입장 주소와 비밀번호가 나옵니다." : API.consentOpen ? "위임동의서를 내면 바로 이 칸에 입장 주소와 비밀번호가 나옵니다." : esc(consentOpenLabel()) + " 공급계약 후 위임동의서를 내면 이 칸에 나옵니다.") + "</p>" +
-        '<p class="cta-row" style="margin:0">' + (!API.loggedIn ? '<a class="btn solid" href="login.html">로그인</a>' : API.consentOpen ? '<a class="btn solid" href="consent.html">위임동의서 제출</a>' : "") + "</p></div>";
-    } else {
-      var c = await API.chatInfo().catch(function () { return null; });
-      if (!c || !c.url) body = '<div class="panel chat-lock"><b>채팅방을 준비하고 있습니다</b><p class="muted small" style="margin:6px 0 0">열리면 이 칸에 입장 주소와 비밀번호가 나옵니다.</p></div>';
-      else body = '<div class="panel chat-open"><p class="cta-row" style="margin:0 0 12px"><a class="btn solid" href="' + esc(safeUrl(c.url)) + '" target="_blank" rel="noopener">채팅방 입장하기</a></p>' +
-        (c.password ? '<div class="chat-pw"><span class="muted small">입장 비밀번호</span><b class="num" id="chatPw">' + esc(c.password) + '</b><button type="button" class="btn" id="chatCopy">복사</button></div>' : "") +
-        '<p class="muted small" style="margin:10px 0 0">비밀번호는 위임 세대끼리만 나눠 주세요. 바뀌면 이 칸에 새 비밀번호가 나옵니다.</p></div>';
-    }
-    box.innerHTML = h + body;
-    var cp = el("chatCopy");
-    if (cp) cp.addEventListener("click", function () {
-      var t = el("chatPw").textContent, done = function () { cp.textContent = "복사했습니다"; };
-      try { navigator.clipboard.writeText(t).then(done, function () { window.getSelection().selectAllChildren(el("chatPw")); }); } catch (e) { window.getSelection().selectAllChildren(el("chatPw")); }
-    });
+  /* 입주민 오픈채팅: 바로가기를 누르면 위임 세대에게는 비밀번호를 보여주고 바로 카톡방으로 */
+  function sheet(html) {
+    var o = el("sheet"); if (o) o.remove();
+    o = document.createElement("div"); o.id = "sheet"; o.setAttribute("role", "dialog"); o.setAttribute("aria-modal", "true");
+    o.innerHTML = '<div class="sheet-box">' + html + '<button type="button" class="sheet-x" aria-label="닫기">×</button></div>';
+    document.body.appendChild(o);
+    var close = function () { o.remove(); document.removeEventListener("keydown", key); }, key = function (e) { if (e.key === "Escape") close(); };
+    o.addEventListener("click", function (e) { if (e.target === o || e.target.closest(".sheet-x")) close(); });
+    document.addEventListener("keydown", key);
+    return o;
   }
+  async function openChat() {
+    if (!LIVE) return;
+    if (!API.isDelegate && !API.isAdmin) {
+      sheet('<b class="sheet-t">위임동의 세대 전용 채팅방입니다</b><p class="muted">비밀번호가 걸린 채팅방이라, 위임동의를 마친 세대에게만 입장 비밀번호를 알려드립니다.</p>' +
+        '<p class="cta-row">' + (!API.loggedIn ? '<a class="btn solid" href="login.html">로그인</a>' : API.consentOpen ? '<a class="btn solid" href="consent.html">위임동의서 제출</a>' : '<span class="muted small">' + esc(consentOpenLabel()) + " 공급계약 후 위임동의서를 낼 수 있습니다.</span>") + "</p>");
+      return;
+    }
+    var c = await API.chatInfo().catch(function () { return null; });
+    if (!c || !c.url) { sheet('<b class="sheet-t">채팅방을 준비하고 있습니다</b><p class="muted">열리면 이 버튼으로 바로 들어갈 수 있습니다.</p>'); return; }
+    if (!c.password) { location.href = c.url; return; }
+    var o = sheet('<b class="sheet-t">입주민 오픈채팅</b><p class="muted small">채팅방에 들어갈 때 아래 비밀번호를 붙여 넣으세요.</p>' +
+      '<div class="chat-pw"><span class="muted small">입장 비밀번호</span><b class="num" id="chatPw">' + esc(c.password) + "</b></div>" +
+      '<p class="cta-row"><a class="btn solid" id="chatGo" href="' + esc(safeUrl(c.url)) + '">비밀번호 복사하고 입장</a></p>' +
+      '<p class="muted small" style="margin:0">' + (API.isDelegate ? "비밀번호는 위임 세대끼리만 나눠 주세요." : "운영진이라 위임 전에도 보입니다.") + "</p>");
+    o.querySelector("#chatGo").addEventListener("click", function () { try { navigator.clipboard.writeText(c.password); } catch (e) { /* 복사 안 돼도 입장 */ } });
+  }
+  function bindChatTiles() { document.querySelectorAll('.tile[href="#chat"]').forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); openChat(); }); }); }
+
   R.links = async function () {
     var CT = arr(S.contacts);
-    C.innerHTML = "<div>" + head("바로가기") + '<div class="tiles">' + arr(S.links).map(tile).join("") + "</div></div>" + '<div id="chat"></div>' +
+    C.innerHTML = "<div>" + head("바로가기") + '<div class="tiles">' + arr(S.links).map(tile).join("") + "</div></div>" +
       (CT.length ? "<div>" + head("문의처") + '<div class="tablebox"><table class="spec kv">' + CT.map(function (c) { return "<tr><th>" + esc(c[0]) + '</th><td class="num sel-all">' + esc(c[1]) + "</td></tr>"; }).join("") + "</table></div></div>" : "") +
       '<div class="two"><div>' + (arr(S.links).some(function (l) { return /카페/.test(l.title) && l.url; })
         ? head("공식 카페 가입") + '<ol class="steps">' +
           "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
           '<li><div><b>입주예정자 확인</b><span>입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 카페에 계약서를 따로 올리지 않아도 됩니다.</span></div></li>' +
-          '<li><div><b>오픈채팅 참여</b><span>위임동의를 마친 세대는 <a href="#chat">아래 오픈채팅 칸</a>에서 입장 주소와 비밀번호를 볼 수 있습니다.</span></div></li></ol>'
+          '<li><div><b>오픈채팅 참여</b><span>위임동의를 마친 세대는 위 "입주민 오픈채팅"을 누르면 입장 비밀번호와 함께 바로 들어갈 수 있습니다.</span></div></li></ol>'
         : head("입주예정자 확인") + '<p class="muted">입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 동·호수를 고르고 계약서 사진을 올리면 운영진이 확인합니다. 공식 카페와 오픈채팅은 개설되면 이곳에 연결합니다.</p>') + "</div>" +
       "<div>" + head("휴대폰 홈 화면에 추가") +
       '<p class="muted"><b class="fg">아이폰(사파리)</b> 하단 공유 버튼을 누르고 "홈 화면에 추가"를 선택합니다.</p>' +
       '<p class="muted"><b class="fg">안드로이드(크롬)</b> 오른쪽 위 메뉴에서 "홈 화면에 추가"를 선택합니다.</p></div></div>';
-    await chatBox();
-    if (location.hash === "#chat") el("chat").scrollIntoView();
+    bindChatTiles();
+    if (location.hash === "#chat") openChat();
   };
 
   R.calculator = function () {
@@ -1192,7 +1198,7 @@
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
       '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' +
 
-      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진 승인 후 현황판에 반영됩니다." : "") + '</p><p class="muted small">제3자 제공 동의: ' + (ag.agree_third_party ? "동의" : "동의 안 함") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn" id="accWi">내 위임장 보기 · 인쇄</button> <button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판에서 바로 빠지고 투표 · 민원 참여와 세대별 현황 보기가 중지됩니다. 게시판은 계속 쓸 수 있고, 위임동의서를 다시 내면 바로 회복됩니다.</p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
+      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진 승인 후 현황판에 반영됩니다." : "") + '</p><p class="muted small">제3자 제공 동의: ' + (ag.agree_third_party ? "동의" : "동의 안 함") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn" id="accWi">내 위임장 보기 · 인쇄</button> ' + (API.isDelegate ? '<button type="button" class="btn" id="accChat">입주민 오픈채팅 입장</button> ' : "") + '<button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판에서 바로 빠지고 투표 · 민원 참여와 세대별 현황 보기가 중지됩니다. 게시판은 계속 쓸 수 있고, 위임동의서를 다시 내면 바로 회복됩니다.</p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
         : delegateNote(true)) : "") +
       (p.status === "rejected" ? head("계약서 사진 다시 내기") + '<form class="panel" id="fRe" novalidate>' +
         '<div class="field"><label for="rFile">계약서 사진 <span class="muted small">첫 장 · 주민등록번호는 가리세요</span></label><input id="rFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>' +
@@ -1204,6 +1210,7 @@
       '<form class="panel" id="fPw" novalidate><h3 style="margin-bottom:10px">비밀번호 바꾸기</h3><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form></div>';
     el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
     if (el("accWi") && ag) el("accWi").addEventListener("click", function () { showPrint(wiDoc(ag), "내 위임장"); });
+    if (el("accChat")) el("accChat").addEventListener("click", openChat);
     if (el("withdraw")) el("withdraw").addEventListener("click", async function () {
       var btn = this;
       if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "한 번 더 누르면 철회 (투표 · 민원 참여 중지)"; return; }
