@@ -10,6 +10,8 @@
 const NEWS_QUERIES = [
   { topic: "S-4", q: '고양창릉 "S-4"' },
   { topic: "S-4", q: '창릉 S4블록' },
+  { topic: "S-4", q: '고양창릉 S-4블록' },
+  { topic: "S-4", q: '창릉 S-3 S-4' },
   { topic: "창릉", q: '창릉신도시' },
   { topic: "창릉", q: '고양창릉' },
   { topic: "교통", q: '고양은평선' },
@@ -130,7 +132,7 @@ export async function collect(env, fetcher = fetch) {
   const items = [], errors = [];
   for (const { topic, q } of NEWS_QUERIES) {
     try {
-      const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " when:30d");
+      const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " when:120d");
       const r = await fetcher(u, { headers: { "user-agent": "changneung-s4-news-bot" } });
       if (!r.ok) throw new Error("HTTP " + r.status);
       items.push(...parseRss(await r.text(), topic));
