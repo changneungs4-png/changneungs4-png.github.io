@@ -414,6 +414,9 @@
   /* 기사 주제: S-4 / 교통(고양은평선 · GTX 창릉역 등) / 창릉 */
   var S4_RE = /S\s*[-‐–—]?\s*4(?![0-9])/i, TRAFFIC_RE = /고양은평선|창릉역|GTX|지하철|도시철도|광역버스|교통|도로/;
   var S4_CONTEXT = /본청약|사전청약|분양가|중도금|일반\s*청약|입주예정자|입주\s*예정자|비대위|59㎡|74㎡|84㎡/, NOT_S4 = /지분적립형|이익공유형|신혼희망|임대|토지|용지|상가/;
+  /* 다음 검색 결과는 제목도 창릉 · S4 · 주택 · 교통 기사여야(목록 페이지의 엉뚱한 제목 제외) */
+  var HOUSING_RE = /분양|분상제|국평|공공택지|청약|공사비|신도시|입주|주택|아파트|집값|부동산|LH|중도금|대출/;
+  function relevantTitle(x) { return !(x.extra && x.extra.via === "daum") || /창릉|고양은평선/.test(x.title) || S4_RE.test(x.title) || HOUSING_RE.test(x.title) || TRAFFIC_RE.test(x.title); }
   function topicOf(x) {
     if (x.kind === "lh") return "LH";
     if (S4_RE.test(x.title) || (x.topic === "S-4" && ((x.extra && x.extra.via === "daum") || (S4_CONTEXT.test(x.title) && !NOT_S4.test(x.title))))) return "S-4";
@@ -453,7 +456,7 @@
     if (LIVE) { try { auto = await API.news("news", 400); } catch (e) { auto = []; } }
     var known = {}; curated.forEach(function (x) { known[x.url] = 1; });
     var COMMUNITY = /(^|\.)(fmkorea\.com|dcinside\.com|zibble\.kr|clien\.net|ruliweb\.com|theqoo\.net|ppomppu\.co\.kr|82cook\.com|bobaedream\.co\.kr|mlbpark\.donga\.com|instiz\.net|hogangnono\.com|asil\.kr|applepie\.one)$/i;
-    var all = curated.concat(auto.filter(function (x) { var h = ""; try { h = new URL(x.url).hostname; } catch (e) {} return !known[x.url] && !COMMUNITY.test(h) && !/프리미엄콘텐츠|에펨코리아|디시인사이드|fmkorea|dcinside|Calgary/i.test(x.source || ""); }))
+    var all = curated.concat(auto.filter(function (x) { var h = ""; try { h = new URL(x.url).hostname; } catch (e) {} return !known[x.url] && !COMMUNITY.test(h) && !/프리미엄콘텐츠|에펨코리아|디시인사이드|fmkorea|dcinside|Calgary/i.test(x.source || "") && relevantTitle(x); }))
       .sort(function (a, b) { return String(b.published_at || "").localeCompare(String(a.published_at || "")); });
     var T = ["S-4", "교통", "창릉"], shown = 30, cur = "전체";
     C.innerHTML = "<div>" + '<div class="toolbar">' + chips("nwTopic", T, "주제") + '<span class="muted small" id="nwCount"></span></div><div id="nwList"></div>' +

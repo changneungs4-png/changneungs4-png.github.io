@@ -30,6 +30,7 @@ const S4_RE = /S\s*[-‐–—]?\s*4(?![0-9])/i;
 const S4_CONTEXT = /본청약|사전청약|분양가|중도금|일반\s*청약|입주예정자|입주\s*예정자|비대위|59㎡|74㎡|84㎡/;
 const NOT_S4 = /지분적립형|이익공유형|신혼희망|임대|토지|용지|상가/;
 const OTHER_BLOCK_MENTION = /(?:^|[^A-Za-z])(?:S\s*[-‐–—]?\s*(?!4(?!\d))\d+|A\s*[-‐–—]?\s*\d+)/i;   // S-2, S-41, A-3 등 다른 블록
+const HOUSING_RE = /분양|분상제|국평|공공택지|청약|공사비|신도시|입주|주택|아파트|집값|부동산|LH|중도금|대출/;
 const TRAFFIC_RE = /고양은평선|창릉역|GTX|지하철|도시철도|광역버스|교통|도로/;
 const BLOCK_OTHER = /(S\s*-?\s*[1-35-9]|A\s*-?\s*\d)\s*블록/i;
 
@@ -93,6 +94,8 @@ export function parseKakao(json, topic, now = Date.now(), stat = null) {
     if (S4_NEAR.test(text) || (/고양\s*창릉|창릉\s*(신도시|지구|공공)/.test(text) && S4_RE.test(text))) { tp = "S-4"; re = S4_NEAR.test(text) ? S4_NEAR : S4_RE; }
     else if (topic === "교통" && /고양은평선|창릉역/.test(text) && /창릉|고양은평선/.test(text)) { tp = "교통"; re = /고양은평선|창릉역/; }
     if (!tp) continue;
+    // 요약은 같은 페이지의 다른 글에서 올 수 있음(목록 · 모음 페이지) → 제목도 창릉 · S4 · 주택 · 교통 기사여야
+    if (!(/창릉|고양은평선|창릉역/.test(title) || S4_RE.test(title) || HOUSING_RE.test(title) || (tp === "교통" && TRAFFIC_RE.test(title)))) continue;
     out.push({ kind: "news", topic: tp, title: title.slice(0, 300), url: url.slice(0, 1000), source: source.slice(0, 60), published_at: t && !isNaN(+t) ? t.toISOString() : null,
       extra: { snippet: around(decode(d.contents), re).slice(0, 240), via: "daum" } });
   }
@@ -100,7 +103,6 @@ export function parseKakao(json, topic, now = Date.now(), stat = null) {
 }
 
 // 구글 뉴스 RSS → 기사 목록
-const HOUSING_RE = /분양가|분상제|분양가상한제|국평|공공분양|공공택지|사전청약|본청약|청약|공사비|신도시|입주/;
 export function parseRss(xml, topic, loose = false) {
   const out = [];
   const items = String(xml || "").match(/<item>[\s\S]*?<\/item>/gi) || [];
