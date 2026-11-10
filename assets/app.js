@@ -222,11 +222,18 @@
     }).join("") + "</ol>";
   }
   function memberLine(a, m) { return m != null ? '<small class="members">가입 ' + n(m) + "세대 · 위임 전 " + n(Math.max(0, m - a)) + "세대</small>" : ""; }
+  function membersMeter() {
+    if (LIVE_MEMBERS == null) return "";
+    var m = LIVE_MEMBERS, a = agreedCount(), p = pct(m, T);
+    return '<div class="meter"><div class="row"><span>가입 세대</span><b class="num">' + n(m) + ' <small class="muted">/ ' + n(T) + "</small></b></div>" +
+      '<div class="bar-track member"><i style="width:' + Math.min(100, p).toFixed(1) + '%"></i></div>' +
+      "<small>위임 완료 " + n(Math.min(a, m)) + "세대 · 가입만 " + n(Math.max(0, m - a)) + "세대</small></div>";
+  }
   function agreeMeter(compact) {
     var a = agreedCount(), p = pct(a, T);
     return '<div class="meter"><div class="row"><span>위임동의 세대</span><b class="num">' + n(a) + ' <small class="muted">/ ' + n(T) + "</small></b></div>" +
       '<div class="bar-track"><i style="width:' + p.toFixed(1) + '%"></i><span class="goal" style="left:' + pct(NEED, T).toFixed(1) + '%"></span></div>' +
-      "<small>" + (a ? "목표 과반(" + n(NEED) + "세대)까지 " + n(Math.max(0, NEED - a)) + "세대" + (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "") : (compact ? "위임동의 접수 전입니다" : "위임동의 접수 전입니다. 세로선이 목표인 과반(" + n(NEED) + "세대)입니다.")) + "</small>" + memberLine(a, LIVE_MEMBERS) + "</div>";
+      "<small>" + (a ? "목표 과반(" + n(NEED) + "세대)까지 " + n(Math.max(0, NEED - a)) + "세대" + (S.agreementAsOf ? " · " + esc(S.agreementAsOf) + " 기준" : "") : (compact ? "위임동의 접수 전입니다" : "위임동의 접수 전입니다. 세로선이 목표인 과반(" + n(NEED) + "세대)입니다.")) + "</small></div>";
   }
   function progressMeter() {
     var p = S.progress || {};
@@ -283,7 +290,7 @@
       '<p class="lead">창릉천 물길과 서오릉 숲 사이, ' + n(T) + '세대가 함께 만들어갈 새 동네입니다. 공지와 일정, 공사 진행과 위임동의 현황을 이곳에서 확인하세요.</p>' +
       '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="account.html">내 정보 · 위임동의</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') : '<a class="btn solid" href="links.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
       '<aside class="status" aria-label="단지 현황"><div class="top"><div><b class="num">' + dd + "</b></div><span>" + ddl + "<br>16개 동 · " + n(T) + "세대</span></div>" +
-      agreeMeter(true) + progressMeter() +
+      agreeMeter(true) + membersMeter() + progressMeter() +
       '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
       "</div>" + ridge + "</section>" +
 
@@ -607,7 +614,7 @@
     function role(r, cls) { return '<div class="role ' + (cls || "") + '"><b>' + esc(r.role) + "</b><span>" + esc(r.name) + "</span></div>"; }
     C.innerHTML =
       (g && g.text ? '<div class="greeting"><div class="eyebrow">인사말</div><p class="content">' + esc(g.text) + '</p><p class="muted small">— ' + esc(g.from) + "</p></div>" : "") +
-      '<div class="two"><div>' + head("위임동의 현황", more("agreement.html", "동·호수별 현황판")) + agreeMeter() + (LIVE ? '<p class="cta-row" style="margin:0 0 12px">' + (API.loggedIn ? '<a class="btn" href="consent.html">위임동의서 보기</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') + "</p>" : "") +
+      '<div class="two"><div>' + head("위임동의 현황", more("agreement.html", "동·호수별 현황판")) + agreeMeter() + membersMeter() + (LIVE ? '<p class="cta-row" style="margin:0 0 12px">' + (API.loggedIn ? '<a class="btn" href="consent.html">위임동의서 보기</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') + "</p>" : "") +
       '<p class="muted">협의회는 법적 권한이 있는 단체가 아닌 자발적 모임입니다. 그래서 위임 세대 수가 곧 대표성입니다. 위임이 모일수록 LH와의 협의에서 목소리가 커집니다.</p></div>' +
       "<div>" + head("위임동의 절차") + '<ol class="steps">' +
       "<li><div><b>공급계약 후 회원가입</b><span>" + esc(consentOpenLabel()) + " 계약이 시작되면 동·호수를 고르고 계약서 첫 장 사진을 올립니다. 동·호수가 아이디가 되며, 한 세대에는 한 계정만 만들 수 있습니다.</span></div></li>" +
@@ -689,13 +696,14 @@
   /* ── 위임동의 현황판 ── */
   R.agreement = async function () {
     if (!UNITS.length) { C.innerHTML = empty("배치표가 없습니다", "data.js의 layout에 동별 라인을 넣어주세요."); return; }
-    var TYPES = uniq(UNITS.map(function (u) { return u.type; })).sort(), filt = "전체", stats = null, canSee = true, myUnit = null;
+    var TYPES = uniq(UNITS.map(function (u) { return u.type; })).sort(), filt = "전체", stats = null, canSee = true, myUnit = null, MEMBER = {};
     if (LIVE) {
       stats = await API.stats();
       var mst = await API.memberStats().catch(function () { return null; });
       canSee = API.isDelegate || API.isAdmin;
       AGREED = {};
       if (canSee) arr(await API.agreedUnits()).forEach(function (id) { AGREED[id] = 1; });
+      if (canSee) arr(await API.memberUnits()).forEach(function (id) { MEMBER[id] = 1; });
       myUnit = API.isMember ? API.profile.unit_id : null;
     }
     var sDong = {}; arr(stats).forEach(function (r) { sDong[r.dong] = r; });
@@ -708,7 +716,7 @@
       (LIVE && API.isMember ? '<div class="notice-box' + (API.hasAgreement ? " good" : "") + '">' + (API.hasAgreement ? "우리 세대(" + esc(unitLabel(myUnit)) + ")는 위임동의를 마쳤습니다." : '우리 세대(' + esc(unitLabel(myUnit)) + ')는 아직 위임동의 전입니다. ' + (API.consentOpen ? '<a href="consent.html">위임동의서 제출 →</a>' : esc(consentOpenLabel()) + " 공급계약 후 제출할 수 있습니다.")) + "</div>" : "") +
       (canSee ? '<div class="toolbar">' + chips("agTypes", TYPES, "타입") +
         '<form class="find" id="agFind" role="search"><label for="agQ" class="small muted">세대 찾기</label><input id="agQ" placeholder="예: 403-1803" autocomplete="off"><button class="btn" type="submit">찾기</button></form></div>' +
-        '<div class="legend small"><span><i class="sw on"></i>위임동의 완료</span><span><i class="sw off"></i>미제출</span><span><i class="sw none"></i>필로티 · 비주거</span>' + (myUnit ? '<span><i class="sw mine"></i>우리 세대</span>' : "") + "</div>" : "") +
+        '<div class="legend small"><span><i class="sw on"></i>위임동의 완료</span>' + (LIVE ? '<span><i class="sw mem"></i>가입 · 위임 전</span>' : "") + '<span><i class="sw off"></i>미가입</span><span><i class="sw none"></i>필로티 · 비주거</span>' + (myUnit ? '<span><i class="sw mine"></i>우리 세대</span>' : "") + "</div>" : "") +
       '<div class="dongs' + (canSee ? "" : " compact") + '" id="agDongs"></div>' +
       '<div class="panel ag-info" id="agInfo" hidden></div>' +
       (canSee ? "<div>" + head("타입별 현황") + '<div class="tablebox"><table class="spec"><thead><tr><th>타입</th><th class="r">세대</th><th class="r">동의</th><th class="r">동의율</th><th style="width:40%"><span class="sr">막대</span></th></tr></thead><tbody id="agTypeTbl"></tbody></table></div></div>' : "") +
@@ -741,7 +749,7 @@
           d.lines.forEach(function (l, li) {
             var ho = f * 100 + li + 1, id = d.dong + "-" + ho, dim = filt !== "전체" && l[0] !== filt;
             if (f < l[1] || f > l[2]) cells += '<span class="c' + (f < l[1] ? " none" : " sky") + (dim ? " dim" : "") + '"></span>';
-            else cells += '<button type="button" class="c ' + (AGREED[id] ? "on" : "off") + (id === myUnit ? " mine" : "") + (dim ? " dim" : "") + '" data-id="' + id + '" title="' + d.dong + "동 " + ho + '호" aria-label="' + d.dong + "동 " + ho + "호 " + l[0] + (AGREED[id] ? " 위임동의 완료" : " 미제출") + '"></button>';
+            else cells += '<button type="button" class="c ' + (AGREED[id] ? "on" : MEMBER[id] ? "mem" : "off") + (id === myUnit ? " mine" : "") + (dim ? " dim" : "") + '" data-id="' + id + '" title="' + d.dong + "동 " + ho + '호" aria-label="' + d.dong + "동 " + ho + "호 " + l[0] + (AGREED[id] ? " 위임동의 완료" : MEMBER[id] ? " 가입 · 위임 전" : " 미제출") + '"></button>';
           });
         }
         var footer = '<span class="fl"></span>' + d.lines.map(function (l) { return '<span class="tp t' + l[0].slice(0, 2) + (filt !== "전체" && l[0] !== filt ? " dim" : "") + '">' + l[0] + "</span>"; }).join("");
@@ -757,7 +765,7 @@
     function info(id) {
       var u = UNIT[id]; if (!u) return false;
       selected = id; var b = el("agInfo"); b.hidden = false;
-      b.innerHTML = '<div class="row-info"><b>' + u.dong + "동 " + u.ho + "호</b><span>" + u.type + " · " + u.floor + '층</span><span class="tag' + (AGREED[id] ? "" : " off") + '">' + (AGREED[id] ? "위임동의 완료" : "미제출") + '</span><button type="button" class="linkbtn" id="agInfoClose">닫기</button></div>';
+      b.innerHTML = '<div class="row-info"><b>' + u.dong + "동 " + u.ho + "호</b><span>" + u.type + " · " + u.floor + '층</span><span class="tag' + (AGREED[id] ? "" : MEMBER[id] ? " water" : " off") + '">' + (AGREED[id] ? "위임동의 완료" : MEMBER[id] ? "가입 · 위임 전" : "미가입") + '</span><button type="button" class="linkbtn" id="agInfoClose">닫기</button></div>';
       el("agInfoClose").addEventListener("click", function () { b.hidden = true; selected = null; C.querySelectorAll(".c.sel").forEach(function (x) { x.classList.remove("sel"); }); });
       C.querySelectorAll(".c.sel").forEach(function (x) { x.classList.remove("sel"); });
       var c = C.querySelector('.c[data-id="' + id + '"]'); if (c) c.classList.add("sel");
@@ -1259,9 +1267,11 @@
           });
         }
         if (cur === "members") {
-          var M = await API.admin.profiles(), O = await API.admin.orphans(), q = "";
-          B.innerHTML = '<div class="toolbar"><div class="chips" id="mSt"><button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + '</button><button type="button" class="chip" data-s="approved" aria-pressed="false">승인</button><button type="button" class="chip" data-s="pending" aria-pressed="false">대기</button><button type="button" class="chip" data-s="rejected" aria-pressed="false">반려</button></div>' +
-            '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
+          var M = await API.admin.profiles(), O = await API.admin.orphans(), q = "", AGU = {}, AGN = {};
+          arr(await API.admin.agreements().catch(function () { return []; })).forEach(function (a) { if (a.user_id) AGU[a.user_id] = a; AGN[a.unit_id] = a; });
+          var agOf = function (p) { return AGU[p.id] || AGN[p.unit_id] || null; };
+          B.innerHTML = '<div class="toolbar"><div class="chips" id="mSt"><button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + '</button><button type="button" class="chip" data-s="approved" aria-pressed="false">승인</button><button type="button" class="chip" data-s="pending" aria-pressed="false">대기</button><button type="button" class="chip" data-s="rejected" aria-pressed="false">반려</button><button type="button" class="chip" data-s="agreed" aria-pressed="false">위임 완료</button><button type="button" class="chip" data-s="noagree" aria-pressed="false">승인 · 위임 전</button></div>' +
+            '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>위임동의</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
             head("가입 · 승인 기록", '<span class="note">최근 100건 · 지우지 않고 보관</span>') + '<div class="tablebox"><table class="spec"><tbody id="mLog"><tr><td class="muted">불러오는 중…</td></tr></tbody></table></div>' +
             (O.length ? head("가입 중단 계정", '<span class="note">계정만 있고 계약서 사진이 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : "");
           var sf = "", WHO = {}; M.forEach(function (p) { WHO[p.id] = p.unit_id; });
@@ -1273,12 +1283,16 @@
             }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>';
           }).catch(function (e) { el("mLog").innerHTML = '<tr><td class="muted">기록을 불러오지 못했습니다.</td></tr>'; });
           function draw() {
-            el("mList").innerHTML = M.filter(function (p) { return (!sf || p.status === sf) && (!q || (p.unit_id + (p.nickname || "")).indexOf(q) >= 0); }).map(function (p) {
-              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.nickname || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.is_admin ? " · 운영진" : "") + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
+            el("mList").innerHTML = M.filter(function (p) {
+              var okS = !sf || (sf === "agreed" ? !!agOf(p) : sf === "noagree" ? p.status === "approved" && !agOf(p) : p.status === sf);
+              return okS && (!q || (p.unit_id + (p.nickname || "")).indexOf(q) >= 0);
+            }).map(function (p) {
+              var ag = agOf(p);
+              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.nickname || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.is_admin ? " · 운영진" : "") + "</td><td>" + (ag ? '<span class="tag">' + (ag.source === "paper" ? "서면" : "온라인") + '</span> <span class="num small">' + fmtDate(ag.signed_at) + "</span>" : '<span class="tag off">미제출</span>') + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
                 (p.status === "approved" && p.id !== API.session.user.id ? '<button type="button" class="linkbtn revoke" data-id="' + p.id + '">승인 취소</button>' : "") +
                 (p.status === "approved" && p.id !== API.session.user.id ? ' <button type="button" class="linkbtn setadm" data-id="' + p.id + '" data-on="' + (p.is_admin ? "0" : "1") + '">' + (p.is_admin ? "운영진 해제" : "운영진 지정") + "</button>" : "") +
                 (!p.is_admin && p.id !== API.session.user.id ? ' <button type="button" class="linkbtn delacct" data-id="' + p.id + '">계정 삭제</button>' : "") + "</td></tr>";
-            }).join("") || '<tr><td colspan="6" class="muted">해당하는 회원이 없습니다.</td></tr>';
+            }).join("") || '<tr><td colspan="7" class="muted">해당하는 회원이 없습니다.</td></tr>';
           }
           draw();
           el("mSt").addEventListener("click", function (e) { var b = e.target.closest(".chip"); if (!b) return; sf = b.dataset.s; el("mSt").querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", x === b); }); draw(); });

@@ -600,3 +600,8 @@ body.noscroll{overflow:hidden}
 .list.news .dups li .muted{flex:0 0 auto;white-space:nowrap}
 .meter small.members{display:block;margin-top:2px;color:var(--muted)}
 .dong .dmem{margin:4px 0 0}
+/* 가입 · 위임 전 세대 */
+.c.mem{background:var(--water-soft);box-shadow:inset 0 0 0 1.5px var(--water)}
+.sw.mem{background:var(--water-soft);border:1.5px solid var(--water)}
+.bar-track.member i{background:var(--water)}
+.bar-track.member{background:var(--water-soft)}
