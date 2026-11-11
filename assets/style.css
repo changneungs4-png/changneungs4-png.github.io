@@ -661,3 +661,52 @@ body.noscroll{overflow:hidden}
 .wd-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .wd-list li{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}
 .wd-list li .linkbtn{margin-left:auto}
+
+/* 회칙 — 법령집처럼: 조 번호는 고정폭, 본문은 읽기 폭 */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.bl-status{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:12px 16px;border:1px solid var(--line);border-left:4px solid var(--signal);background:var(--surface);border-radius:6px;font-size:14px;color:var(--muted)}
+.bl-status .bl-count{margin-left:auto;font-family:var(--f-num);font-size:12px}
+.bl-badge{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--signal);border:1px solid currentColor;border-radius:999px;padding:1px 10px}
+.bl-badge.ok{color:var(--pine)}
+.bl-status:has(.ok){border-left-color:var(--pine)}
+.bl-keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.bl-key{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);text-decoration:none;min-width:0}
+.bl-key:hover{border-color:var(--pine)}
+.bl-key b{font-family:var(--f-display);font-size:17px;color:var(--pine)}
+.bl-key span:last-child{font-size:13px;color:var(--muted);line-height:1.55}
+.bl-ref{font-family:var(--f-num);font-size:11px;color:var(--muted);letter-spacing:.04em}
+.bl-layout{display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px;align-items:start}
+.bl-toc{position:sticky;top:84px;display:flex;flex-direction:column;gap:10px}
+.bl-toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+.bl-toc a{display:flex;gap:8px;padding:6px 12px;color:var(--fg);text-decoration:none;font-size:14px;margin-left:-1px;border-left:2px solid transparent}
+.bl-toc a:hover{border-left-color:var(--pine);color:var(--pine)}
+.bl-toc a span{font-family:var(--f-num);font-size:12px;color:var(--muted);min-width:3.2em}
+.bl-find input{width:100%;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)}
+.bl-body{max-width:44em;min-width:0}
+.bl-title{font-size:22px;text-align:center;padding-bottom:16px;border-bottom:2px solid var(--fg);margin-bottom:8px}
+.bl-ch{padding-top:20px}
+.bl-ch>h2{font-size:18px;padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:4px}
+.bl-ch>h2 span{font-family:var(--f-num);font-size:13px;color:var(--muted);font-weight:500;margin-right:4px}
+.bl-art{padding:12px 10px;margin:0 -10px;border-radius:6px}
+.bl-art h3{font-family:var(--f-body);font-size:15px;font-weight:700}
+.bl-no{font-family:var(--f-num);font-weight:500;font-size:13px;color:var(--pine);text-decoration:none;margin-right:4px}
+.bl-no:hover{text-decoration:underline}
+.bl-art p{margin:4px 0 0}
+.bl-art ol{margin:6px 0 0;padding-left:1.6em}
+.bl-art li{margin:2px 0}
+.bl-art.hl{animation:blhl 2.4s ease-out}
+@keyframes blhl{0%,40%{background:var(--pine-soft)}100%{background:transparent}}
+.bl-none{color:var(--muted);padding:16px 0}
+.bl-foot{margin-top:24px;padding-top:12px;border-top:2px solid var(--fg);text-align:right;color:var(--muted);font-size:14px}
+.bl-foot ul{list-style:none;margin:4px 0 0;padding:0}
+@media (max-width:760px){
+  .bl-layout{grid-template-columns:minmax(0,1fr);gap:16px}
+  .bl-toc{position:static}
+  .bl-toc ol{flex-direction:row;flex-wrap:wrap;border-left:0;gap:6px}
+  .bl-toc a{border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin:0;background:var(--surface)}
+  .bl-toc a span{min-width:0}
+  .bl-keys{grid-template-columns:1fr 1fr;gap:8px}
+  .bl-key{padding:12px}
+  .bl-status .bl-count{margin-left:0}
+}
+@media (max-width:400px){.bl-keys{grid-template-columns:1fr}}

@@ -54,7 +54,7 @@
   var GROUPS = [
     { name: "소식", items: [["notice.html", "공지사항", "notice", "협의회 · LH 안내"], ["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
     { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["gallery.html", "사진관", "gallery", "현장과 주변 모습"]] },
-    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회계"], ["consent.html", "위임동의서", "consent", "공급계약 후 제출"], ["agreement.html", "위임동의 현황판", "agreement", "동·호수별 한눈에"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
+    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회계"], ["bylaws.html", "회칙", "bylaws", "37개 조 · 운영 원칙"], ["consent.html", "위임동의서", "consent", "공급계약 후 제출"], ["agreement.html", "위임동의 현황판", "agreement", "동·호수별 한눈에"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
     { name: "커뮤니티", items: [["board.html", "자유게시판", "board", "입주예정자 이야기"], ["links.html", "카페 · 바로가기", "links", "가입 · 인증 안내"]] },
     { name: "입주 준비", items: [["calculator.html", "납부 · 취득세 계산기", "calculator", "회차별 금액"], ["checklist.html", "사전점검", "checklist", "공간별 체크리스트"], ["documents.html", "자료실", "documents", "공고문 · 정리 자료"], ["faq.html", "자주 묻는 질문", "faq", "FAQ"]] }
   ];
@@ -71,6 +71,7 @@
     floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
     progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
     gallery: ["PHOTO", "우리 단지 사진관", "현장과 주변 모습입니다."],
+    bylaws: ["BYLAWS", "회칙", "협의회가 어떻게 운영되는지 회원 모두가 함께 정한 약속입니다."],
     association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH와 관계 기관에 전달하는 자발적 모임입니다."],
     agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수별 위임동의 현황입니다."],
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
@@ -176,6 +177,7 @@
       progress: P("M30 150 H220") + R(60, 70, 50, 80) + R(116, 96, 44, 54) + grid(68, 78, 3, 5, 10, 8, 6) + P("M180 150 V22 M168 22 H228 M180 34 L210 22 M222 22 V60") + R(214, 60, 16, 12, 2) + P("M160 96 V60 L200 60"),
       gallery: R(30, 34, 180, 116, 8) + P("M30 128 L84 84 L118 112 L150 86 L210 130") + Cc(170, 62, 12),
       association: Cc(80, 66, 18) + P("M48 140 Q48 98 80 98 Q112 98 112 140") + Cc(150, 58, 22) + P("M112 140 Q112 92 150 92 Q188 92 188 140") + Cc(196, 78, 14) + P("M176 140 Q178 108 196 108 Q216 108 218 140"),
+      bylaws: R(58, 18, 124, 152, 4) + P("M78 44 H162 M78 60 H162 M78 76 H146 M78 100 H162 M78 116 H138") + Cc(150, 144, 14) + P("M143 144 L148 149 L158 138"),
       consent: R(50, 20, 130, 150, 6) + P("M70 46 H160 M70 62 H160 M70 78 H140 M70 94 H160") + P("M72 134 Q86 112 96 132 T120 128 Q132 120 150 134") + P("M168 150 L210 108 L222 120 L180 162 L164 166 Z"),
       agreement: grid(30, 26, 8, 5, 18, 18, 5, [1, 2, 5, 9, 10, 12, 13, 18, 20, 21, 22, 27, 29, 33, 34, 36, 38]),
       participate: R(60, 80, 120, 80, 6) + P("M60 104 H180") + R(100, 20, 44, 66, 3) + P("M110 44 L118 52 L134 34") + P("M96 92 H148"),
@@ -638,15 +640,73 @@
       (o.head ? "<div>" + head("조직 구성(안)", '<span class="note">운영진 선출 전</span>') +
         '<div class="org">' + role(o.head, "head") + '<span class="link-line"></span><div class="lvl">' + arr(o.officers).map(function (r) { return role(r); }).join("") + '</div><span class="link-line"></span><div class="lvl">' + arr(o.teams).map(function (r) { return role(r); }).join("") + "</div>" +
         '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1인" }) + "</div></div></div>" : "") +
-      "<div>" + head("운영 원칙(안)") + '<div class="three"><div><h3>투명한 운영</h3><p class="muted">회의록과 회계 내역을 공개합니다. 회비는 전체 투표 없이 걷지 않습니다.</p></div>' +
-      '<div><h3>현장 중심 활동</h3><p class="muted">정기 현장 방문으로 공정과 품질을 확인하고, 하자 우려 사항을 LH에 공식 전달합니다.</p></div>' +
-      '<div><h3>개인정보 최소 수집</h3><p class="muted">위임 증빙에 필요한 동·호수 · 계약자 성명 · 서명만 받고(연락처는 선택), 가입 계약서 사진은 확인 즉시 삭제합니다.</p></div></div></div>' +
+      "<div>" + head("회칙 핵심", more("bylaws.html", "회칙 전문")) + bylawsKeys(6) + "</div>" +
       "<div>" + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
       (rows.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>날짜</th><th>항목</th><th class="r">수입</th><th class="r">지출</th><th>비고</th></tr></thead><tbody>' +
         rows.map(function (r) { return '<tr><td class="num">' + esc(r.date) + "</td><td>" + esc(r.item) + '</td><td class="r num">' + n(r.in) + '</td><td class="r num">' + n(r.out) + "</td><td>" + esc(r.by) + "</td></tr>"; }).join("") +
         '<tr class="total"><td colspan="2">합계</td><td class="r num">' + n(tin) + '</td><td class="r num">' + n(tout) + "</td><td></td></tr></tbody></table></div>"
         : empty("수입 · 지출 내역이 없습니다", "협의회는 현재 회비를 걷지 않습니다.")) +
       (ac.note ? '<p class="muted small">' + esc(ac.note) + "</p>" : "") + "</div>";
+  };
+
+  /* ── 회칙 ── */
+  var BYLAW_KEYS = [
+    [6, "1세대 1표", "한 세대(호)에 의결권 1개. 공동명의는 대표 1인이 회원이 됩니다."],
+    [21, "과반 · 3분의 2", "총회는 참여 회원 과반수로 정하고, 회칙 개정 · 임원 해임 · 해산은 3분의 2 이상이 찬성해야 합니다."],
+    [22, "7일 전 공고", "총회 안건과 일정은 7일 전까지 카페에 알리고, 투표는 2일 이상 받습니다."],
+    [27, "협의회 명의 통장", "고유번호증으로 만든 통장으로만 돈을 관리합니다. 개인 계좌로는 받지 않습니다."],
+    [28, "30만 원 이상은 의결", "한 번에 30만 원 이상 쓰는 돈은 운영위원회 의결을 거치고, 모든 지출에 증빙을 남깁니다."],
+    [29, "매월 회계 공개", "수입 · 지출을 매월 카페에 공개하고, 감사가 결산을 정기총회에 보고합니다."],
+    [17, "무보수 · 이해관계 회피", "임원은 보수를 받지 않고, 업체 선정에 이해관계가 있으면 밝히고 의결에서 빠집니다."],
+    [33, "회원 정보 보호", "인증 자료 · 동호수 · 연락처는 협의회 활동에만 쓰고, 해산하면 파기합니다."]
+  ];
+  function bylawsKeys(max) {
+    return '<div class="bl-keys">' + BYLAW_KEYS.slice(0, max || BYLAW_KEYS.length).map(function (k) {
+      return '<a class="bl-key" href="bylaws.html#a' + k[0] + '"><span class="bl-ref">제' + k[0] + "조</span><b>" + esc(k[1]) + "</b><span>" + esc(k[2]) + "</span></a>";
+    }).join("") + "</div>";
+  }
+  R.bylaws = function () {
+    var B = S.bylaws || { chapters: [] }, chs = arr(B.chapters), total = 0;
+    chs.forEach(function (c) { total += arr(c.a).length; });
+    if (!total) { C.innerHTML = empty("회칙을 준비하고 있습니다", ""); return; }
+    var fixed = B.status === "확정";
+    var status = fixed ? '<span class="bl-badge ok">시행 중</span><span>' + (B.enacted ? esc(B.enacted) + " 제정" : "") + "</span>"
+      : '<span class="bl-badge">제정(안)</span><span>창립총회 의결 전입니다. 의견은 게시판이나 카페에 남겨 주세요.</span>';
+    function art(a) {
+      return '<article class="bl-art" id="a' + a.n + '" data-q="' + esc(("제" + a.n + "조 " + a.t + " " + a.p + " " + arr(a.i).join(" ")).toLowerCase()) + '">' +
+        '<h3><a class="bl-no" href="#a' + a.n + '">제' + a.n + "조</a> " + esc(a.t) + "</h3>" +
+        (a.p ? "<p>" + esc(a.p) + "</p>" : "") +
+        (arr(a.i).length ? "<ol>" + a.i.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ol>" : "") + "</article>";
+    }
+    C.innerHTML =
+      '<div class="bl-status">' + status + '<span class="bl-count">' + chs.length + "장 " + total + "개 조</span></div>" +
+      "<div>" + head("한눈에 보기") + bylawsKeys() + "</div>" +
+      '<div class="bl-layout"><nav class="bl-toc" aria-label="회칙 목차"><label class="bl-find"><span class="sr-only">조문 찾기</span><input id="blQ" type="search" placeholder="조문 찾기 (예: 회비, 감사)" autocomplete="off"></label>' +
+        "<ol>" + chs.map(function (c, i) { return '<li><a href="#ch' + (i + 1) + '"><span>제' + (i + 1) + "장</span>" + esc(c.t) + "</a></li>"; }).join("") + "</ol></nav>" +
+      '<div class="bl-body"><h2 class="bl-title">' + esc(B.title || "회칙") + "</h2>" +
+        chs.map(function (c, i) {
+          return '<section class="bl-ch" id="ch' + (i + 1) + '"><h2><span>제' + (i + 1) + "장</span> " + esc(c.t) + "</h2>" + arr(c.a).map(art).join("") + "</section>";
+        }).join("") +
+        '<p class="bl-none" id="blNone" hidden>찾는 조문이 없습니다.</p>' +
+        '<div class="bl-foot"><p>제정일: ' + (B.enacted ? esc(B.enacted) : "창립총회 의결 후 기재") + "</p>" +
+        (arr(B.revisions).length ? "<ul>" + B.revisions.map(function (r) { return "<li>" + esc(r.date) + " 개정 · " + esc(r.note) + "</li>"; }).join("") + "</ul>" : "") + "</div>" +
+      "</div></div>";
+    var q = el("blQ"), arts = C.querySelectorAll(".bl-art"), chsEl = C.querySelectorAll(".bl-ch");
+    q.addEventListener("input", function () {
+      var v = q.value.trim().toLowerCase(), any = false;
+      Array.prototype.forEach.call(arts, function (x) { var hit = !v || x.getAttribute("data-q").indexOf(v) >= 0; x.hidden = !hit; if (hit) any = true; });
+      Array.prototype.forEach.call(chsEl, function (s) { s.hidden = !s.querySelector(".bl-art:not([hidden])"); });
+      el("blNone").hidden = any;
+    });
+    function jump() {
+      var id = (location.hash || "").slice(1); if (!/^(a|ch)\d+$/.test(id)) return;
+      var t = el(id); if (!t) return;
+      if (q.value) { q.value = ""; q.dispatchEvent(new Event("input")); }
+      t.scrollIntoView({ block: "start" });
+      if (id[0] === "a") { t.classList.remove("hl"); void t.offsetWidth; t.classList.add("hl"); }
+    }
+    window.addEventListener("hashchange", jump);
+    setTimeout(jump, 0);
   };
 
   /* ── 회원 상태 안내 ── */
