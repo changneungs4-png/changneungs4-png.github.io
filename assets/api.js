@@ -46,10 +46,10 @@
 
   async function loadProfile() {
     if (!uid()) { st.profile = null; return null; }
-    var r = await sb.from("profiles").select("*").eq("id", uid()).maybeSingle();
+    var both = await Promise.all([sb.from("profiles").select("*").eq("id", uid()).maybeSingle(), sb.from("agreements").select("user_id").eq("user_id", uid()).maybeSingle()]);
+    var r = both[0], a = both[1];
     st.profile = r.error ? null : r.data;
-    st.hasAgreement = false;
-    if (st.profile) { var a = await sb.from("agreements").select("user_id").eq("user_id", uid()).maybeSingle(); st.hasAgreement = !a.error && !!a.data; }
+    st.hasAgreement = !!st.profile && !a.error && !!a.data;
     return st.profile;
   }
   function checkFile(f) {
@@ -106,12 +106,13 @@
 
     init: async function () {
       if (!enabled) return st;
-      try { var o = await sb.rpc("consent_open_at"); if (!o.error && o.data) st.openAt = new Date(o.data); } catch (e) { /* 기본값 사용 */ }
-      try {
-        var r = await sb.auth.getSession();
+      // 시작 시각 조회와 로그인 확인을 동시에 (페이지가 빨리 뜨게)
+      var open = sb.rpc("consent_open_at").then(function (o) { if (!o.error && o.data) st.openAt = new Date(o.data); }, function () { /* 기본값 사용 */ });
+      var who = sb.auth.getSession().then(function (r) {
         st.session = r.data && r.data.session;
-        if (st.session) await loadProfile();
-      } catch (e) { st.session = null; st.profile = null; }
+        if (st.session) return loadProfile();
+      }).catch(function () { st.session = null; st.profile = null; });
+      await Promise.all([open, who]);
       return st;
     },
     signIn: async function (unit, pw) {

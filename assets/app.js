@@ -7,6 +7,12 @@
   var API = window.API || { enabled: false };
   var LIVE = API.enabled;
   async function boot() {
+  /* 필요한 자료를 처음부터 한꺼번에 요청 (차례로 기다리지 않게) */
+  var wantLH = ["home", "progress"].indexOf(page) >= 0 && location.protocol !== "file:";
+  var P_LHP = wantLH ? fetch("assets/lh-progress.json?h=" + Math.floor(Date.now() / 600000)).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }) : Promise.resolve(null);
+  var wantStats = LIVE && ["home", "association"].indexOf(page) >= 0;
+  var P_STATS = wantStats ? Promise.all([API.stats().catch(function () { return null; }), API.memberStats().catch(function () { return null; })]) : Promise.resolve([null, null]);
+  var P_NEWS = LIVE && page === "home" ? API.news(null, 30).catch(function () { return []; }) : null;
   if (LIVE) { try { await API.init(); } catch (e) {} }
 
   /* ── helpers ── */
@@ -326,7 +332,7 @@
   async function homeNews() {
     if (!LIVE || page !== "home") return;
     try {
-      var L = clusterNews(await API.news(null, 30)).slice(0, 4); if (!L.length) return;
+      var L = clusterNews(await (P_NEWS || API.news(null, 30))).slice(0, 4); if (!L.length) return;
       el("homeNews").innerHTML = '<section class="band"><div class="wrap">' + head("새 소식", more("news.html", "전체 기사") ) + autoRows(L) + "</div></section>";
     } catch (e) {}
   }
@@ -1518,11 +1524,8 @@
 
   /* LH 공사진행현황 (매일 GitHub Actions가 assets/lh-progress.json 갱신) */
   var LHP = null;
-  if (["home", "progress"].indexOf(page) >= 0 && location.protocol !== "file:") {
-    try {
-      var lr = await fetch("assets/lh-progress.json?h=" + Math.floor(Date.now() / 600000), { cache: "no-cache" });
-      if (lr.ok) LHP = await lr.json();
-    } catch (e) { LHP = null; }
+  if (wantLH) {
+    LHP = await P_LHP;
     if (LHP && LHP.info && LHP.info.rate != null) {
       var rp = arr(LHP.reports), last = rp[0];
       S.progress = Object.assign({}, S.progress, { overall: LHP.info.rate, asOf: "LH 공사진행현황 " + (last ? last.date : "") + " 기준" });
@@ -1532,9 +1535,10 @@
       if (ms.length) S.progressMonthly = ms;
     }
   }
-  if (LIVE && ["home", "association"].indexOf(page) >= 0) {
-    try { var sts = await API.stats(); LIVE_AGREED = sts.reduce(function (s, r) { return s + r.agreed; }, 0); } catch (e) { LIVE_AGREED = null; }
-    try { var ms = await API.memberStats(); LIVE_MEMBERS = ms ? ms.reduce(function (s, r) { return s + r.members; }, 0) : null; } catch (e) { LIVE_MEMBERS = null; }
+  if (wantStats) {
+    var both = await P_STATS, sts = both[0], ms2 = both[1];
+    LIVE_AGREED = sts ? sts.reduce(function (s, r) { return s + r.agreed; }, 0) : null;
+    LIVE_MEMBERS = ms2 ? ms2.reduce(function (s, r) { return s + r.members; }, 0) : null;
   }
   if (R[page]) {
     try { await R[page](); if (page === "home") await homeNews(); }
