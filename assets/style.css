@@ -110,6 +110,7 @@ section.band{padding-block:44px;border-bottom:1px solid var(--line)}
 .sec-head .note,.sec-head a.more{font-size:13px;color:var(--muted)}
 .sec-head a.more{text-decoration:none}
 .sec-head a.more:hover{color:var(--pine)}
+.sec-head .more-row{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:flex-end}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
 .three{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
 .two>*,.three>*{min-width:0}

@@ -540,7 +540,7 @@
         "<dl><dt>전용면적</dt><dd>" + esc(t.area) + "</dd><dt>공급면적</dt><dd>" + Number(t.supply).toFixed(2) + "㎡</dd>" +
         "<dt>최고 분양가</dt><dd>" + eok(t.maxPrice) + "</dd>" + (t.units ? "<dt>공급 세대</dt><dd>" + n(t.units) + "</dd>" : cnt[t.type] ? "<dt>배치표 세대</dt><dd>" + n(cnt[t.type]) + "</dd>" : "") + "</dl></div>";
     }).join("");
-    C.innerHTML = "<div>" + head("주택형 7개", '<a class="more" href="https://apply.lh.or.kr" target="_blank" rel="noopener">평면도 원본 (LH 청약플러스) →</a>') + '<div class="ftypes">' + cards + "</div>" +
+    C.innerHTML = "<div>" + head("주택형 7개", '<span class="more-row"><a class="more" href="https://apply.lh.or.kr/lhapply/lhFile.do?fileid=67715916" target="_blank" rel="noopener">평면도 원본 (팸플릿 PDF) →</a> <a class="more" href="https://apply.lh.or.kr/lhapply/apply/wt/wrtanc/selectWrtancInfo.do?panId=0000061144&ccrCnntSysDsCd=02&uppAisTpCd=05&aisTpCd=05&mi=1027" target="_blank" rel="noopener">모집공고 →</a></span>') + '<div class="ftypes">' + cards + "</div>" +
       '<p class="muted small" style="margin-top:12px">최고 분양가는 모집공고의 주택형별 최고가입니다. 층과 동에 따라 낮아집니다. 공급 세대는 모집공고(LH) 기준입니다.</p></div>' +
       '<div class="two"><div>' + head("면적별 세대수", '<span class="note">모집공고 기준</span>') + areaBars() + "</div><div>" + head("단지 개요") + complexTable(arr(S.complex)) + "</div></div>";
   };

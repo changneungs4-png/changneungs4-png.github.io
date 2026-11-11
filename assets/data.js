@@ -115,8 +115,8 @@ window.SITE = {
 
   documents: [
     { cat: "공고", title: "S-4블록 입주자모집공고문", src: "청약홈", date: "2026.06.30", url: "https://www.applyhome.co.kr" },
-    { cat: "공고", title: "LH 청약플러스 분양 공고 · 당첨 조회", src: "LH 청약플러스", date: "2026.06.30", url: "https://apply.lh.or.kr" },
-    { cat: "평면", title: "타입별 평면도 · 동호배치도 (모집공고 첨부)", src: "LH 청약플러스", date: "2026.06.30", url: "https://apply.lh.or.kr" }
+    { cat: "공고", title: "LH 청약플러스 분양 공고 · 당첨 조회", src: "LH 청약플러스", date: "2026.06.30", url: "https://apply.lh.or.kr/lhapply/apply/wt/wrtanc/selectWrtancInfo.do?panId=0000061144&ccrCnntSysDsCd=02&uppAisTpCd=05&aisTpCd=05&mi=1027" },
+    { cat: "평면", title: "타입별 평면도 · 동호배치도 (모집공고 첨부)", src: "LH 청약플러스", date: "2026.06.30", url: "https://apply.lh.or.kr/lhapply/lhFile.do?fileid=67715916" }
   ],
 
   news: [
