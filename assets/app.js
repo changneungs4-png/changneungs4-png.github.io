@@ -54,11 +54,12 @@
   var GROUPS = [
     { name: "소식", items: [["notice.html", "공지사항", "notice", "협의회 · LH 안내"], ["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
     { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["gallery.html", "사진관", "gallery", "현장과 주변 모습"]] },
-    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회계"], ["bylaws.html", "회칙", "bylaws", "37개 조 · 운영 원칙"], ["consent.html", "위임동의서", "consent", "공급계약 후 제출"], ["agreement.html", "위임동의 현황판", "agreement", "동·호수별 한눈에"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
+    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회칙 · 회계"], ["agreement.html", "위임동의", "agreement", "현황판 · 동의서 제출"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
     { name: "커뮤니티", items: [["board.html", "자유게시판", "board", "입주예정자 이야기"], ["links.html", "카페 · 바로가기", "links", "가입 · 인증 안내"]] },
     { name: "입주 준비", items: [["calculator.html", "납부 · 취득세 계산기", "calculator", "회차별 금액"], ["checklist.html", "사전점검", "checklist", "공간별 체크리스트"], ["documents.html", "자료실", "documents", "공고문 · 정리 자료"], ["faq.html", "자주 묻는 질문", "faq", "FAQ"]] }
   ];
-  var myGroup = GROUPS.filter(function (g) { return g.items.some(function (x) { return x[2] === page; }); })[0];
+  var NAVKEY = { bylaws: "association", consent: "agreement" }[page] || page;
+  var myGroup = GROUPS.filter(function (g) { return g.items.some(function (x) { return x[2] === NAVKEY; }); })[0];
   var HEAD = {
     login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의, 게시판, 투표에 참여할 수 있습니다."],
     account: ["MY PAGE", "내 정보", "가입 상태와 위임동의 내역을 확인합니다."],
@@ -84,7 +85,7 @@
   };
 
   /* ── header ── */
-  function cur(x) { return x[2] === page ? ' aria-current="page"' : ""; }
+  function cur(x) { return x[2] === NAVKEY ? ' aria-current="page"' : ""; }
   var header = document.createElement("header");
   header.className = "top";
   header.innerHTML =
@@ -629,18 +630,11 @@
     function role(r, cls) { return '<div class="role ' + (cls || "") + '"><b>' + esc(r.role) + "</b><span>" + esc(r.name) + "</span></div>"; }
     C.innerHTML =
       (g && g.text ? '<div class="greeting"><div class="eyebrow">인사말</div><p class="content">' + esc(g.text) + '</p><p class="muted small">— ' + esc(g.from) + "</p></div>" : "") +
-      '<div class="two"><div>' + head("위임동의 현황", more("agreement.html", "동·호수별 현황판")) + agreeMeter() + membersMeter() + (LIVE ? '<p class="cta-row" style="margin:0 0 12px">' + (API.loggedIn ? '<a class="btn" href="consent.html">위임동의서 보기</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') + "</p>" : "") +
-      '<p class="muted">협의회는 법적 권한이 있는 단체가 아닌 자발적 모임입니다. 그래서 위임 세대 수가 곧 대표성입니다. 위임이 모일수록 LH와의 협의에서 목소리가 커집니다.</p></div>' +
-      "<div>" + head("위임동의 절차") + '<ol class="steps">' +
-      "<li><div><b>공급계약 후 회원가입</b><span>" + esc(consentOpenLabel()) + " 계약이 시작되면 동·호수를 고르고 계약서 첫 장 사진을 올립니다. 동·호수가 아이디가 되며, 한 세대에는 한 계정만 만들 수 있습니다.</span></div></li>" +
-      "<li><div><b>운영진 승인</b><span>운영진이 사진으로 세대를 확인합니다. 사진은 확인 후 바로 삭제합니다. 승인되면 게시판을 쓸 수 있습니다.</span></div></li>" +
-      '<li><div><b>위임장 · 서명</b><span>가입한 뒤 <a href="consent.html">위임동의서</a>를 읽고 계약자 성명과 서명으로 냅니다. 주민등록번호는 받지 않습니다. 온라인이 어려우면 서면 위임장을 공식 메일로 보내도 됩니다.</span></div></li>' +
-      "<li><div><b>현황판 반영 · 참여</b><span>위임동의 현황판에 바로 반영되고, 투표와 단체민원에 참여할 수 있습니다. 언제든 내 정보에서 철회할 수 있습니다.</span></div></li>" +
-      "</ol></div></div>" +
+      '<a class="as-agree" href="agreement.html"><span>위임동의</span><b class="num">' + n(agreedCount()) + '</b><span class="muted">/ ' + n(T) + "세대</span><em>현황판 · 동의서 제출 →</em></a>" +
       (o.head ? "<div>" + head("조직 구성(안)", '<span class="note">운영진 선출 전</span>') +
         '<div class="org">' + role(o.head, "head") + '<span class="link-line"></span><div class="lvl">' + arr(o.officers).map(function (r) { return role(r); }).join("") + '</div><span class="link-line"></span><div class="lvl">' + arr(o.teams).map(function (r) { return role(r); }).join("") + "</div>" +
         '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1인" }) + "</div></div></div>" : "") +
-      "<div>" + head("회칙 핵심", more("bylaws.html", "회칙 전문")) + bylawsKeys(6) + "</div>" +
+      "<div>" + head("회칙", more("bylaws.html", "전문 보기 · 37개 조")) + bylawsKeys(4) + "</div>" +
       "<div>" + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
       (rows.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>날짜</th><th>항목</th><th class="r">수입</th><th class="r">지출</th><th>비고</th></tr></thead><tbody>' +
         rows.map(function (r) { return '<tr><td class="num">' + esc(r.date) + "</td><td>" + esc(r.item) + '</td><td class="r num">' + n(r.in) + '</td><td class="r num">' + n(r.out) + "</td><td>" + esc(r.by) + "</td></tr>"; }).join("") +
@@ -662,7 +656,7 @@
   ];
   function bylawsKeys(max) {
     return '<div class="bl-keys">' + BYLAW_KEYS.slice(0, max || BYLAW_KEYS.length).map(function (k) {
-      return '<a class="bl-key" href="bylaws.html#a' + k[0] + '"><span class="bl-ref">제' + k[0] + "조</span><b>" + esc(k[1]) + "</b><span>" + esc(k[2]) + "</span></a>";
+      return '<a class="bl-key" href="bylaws.html#a' + k[0] + '"><b>' + esc(k[1]) + '</b><span class="bl-ref">제' + k[0] + "조</span><span>" + esc(k[2]) + "</span></a>";
     }).join("") + "</div>";
   }
   R.bylaws = function () {
@@ -680,27 +674,30 @@
     }
     C.innerHTML =
       '<div class="bl-status">' + status + '<span class="bl-count">' + chs.length + "장 " + total + "개 조</span></div>" +
-      "<div>" + head("한눈에 보기") + bylawsKeys() + "</div>" +
-      '<div class="bl-layout"><nav class="bl-toc" aria-label="회칙 목차"><label class="bl-find"><span class="sr-only">조문 찾기</span><input id="blQ" type="search" placeholder="조문 찾기 (예: 회비, 감사)" autocomplete="off"></label>' +
-        "<ol>" + chs.map(function (c, i) { return '<li><a href="#ch' + (i + 1) + '"><span>제' + (i + 1) + "장</span>" + esc(c.t) + "</a></li>"; }).join("") + "</ol></nav>" +
-      '<div class="bl-body"><h2 class="bl-title">' + esc(B.title || "회칙") + "</h2>" +
+      bylawsKeys() +
+      '<div class="bl-body"><div class="bl-tools"><label class="bl-find"><span class="sr-only">조문 찾기</span><input id="blQ" type="search" placeholder="조문 찾기 (예: 회비, 감사)" autocomplete="off"></label>' +
+        '<button class="btn" type="button" id="blAll">모두 펼치기</button></div>' +
         chs.map(function (c, i) {
-          return '<section class="bl-ch" id="ch' + (i + 1) + '"><h2><span>제' + (i + 1) + "장</span> " + esc(c.t) + "</h2>" + arr(c.a).map(art).join("") + "</section>";
+          return '<details class="bl-ch" id="ch' + (i + 1) + '"><summary><span class="bl-chno">제' + (i + 1) + "장</span><b>" + esc(c.t) + '</b><span class="bl-range">제' + c.a[0].n + "~" + c.a[c.a.length - 1].n + "조</span></summary>" + arr(c.a).map(art).join("") + "</details>";
         }).join("") +
         '<p class="bl-none" id="blNone" hidden>찾는 조문이 없습니다.</p>' +
-        '<div class="bl-foot"><p>제정일: ' + (B.enacted ? esc(B.enacted) : "창립총회 의결 후 기재") + "</p>" +
-        (arr(B.revisions).length ? "<ul>" + B.revisions.map(function (r) { return "<li>" + esc(r.date) + " 개정 · " + esc(r.note) + "</li>"; }).join("") + "</ul>" : "") + "</div>" +
-      "</div></div>";
+        '<p class="bl-foot">' + esc(B.title || "회칙") + " · 제정일 " + (B.enacted ? esc(B.enacted) : "창립총회 의결 후 기재") +
+        (arr(B.revisions).length ? "<br>" + B.revisions.map(function (r) { return esc(r.date) + " 개정 · " + esc(r.note); }).join("<br>") : "") + "</p>" +
+      "</div>";
+    var dets = C.querySelectorAll(".bl-ch");
+    function openAll(on) { Array.prototype.forEach.call(dets, function (d) { d.open = on; }); el("blAll").textContent = on ? "모두 접기" : "모두 펼치기"; }
+    el("blAll").addEventListener("click", function () { openAll(!Array.prototype.every.call(dets, function (d) { return d.open; })); });
     var q = el("blQ"), arts = C.querySelectorAll(".bl-art"), chsEl = C.querySelectorAll(".bl-ch");
     q.addEventListener("input", function () {
       var v = q.value.trim().toLowerCase(), any = false;
       Array.prototype.forEach.call(arts, function (x) { var hit = !v || x.getAttribute("data-q").indexOf(v) >= 0; x.hidden = !hit; if (hit) any = true; });
-      Array.prototype.forEach.call(chsEl, function (s) { s.hidden = !s.querySelector(".bl-art:not([hidden])"); });
+      Array.prototype.forEach.call(chsEl, function (s) { s.hidden = !s.querySelector(".bl-art:not([hidden])"); s.open = !!v && !s.hidden; });
       el("blNone").hidden = any;
     });
     function jump() {
       var id = (location.hash || "").slice(1); if (!/^(a|ch)\d+$/.test(id)) return;
       var t = el(id); if (!t) return;
+      var ch = t.closest ? t.closest("details") : null; if (ch) ch.open = true;
       if (q.value) { q.value = ""; q.dispatchEvent(new Event("input")); }
       t.scrollIntoView({ block: "start" });
       if (id[0] === "a") { t.classList.remove("hl"); void t.offsetWidth; t.classList.add("hl"); }
@@ -767,6 +764,18 @@
   var PRIVACY_SIGNUP = "수집 항목: 동 · 호수(아이디), 비밀번호(암호화하여 저장), 계약서 사진, 가입 · 접속 기록\n목적: 입주예정자 여부 확인과 1세대 1계정 관리\n보유 기간: 계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제, 나머지는 탈퇴 또는 협의회 해산 시까지\n사진에 주민등록번호가 보이면 반려하고 즉시 삭제합니다.\n동의하지 않을 수 있으나, 이 경우 가입할 수 없습니다.";
 
   /* ── 위임동의 현황판 ── */
+  function agreeSteps() {
+    var go = LIVE && !API.loggedIn ? '<a class="btn solid" href="login.html#signup">회원가입</a>' : "";
+    return '<details class="ag-steps"><summary><ol>' +
+      "<li><b>1</b>계약 후 회원가입</li><li><b>2</b>운영진 승인</li><li><b>3</b>위임동의서 서명</li><li><b>4</b>현황판 반영</li>" +
+      '</ol><span class="more-t">자세히</span></summary><div class="ag-steps-body"><ol class="steps">' +
+      "<li><div><b>공급계약 후 회원가입</b><span>" + esc(consentOpenLabel()) + " 계약이 시작되면 동·호수를 고르고 계약서 첫 장 사진을 올립니다. 한 세대에는 한 계정만 만들 수 있습니다.</span></div></li>" +
+      "<li><div><b>운영진 승인</b><span>운영진이 사진으로 세대를 확인하고, 사진은 확인 후 바로 삭제합니다.</span></div></li>" +
+      '<li><div><b>위임동의서 서명</b><span><a href="consent.html">위임동의서</a>를 읽고 계약자 성명과 서명으로 냅니다. 주민등록번호는 받지 않습니다. 서면 위임장은 공식 메일로 보내도 됩니다.</span></div></li>' +
+      "<li><div><b>현황판 반영</b><span>바로 반영되고 투표 · 단체민원에 참여할 수 있습니다. 내 정보에서 언제든 철회할 수 있습니다.</span></div></li>" +
+      '</ol><p class="muted small">협의회는 법적 권한이 있는 단체가 아닌 자발적 모임이라, 위임 세대 수가 곧 대표성입니다.</p></div></details>' +
+      (go ? '<p class="cta-row" style="margin:0">' + go + "</p>" : "");
+  }
   R.agreement = async function () {
     if (!UNITS.length) { C.innerHTML = empty("배치표가 없습니다", "data.js의 layout에 동별 라인을 넣어주세요."); return; }
     var TYPES = uniq(UNITS.map(function (u) { return u.type; })).sort(), filt = "전체", stats = null, canSee = true, myUnit = null, MEMBER = {};
@@ -784,7 +793,7 @@
     var mDong = {}, mTotal = null; if (LIVE && mst) { mTotal = 0; mst.forEach(function (r) { mDong[r.dong] = r.members; mTotal += r.members; }); }
 
     C.innerHTML =
-      '<div class="ag-summary" id="agSum"></div>' +
+      '<div class="ag-summary" id="agSum"></div>' + agreeSteps() +
       (LIVE && !canSee ? '<div class="notice-box">동별 집계는 누구나 볼 수 있습니다. 세대별 현황은 위임장을 낸 세대에게만 보입니다. ' + (API.loggedIn ? '<a href="consent.html">위임동의서 →</a>' : '<a href="login.html">로그인</a>') + "</div>" : "") +
       (LIVE && API.isMember ? '<div class="notice-box' + (API.hasAgreement ? " good" : "") + '">' + (API.hasAgreement ? "우리 세대(" + esc(unitLabel(myUnit)) + ")는 위임동의를 마쳤습니다." : '우리 세대(' + esc(unitLabel(myUnit)) + ')는 아직 위임동의 전입니다. ' + (API.consentOpen ? '<a href="consent.html">위임동의서 제출 →</a>' : esc(consentOpenLabel()) + " 공급계약 후 제출할 수 있습니다.")) + "</div>" : "") +
       (canSee ? '<div class="toolbar">' + chips("agTypes", TYPES, "타입") +
