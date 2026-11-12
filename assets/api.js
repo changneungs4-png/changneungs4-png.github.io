@@ -6,13 +6,15 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v5";
+  var FORM_VERSION = "2026-11-v6";
   function phoneOk(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(String(v || "").replace(/\s/g, "")); }
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성하세요.");
     if (!c.signer || c.signer.trim().length < 2) throw new Error("위임동의서의 계약자 성명을 입력하세요.");
     if (!c.signature) throw new Error("위임장 서명 칸에 서명해 주세요.");
-    if (c.contact && !phoneOk(c.phone)) throw new Error("연락처 동의를 했다면 휴대전화 번호를 바르게 입력하세요. (예: 010-1234-5678)");
+    if (!phoneOk(c.phone)) throw new Error("휴대전화번호를 바르게 입력하세요. (예: 010-1234-5678)");
+    if (c.coOwner && (!c.coName || c.coName.trim().length < 2)) throw new Error("공동명의자 성명을 입력하세요.");
+    if (c.coOwner && !c.coSignature) throw new Error("공동명의자 서명 칸에 서명해 주세요.");
     if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
   }
   var st = { session: null, profile: null, openAt: new Date(((window.SITE || {}).consentOpenAt) || "2026-11-16T00:00:00+09:00") };
@@ -184,7 +186,8 @@
       if (!API.consentOpen) throw new Error("위임동의서는 공급계약이 시작되는 " + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터 낼 수 있습니다.");
       checkConsent(o);
       var row = must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), signature: o.signature, agree_delegation: true, agree_privacy: true, agree_identity: true,
-        agree_third_party: !!o.thirdParty, agree_contact: !!o.contact, phone: o.contact ? String(o.phone || "").trim() : null, form_version: FORM_VERSION }).select().single());
+        agree_third_party: !!o.thirdParty, agree_contact: true, phone: String(o.phone || "").trim(), cafe_nick: String(o.cafeNick || "").trim() || null,
+        co_name: o.coOwner ? String(o.coName || "").trim() : null, co_signature: o.coOwner ? o.coSignature : null, form_version: FORM_VERSION }).select().single());
       st.hasAgreement = true; return row;
     },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
