@@ -876,3 +876,12 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 #accDues:not(:empty){margin-top:32px}
 .cafe-how{margin-bottom:16px}
 .cafe-how ol{margin:6px 0 0;padding-left:1.4em;display:grid;gap:4px}
+/* 동의서 확정본 */
+.consent-doc .c-intro{padding:12px 14px;border-left:3px solid var(--pine);background:var(--surface);border-radius:4px;margin:12px 0 4px}
+.consent-doc .c-step{display:flex;align-items:center;gap:8px;font-size:17px;margin:24px 0 8px;padding-top:14px;border-top:1px solid var(--line)}
+.consent-doc .c-step span{font-family:var(--f-num);font-size:12px;color:var(--bg);background:var(--pine);border-radius:999px;padding:2px 8px}
+.consent-doc h4{font-size:15px;margin:14px 0 4px}
+.consent-doc .c-bylaw{font-size:13px;color:var(--muted);margin:12px 0 0}
+.c-priv td.body,.wi-priv td.body{white-space:pre-line}
+.c-protect{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;font-size:14px}
+.c-protect p{margin:6px 0 0}

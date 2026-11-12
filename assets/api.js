@@ -6,7 +6,7 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v6.1";
+  var FORM_VERSION = "2026-11-v7";
   function phoneOk(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(String(v || "").replace(/\s/g, "")); }
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성하세요.");
@@ -14,7 +14,10 @@
     if (!c.signature) throw new Error("위임장 서명 칸에 서명해 주세요.");
     if (!phoneOk(c.phone)) throw new Error("휴대전화번호를 바르게 입력하세요. (예: 010-1234-5678)");
     if (c.coOwner && (!c.coName || c.coName.trim().length < 2)) throw new Error("공동명의자 성명을 입력하세요.");
+    if (c.coOwner && !c.repName) throw new Error("공동명의 세대는 대표 회원 성명을 입력하세요.");
+    if (c.coOwner && [String(c.signer || "").trim(), String(c.coName || "").trim()].indexOf(String(c.repName || "").trim()) < 0) throw new Error("대표 회원은 계약자나 공동명의자 중 한 명이어야 합니다.");
     if (c.coOwner && !c.coSignature) throw new Error("공동명의자 서명 칸에 서명해 주세요.");
+    if (c.coOwner && !c.coOk) throw new Error("공동명의자 본인 확인 · 동의에 체크해 주세요.");
     if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
   }
   var st = { session: null, profile: null, openAt: new Date(((window.SITE || {}).consentOpenAt) || "2026-11-16T00:00:00+09:00"), signupAt: null };
@@ -197,7 +200,7 @@
       checkConsent(o);
       var row = must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), signature: o.signature, agree_delegation: true, agree_privacy: true, agree_identity: true,
         agree_third_party: !!o.thirdParty, agree_contact: true, phone: String(o.phone || "").trim(), cafe_nick: String(o.cafeNick || "").trim() || null,
-        co_name: o.coOwner ? String(o.coName || "").trim() : null, co_signature: o.coOwner ? o.coSignature : null, form_version: FORM_VERSION }).select().single());
+        co_name: o.coOwner ? String(o.coName || "").trim() : null, co_signature: o.coOwner ? o.coSignature : null, rep_name: o.coOwner ? String(o.repName || "").trim() : null, form_version: FORM_VERSION }).select().single());
       st.hasAgreement = true; return row;
     },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
