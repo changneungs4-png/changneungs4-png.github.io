@@ -310,6 +310,7 @@
       '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
       "</div>" + ridge + "</section>" +
 
+      '<section class="band" id="homeDues" hidden><div class="wrap"></div></section>' +
       '<section class="band"><div class="wrap two"><div>' + head("공지사항", more("notice.html")) + noticeRows(arr(S.notices).slice(0, 5)) + "</div>" +
       "<div>" + head("다가오는 일정", more("schedule.html", "전체 일정")) + timeline(upcoming) + "</div></div></section>" +
 
@@ -330,6 +331,11 @@
       '<a class="shortcut" href="agreement.html"><span class="k">' + arr(S.layout).length + '개 동</span><b>위임동의 현황판</b><span>동·호수별로 한눈에</span></a>' +
       '<a class="shortcut" href="checklist.html"><span class="k">' + arr(S.checklist).reduce(function (s, g) { return s + arr(g.items).length; }, 0) + '항목</span><b>사전점검</b><span>공간별 체크리스트</span></a>' +
       "</div></div></section>";
+    if (LIVE && API.isMember) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
+      var m = r[0], d = r[1]; if (!m || !d || (m.paid > 0 && m.paid >= (m.due || 1))) return;
+      var h = duesCardHtml(m, d, true); if (!h) return;
+      var s = el("homeDues"); s.querySelector(".wrap").innerHTML = head("회비 안내") + h; s.hidden = false; bindCopy(s);
+    }).catch(function () {});
   };
 
   async function homeNews() {
@@ -669,9 +675,32 @@
   }
   function bindCopy(root) {
     root.querySelectorAll("[data-copy]").forEach(function (b) { b.addEventListener("click", function () {
-      var v = b.getAttribute("data-copy"), done = function () { b.textContent = "복사했습니다"; setTimeout(function () { b.textContent = "계좌번호 복사"; }, 1600); };
+      var v = b.getAttribute("data-copy"), was = b.textContent, done = function () { b.textContent = "복사했습니다"; setTimeout(function () { b.textContent = was; }, 1600); };
       try { navigator.clipboard.writeText(v).then(done, function () { prompt("계좌번호", v); }); } catch (e) { prompt("계좌번호", v); }
     }); });
+  }
+  /* 회원용 회비 안내: 우리 세대 금액 · 계좌 · 입금자명 */
+  function duesPayer() {
+    var p = API.profile || {}, nick = String(p.nickname || "").replace(/\s+/g, "").slice(0, 6);
+    return (p.unit_id || "") + nick;
+  }
+  function duesCardHtml(m, d, compact) {
+    if (!m || !d) return "";
+    var due = Number(m.due || 0), paid = Number(m.paid || 0), done = paid > 0 && paid >= (due || 1), left = Math.max(due - paid, 0);
+    if (done) return '<div class="dues-card done"><span class="tag">납부 완료</span><b class="num">' + won(paid) + '</b><span class="muted small">' + fmtDate(m.first_at) + " 입금 확인 · 감사합니다</span></div>";
+    if (!d.account || !due) return "";
+    return '<div class="dues-card">' +
+      '<div class="dc-amt"><span class="muted small">' + (paid ? "남은 회비" : "우리 세대 회비") + '</span><b class="num">' + won(left) + "</b>" +
+        (paid ? '<span class="small muted">' + won(paid) + " 입금 확인됨 · 총 " + won(due) + "</span>" : nextTierNote(d.tiers)) + "</div>" +
+      '<dl class="dc-info">' +
+        "<div><dt>입금 계좌</dt><dd><b class=\"num\">" + esc(d.bank || "") + " " + esc(d.account) + '</b> <button type="button" class="btn sm" data-copy="' + esc(d.account) + '">복사</button><span class="small muted">' + esc(d.holder || "") + "</span></dd></div>" +
+        '<div><dt>입금자명</dt><dd><b class="num">' + esc(duesPayer()) + '</b> <button type="button" class="btn sm" data-copy="' + esc(duesPayer()) + '">복사</button><span class="small muted">이대로 적어야 자동으로 확인됩니다</span></dd></div>' +
+      "</dl>" + (compact ? '<a class="small" href="account.html">내 정보에서 보기 →</a>' : "") + "</div>";
+  }
+  function nextTierNote(tiers) {
+    var now = duesTierNow(tiers), L = arr(tiers), i = L.indexOf(now), nx = i >= 0 ? L[i + 1] : null;
+    if (!now || !now.until || !nx) return "";
+    return '<span class="small">' + fmtDate(now.until + "T00:00:00+09:00") + "까지 · 그 뒤에는 " + won(nx.amount) + "</span>";
   }
   function duesPublicHtml(d, note) {
     var months = arr(d.months), spend = arr(d.spend), h = head("회계 공개", d.updated ? '<span class="note">' + fmtDate(d.updated) + " 거래까지</span>" : "");
@@ -1322,14 +1351,8 @@
       '<form class="panel" id="fPw" novalidate><h3 style="margin-bottom:10px">비밀번호 바꾸기</h3><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form></div>';
     el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
     if (el("accDues")) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
-      var m = r[0], d = r[1]; if (!m || !d || (!d.account && !m.paid)) return;
-      var done = m.paid > 0 && m.paid >= (m.due || 1);
-      el("accDues").innerHTML = head("회비") + '<div class="panel' + (done ? " done" : "") + '">' +
-        (done ? '<p style="margin-top:0"><b>납부 완료</b> · ' + won(m.paid) + " (" + fmtDate(m.first_at) + ")</p>"
-          : m.paid ? '<p style="margin-top:0">' + won(m.paid) + " 입금 확인 · <b>" + won((m.due || 0) - m.paid) + "</b> 더 내야 합니다.</p>"
-          : '<p style="margin-top:0">아직 납부 기록이 없습니다.' + (m.due ? " 지금 내실 금액은 <b>" + won(m.due) + "</b>입니다." : "") + "</p>") +
-        (done ? "" : duesAccountHtml(d)) +
-        '<p class="muted small" style="margin:8px 0 0">총무가 은행 거래내역을 올리면 반영됩니다. 입금하고 며칠이 지나도 그대로면 게시판이나 메일로 알려 주세요.</p></div>';
+      var h = duesCardHtml(r[0], r[1]); if (!h) return;
+      el("accDues").innerHTML = head("회비") + h + '<p class="muted small">총무가 은행 거래내역을 올리면 반영됩니다. 입금하고 며칠이 지나도 그대로면 게시판이나 메일로 알려 주세요.</p>';
       bindCopy(el("accDues"));
     }).catch(function () {});
     if (el("accWi") && ag) el("accWi").addEventListener("click", function () { showPrint(wiDoc(ag), "내 위임장"); });
@@ -1501,7 +1524,9 @@
           '<div class="two" style="gap:10px"><div class="field"><label for="dBank">은행</label><input id="dBank" maxlength="20" value="' + esc(D.bank || "") + '" placeholder="우리은행"></div>' +
           '<div class="field"><label for="dAcc">계좌번호</label><input id="dAcc" class="num" maxlength="30" value="' + esc(D.account || "") + '" placeholder="1005-000-000000"></div></div>' +
           '<div class="field"><label for="dHolder">예금주</label><input id="dHolder" maxlength="40" value="' + esc(D.holder || "") + '" placeholder="고양창릉S4블록입주예정자협의회"></div>' +
-          '<div class="field"><span class="lbl">시기별 금액 <span class="muted small">마지막 구간은 날짜를 비우면 \'그 뒤 계속\'</span></span><div id="tiers">' + tierRows() + '</div><button type="button" class="btn" id="tAdd">구간 추가</button></div>' +
+          '<div class="field"><label for="dAmt">세대당 회비</label><div class="dues-tier"><input id="dAmt" class="tAmt num" inputmode="numeric" value="' + esc(tiers.length === 1 ? String(tiers[0].amount) : "") + '" placeholder="30000"' + (tiers.length > 1 ? " disabled" : "") + '><span class="small muted">원</span></div></div>' +
+          '<label class="chk"><input type="checkbox" id="dMulti"' + (tiers.length > 1 ? " checked" : "") + '> 납부 시기에 따라 금액을 다르게 받기</label>' +
+          '<div class="field" id="tierBox"' + (tiers.length > 1 ? "" : " hidden") + '><span class="lbl">시기별 금액 <span class="muted small">마지막 구간은 날짜를 비우면 \'그 뒤 계속\'</span></span><div id="tiers">' + tierRows() + '</div><button type="button" class="btn" id="tAdd">구간 추가</button></div>' +
           '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit">저장</button></p>' +
           '<p class="muted small" style="margin:8px 0 0">저장하면 협의회 소개 · 회계 공개와 회원의 내 정보에 계좌와 금액이 보입니다. 비워 두면 보이지 않습니다.</p></form>' +
       "</div>";
@@ -1551,11 +1576,17 @@
     function readTiers() {
       tiers = Array.prototype.map.call(el("tiers").querySelectorAll(".dues-tier"), function (r) { return { until: r.querySelector(".tUntil").value || null, amount: bankNum(r.querySelector(".tAmt").value) }; });
     }
+    el("dMulti").addEventListener("change", function () {
+      var on = this.checked; el("tierBox").hidden = !on; el("dAmt").disabled = on;
+      if (on && el("tiers").children.length < 2) { var v = bankNum(el("dAmt").value) || 0; tiers = [{ until: null, amount: v }, { until: null, amount: 0 }]; el("tiers").innerHTML = tierRows(); }
+    });
     el("tAdd").addEventListener("click", function () { readTiers(); tiers.push({ until: null, amount: 0 }); el("tiers").innerHTML = tierRows(); });
     el("tiers").addEventListener("click", function (e) { var b = e.target.closest(".tDel"); if (!b) return; readTiers(); tiers.splice(Number(b.parentNode.dataset.i), 1); el("tiers").innerHTML = tierRows(); });
     el("fDues").addEventListener("submit", async function (e) {
-      e.preventDefault(); readTiers();
-      var T2 = tiers.filter(function (t) { return t.amount > 0; });
+      e.preventDefault();
+      var T2;
+      if (el("dMulti").checked) { readTiers(); T2 = tiers.filter(function (t) { return t.amount > 0; }); }
+      else { var one = bankNum(el("dAmt").value); T2 = one > 0 ? [{ until: null, amount: one }] : []; }
       for (var i = 0; i < T2.length; i++) {
         if (!T2[i].until && i < T2.length - 1) { say("admMsg", "날짜를 비울 수 있는 건 마지막 구간뿐입니다.", true); return; }
         if (i && T2[i].until && T2[i - 1].until && T2[i].until <= T2[i - 1].until) { say("admMsg", "구간 날짜는 앞에서부터 늘어나야 합니다.", true); return; }

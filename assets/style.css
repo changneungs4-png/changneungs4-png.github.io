@@ -801,3 +801,21 @@ ol.bl-keys .bl-key span:last-child{grid-column:2/-1;font-size:13px;color:var(--m
 }
 .dues-up{margin:0}
 #adminBody>.dues-stats+.dues-up{margin-top:0}
+/* 회원 회비 안내 카드 */
+.dues-card{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:12px 28px;align-items:center;padding:16px 20px;border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:8px;background:var(--surface)}
+.dues-card.done{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;border-left-color:var(--pine)}
+.dues-card.done b{font-size:20px;color:var(--pine)}
+.dc-amt{display:flex;flex-direction:column;gap:2px}
+.dc-amt b{font-size:28px;color:var(--signal);line-height:1.2}
+.dc-info{margin:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.dc-info>div{display:grid;grid-template-columns:4.5em minmax(0,1fr);gap:8px;align-items:baseline}
+.dc-info dt{font-size:13px;color:var(--muted)}
+.dc-info dd{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;min-width:0}
+.dc-info dd b{word-break:break-all}
+.dues-card>a{grid-column:1/-1;justify-self:end}
+.btn.sm{padding:2px 10px;font-size:12px;min-height:0}
+.chk{display:flex;align-items:center;gap:6px;font-size:14px;margin:4px 0 10px;cursor:pointer}
+@media (max-width:640px){
+  .dues-card{grid-template-columns:minmax(0,1fr);padding:14px}
+  .dc-amt b{font-size:24px}
+}
