@@ -1833,6 +1833,7 @@
           arr(await API.admin.agreements().catch(function () { return []; })).forEach(function (a) { if (a.user_id) AGU[a.user_id] = a; AGN[a.unit_id] = a; });
           var agOf = function (p) { return AGU[p.id] || AGN[p.unit_id] || null; };
           var CI = await API.chatInfo().catch(function () { return null; }) || {};
+          var OWNER = await API.admin.ownerUnit().catch(function () { return null; }), meOwner = !!OWNER && API.profile && API.profile.unit_id === OWNER;
           var cntS = function (s) { return M.filter(function (p) { return p.status === s; }).length; }, cntAg = M.filter(function (p) { return p.status === "approved" && agOf(p); }).length;
           B.innerHTML =
             '<div class="toolbar"><div class="chips" id="mSt" role="group" aria-label="회원 걸러 보기">' +
@@ -1869,9 +1870,10 @@
               return okS && (!q || (p.unit_id + (p.nickname || "")).indexOf(q) >= 0);
             }).map(function (p) {
               var ag = agOf(p);
-              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.nickname || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.is_admin ? " · 운영진" : "") + "</td><td>" + (ag ? '<span class="tag">' + (ag.source === "paper" ? "서면" : "온라인") + '</span> <span class="num small">' + fmtDate(ag.signed_at) + "</span>" : '<span class="tag off">미제출</span>') + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
-                (p.status === "approved" && p.id !== API.session.user.id ? '<button type="button" class="linkbtn revoke" data-id="' + p.id + '">승인 취소</button>' : "") +
-                (p.status === "approved" && p.id !== API.session.user.id ? ' <button type="button" class="linkbtn setadm" data-id="' + p.id + '" data-on="' + (p.is_admin ? "0" : "1") + '">' + (p.is_admin ? "운영진 해제" : "운영진 지정") + "</button>" : "") +
+              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.nickname || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.unit_id === OWNER ? " · 최고 관리자" : p.is_admin ? " · 운영진" : "") + "</td><td>" + (ag ? '<span class="tag">' + (ag.source === "paper" ? "서면" : "온라인") + '</span> <span class="num small">' + fmtDate(ag.signed_at) + "</span>" : '<span class="tag off">미제출</span>') + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
+                (p.unit_id === OWNER ? '<span class="muted small">다른 운영진이 바꿀 수 없음</span>' : "") +
+                (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER ? '<button type="button" class="linkbtn revoke" data-id="' + p.id + '">승인 취소</button>' : "") +
+                (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER && (meOwner || !OWNER) ? ' <button type="button" class="linkbtn setadm" data-id="' + p.id + '" data-on="' + (p.is_admin ? "0" : "1") + '">' + (p.is_admin ? "운영진 해제" : "운영진 지정") + "</button>" : "") +
                 (!p.is_admin && p.id !== API.session.user.id ? ' <button type="button" class="linkbtn delacct" data-id="' + p.id + '">계정 삭제</button>' : "") + "</td></tr>";
             }).join("") || '<tr><td colspan="7" class="muted">해당하는 회원이 없습니다.</td></tr>';
           }

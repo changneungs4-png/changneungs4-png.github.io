@@ -413,6 +413,7 @@
       },
       deleteCampaign: async function (id) { need(); must(await sb.from("campaigns").delete().eq("id", id)); },
       /* 회비: 은행 거래내역 올리기 · 고치기 · 설정 */
+      ownerUnit: async function () { need(); var r = await sb.rpc("owner_unit"); return r.error ? null : r.data; },
       cafeList: async function () { need(); return must(await sb.rpc("cafe_list")) || []; },
       cafeMark: async function (unit, state) { need(); must(await sb.rpc("cafe_mark", { p_unit: unit, p_state: state || "" })); },
       bankImport: async function (rows) { need(); return (must(await sb.rpc("bank_import", { p_rows: rows })) || [])[0] || { added: 0, skipped: 0, matched: 0 }; },
