@@ -636,7 +636,7 @@
       (o.head ? "<div>" + head("조직 구성(안)", '<span class="note">운영진 선출 전</span>') +
         '<div class="org">' + role(o.head, "head") + '<span class="link-line"></span><div class="lvl">' + arr(o.officers).map(function (r) { return role(r); }).join("") + '</div><span class="link-line"></span><div class="lvl">' + arr(o.teams).map(function (r) { return role(r); }).join("") + "</div>" +
         '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1인" }) + "</div></div></div>" : "") +
-      "<div>" + head("회칙", more("bylaws.html", "전문 보기 · 37개 조")) + bylawsKeys(4) + "</div>" +
+      "<div>" + head("회칙", more("bylaws.html", "전문 보기")) + bylawsKeys() + "</div>" +
       "<div>" + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
       (rows.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>날짜</th><th>항목</th><th class="r">수입</th><th class="r">지출</th><th>비고</th></tr></thead><tbody>' +
         rows.map(function (r) { return '<tr><td class="num">' + esc(r.date) + "</td><td>" + esc(r.item) + '</td><td class="r num">' + n(r.in) + '</td><td class="r num">' + n(r.out) + "</td><td>" + esc(r.by) + "</td></tr>"; }).join("") +
@@ -646,20 +646,13 @@
   };
 
   /* ── 회칙 ── */
-  var BYLAW_KEYS = [
-    [6, "1세대 1표", "한 세대(호)에 의결권 1개. 공동명의는 대표 1인이 회원이 됩니다."],
-    [21, "과반 · 3분의 2", "총회는 참여 회원 과반수로 정하고, 회칙 개정 · 임원 해임 · 해산은 3분의 2 이상이 찬성해야 합니다."],
-    [22, "7일 전 공고", "총회 안건과 일정은 7일 전까지 카페에 알리고, 투표는 2일 이상 받습니다."],
-    [27, "협의회 명의 통장", "고유번호증으로 만든 통장으로만 돈을 관리합니다. 개인 계좌로는 받지 않습니다."],
-    [28, "30만 원 이상은 의결", "한 번에 30만 원 이상 쓰는 돈은 운영위원회 의결을 거치고, 모든 지출에 증빙을 남깁니다."],
-    [29, "매월 회계 공개", "수입 · 지출을 매월 카페에 공개하고, 감사가 결산을 정기총회에 보고합니다."],
-    [17, "무보수 · 이해관계 회피", "임원은 보수를 받지 않고, 업체 선정에 이해관계가 있으면 밝히고 의결에서 빠집니다."],
-    [33, "회원 정보 보호", "인증 자료 · 동호수 · 연락처는 협의회 활동에만 쓰고, 해산하면 파기합니다."]
-  ];
-  function bylawsKeys(max) {
-    return '<div class="bl-keys">' + BYLAW_KEYS.slice(0, max || BYLAW_KEYS.length).map(function (k) {
-      return '<a class="bl-key" href="bylaws.html#a' + k[0] + '"><b>' + esc(k[1]) + '</b><span class="bl-ref">제' + k[0] + "조</span><span>" + esc(k[2]) + "</span></a>";
-    }).join("") + "</div>";
+  /* 협의회 소개의 회칙 요약: 장마다 한 줄 */
+  function bylawsKeys() {
+    var chs = arr((S.bylaws || {}).chapters);
+    return '<ol class="bl-keys">' + chs.map(function (c, i) {
+      var as = arr(c.a), r = as.length ? "제" + as[0].n + "~" + as[as.length - 1].n + "조" : "";
+      return '<li><a class="bl-key" href="bylaws.html#ch' + (i + 1) + '"><span class="bl-ref">제' + (i + 1) + "장</span><b>" + esc(c.t) + '</b><span class="bl-range">' + r + "</span><span>" + esc(c.s || "") + "</span></a></li>";
+    }).join("") + "</ol>";
   }
   R.bylaws = function () {
     var B = S.bylaws || { chapters: [] }, chs = arr(B.chapters), total = 0;
@@ -680,7 +673,7 @@
         "</div>" +
         '<nav class="bl-toc" aria-label="목차">' + chs.map(function (c, i) { return '<a href="#ch' + (i + 1) + '">' + (i + 1) + ". " + esc(c.t) + "</a>"; }).join("") + "</nav>" +
         chs.map(function (c, i) {
-          return '<section class="bl-ch" id="ch' + (i + 1) + '"><h2><span class="bl-chno">제' + (i + 1) + "장</span> " + esc(c.t) + "</h2>" + arr(c.a).map(art).join("") + "</section>";
+          return '<section class="bl-ch" id="ch' + (i + 1) + '"><h2><span class="bl-chno">제' + (i + 1) + "장</span> " + esc(c.t) + "</h2>" + (c.s ? '<p class="bl-sum">' + esc(c.s) + "</p>" : "") + arr(c.a).map(art).join("") + "</section>";
         }).join("") +
         '<p class="bl-none" id="blNone" hidden>찾는 조문이 없습니다.</p>' +
         '<p class="bl-foot">' + esc(B.title || "회칙") + " · 제정일 " + (B.enacted ? esc(B.enacted) : "창립총회 의결 후 기재") +
