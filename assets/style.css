@@ -832,3 +832,16 @@ ol.bl-keys .bl-key span:last-child{grid-column:2/-1;font-size:13px;color:var(--m
 .wi-pre{font-size:13px;padding-left:1.4em}
 .wi-oath{font-weight:700}
 @media (max-width:640px){.c-pre ol{grid-template-columns:minmax(0,1fr)}}
+/* 위임 동의서: 요약 + 접힌 전문 */
+.c-sum{margin:0 0 14px;border-top:1px solid var(--line)}
+.c-sum>div{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.c-sum dt{font-weight:700;font-size:14px}
+.c-sum dd{margin:0;font-size:14px;line-height:1.6}
+.c-h{display:flex;align-items:center;gap:6px;font-size:15px;margin:16px 0 6px}
+.c-priv th{width:6em;white-space:nowrap;vertical-align:top}
+.c-priv td{font-size:14px}
+.c-full{margin-top:16px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.c-full>summary{padding:12px 14px;cursor:pointer;font-weight:700;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
+.c-full[open]>summary{border-bottom:1px solid var(--line)}
+.c-full>section{padding:0 14px}
+@media (max-width:640px){.c-sum>div{grid-template-columns:minmax(0,1fr);gap:2px}}

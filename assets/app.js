@@ -1427,10 +1427,32 @@
   R.consent = async function () {
     var form = '<article class="consent-doc"><p class="eyebrow">고양창릉 S-4블록 공공분양주택</p><h2>입주예정자협의회 구성 및 위임 동의서</h2><p class="muted small">양식 버전 ' + esc(API.formVersion || "2026-11-v1") + "</p>" +
       '<div class="c-pre"><b>작성 전 꼭 읽어 주세요</b><ol>' + CONSENT_PRE.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ol></div>" +
-      "<section><h3>단지 개요</h3>" + consentOverview() + "</section>" + consentSecs("h3") +
-      '<p class="c-oath">' + esc(CONSENT_OATH) + '</p><p class="c-to">' + esc(CONSENT_TO) + "</p></article>" +
+      '<dl class="c-sum">' +
+        "<div><dt>위임하는 것</dt><dd>품질 · 시공 의견과 하자 협의, LH 협의(단지명 · 커뮤니티 · 중도금 대출 · 입주 일정), 교통 · 학교 등 기반시설 건의, 정보 수집 · 공지, 공동구매 · 박람회 추진, 법무법인 후보 공개 모집과 선정 절차 <span class=\"muted\">· 제2조</span></dd></div>" +
+        "<div><dt>위임하지 않는 것</dt><dd>계약 변경 · 해제와 재산권 처분, 분담금 · 소송비 등 금전 부담, 입예협 명의 소송과 수임 계약, 개인정보 목적 외 사용, 하자 · 손해배상 청구권 포기 <span class=\"muted\">· 제3조</span></dd></div>" +
+        "<div><dt>회장단 의무</dt><dd>협의 결과 · 회의록은 모든 계약자에게 공개, 중요 사안은 회원 투표, 돈은 협의회 명의 통장으로만, 업체로부터 개인 이익 금지 <span class=\"muted\">· 제4조</span></dd></div>" +
+        "<div><dt>효력 · 철회</dt><dd>입주자대표회의에 업무를 넘길 때까지 유효. 언제든 사유 없이 철회할 수 있고, 내 정보에서 바로 됩니다 <span class=\"muted\">· 제5조</span></dd></div>" +
+      "</dl>" +
+      '<h3 class="c-h">개인정보 수집 · 이용 <span class="tag hot">필수</span></h3><table class="spec c-priv">' +
+        "<tr><th>항목</th><td>계약자 성명, 주택형 · 동 · 호수, 휴대전화번호, 카페 닉네임, 서명과 제출 일시 (공동명의자 성명 · 서명은 본인이 서명할 때만)</td></tr>" +
+        "<tr><th>목적</th><td>계약자 확인, 과반수 동의 집계, 공지 · 의견수렴 · 투표</td></tr>" +
+        "<tr><th>보유 기간</th><td>입주자대표회의 인계 완료 또는 동의 철회 시 지체 없이 파기</td></tr>" +
+        "<tr><th>거부할 때</th><td>거부할 수 있으나 회원으로 등록되지 않아 투표에 참여할 수 없습니다 (협의 결과 열람은 가능)</td></tr></table>" +
+      '<p class="muted small" style="margin:6px 0 0">제3자 제공(LH · 고양시에 동 · 호수와 성명, 대표성 확인용)은 선택이며 거부해도 회원 자격에 영향이 없습니다.</p>' +
+      '<details class="c-full"><summary>동의서 전문 보기 <span class="muted small">단지 개요 · 제1조~제5조 · 법무법인 선정 절차 · 개인정보 보호 조치</span></summary>' +
+        "<section><h3>단지 개요</h3>" + consentOverview() + "</section>" + consentSecs("h3") + "</details>" +
+      '<p class="c-oath">' + esc(CONSENT_OATH) + '</p><p class="c-to">' + esc(CONSENT_TO) + "</p>" +
+      '<p class="cta-row" style="margin:8px 0 0"><button type="button" class="btn" id="docPdf">전문 PDF로 저장</button></p></article>' +
       '<div class="panel paper-box"><b>온라인이 어려우신가요?</b><p class="muted small" style="margin:6px 0 10px">공급계약을 마친 뒤 서면 위임장 양식을 인쇄해 작성 · 서명하고, 사진이나 스캔본을 협의회 공식 메일 <b>changneung.s4@gmail.com</b> 으로 보내 주세요. 운영진이 확인해 등록합니다. 주민등록번호는 적지 마세요.</p><button type="button" class="btn" id="blankForm">서면 양식 인쇄 · PDF 저장</button></div>';
-    function bindBlank() { var b = el("blankForm"); if (b) b.addEventListener("click", window.S4_showBlankForm); }
+    function bindBlank() {
+      var b = el("blankForm"); if (b) b.addEventListener("click", window.S4_showBlankForm);
+      var d = el("docPdf"); if (d) d.addEventListener("click", function () {
+        showPrint('<article class="wi-doc"><p class="wi-sub">고양창릉 S-4블록 공공분양주택</p><h1>입주예정자협의회 구성 및 위임 동의서</h1>' +
+          '<ol class="wi-pre">' + CONSENT_PRE.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ol><section><h2>단지 개요</h2>" + consentOverview() + "</section>" +
+          CONSENT.map(function (c) { return "<section><h2>" + esc(c[0]) + "</h2><p>" + esc(c[1]) + "</p></section>"; }).join("") +
+          '<p class="wi-oath">' + esc(CONSENT_OATH) + '</p><p class="wi-to">' + esc(CONSENT_TO) + "</p></article>", "위임 동의서 전문");
+      });
+    }
     if (!LIVE) { C.innerHTML = consentLayout(form, gate("member")); bindBlank(); return; }
     var pf = API.profile, g = !API.loggedIn || !pf || pf.status === "rejected" ? gate("member") : "";
     if (g) { C.innerHTML = consentLayout(form, g); bindBlank(); return; }
