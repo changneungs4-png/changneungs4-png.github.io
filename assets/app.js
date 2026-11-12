@@ -1443,7 +1443,7 @@
       '<details class="c-full"><summary>동의서 전문 보기 <span class="muted small">단지 개요 · 수임인 · 제1조~제5조 · 개인정보 보호 조치</span></summary>' +
         "<section><h3>단지 개요</h3>" + consentOverview() + "</section>" + consentSecs("h3") + "</details>" +
       '<p class="c-oath">' + esc(CONSENT_OATH) + '</p><p class="c-to">' + esc(CONSENT_TO) + "</p>" +
-      '<p class="cta-row" style="margin:8px 0 0"><button type="button" class="btn" id="docPdf">전문 PDF로 저장</button></p></article>' +
+      '<p class="cta-row" style="margin:8px 0 0"><a class="btn" href="bylaws.html" target="_blank" rel="noopener">협의회 회칙 보기 (37개 조)</a><button type="button" class="btn" id="docPdf">전문 PDF로 저장</button></p></article>' +
       '<div class="panel paper-box"><b>온라인이 어려우신가요?</b><p class="muted small" style="margin:6px 0 10px">공급계약을 마친 뒤 서면 위임장 양식을 인쇄해 작성 · 서명하고, 사진이나 스캔본을 협의회 공식 메일 <b>changneung.s4@gmail.com</b> 으로 보내 주세요. 운영진이 확인해 등록합니다. 주민등록번호는 적지 마세요.</p><button type="button" class="btn" id="blankForm">서면 양식 인쇄 · PDF 저장</button></div>';
     function bindBlank() {
       var b = el("blankForm"); if (b) b.addEventListener("click", window.S4_showBlankForm);
