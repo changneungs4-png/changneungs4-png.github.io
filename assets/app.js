@@ -6,6 +6,9 @@
   var page = main.dataset.page;
   var API = window.API || { enabled: false };
   var LIVE = API.enabled;
+  /* 설정은 있는데 서버 연결 도구가 안 읽힌 경우(차단 · 오래된 캐시 · 인앱 브라우저): '미리보기'가 아니라 연결 실패로 안내 */
+  var CONN_FAIL = !LIVE && !!(window.S4_CONFIG && window.S4_CONFIG.supabaseUrl);
+  var PREVIEW_MSG = CONN_FAIL ? "서버에 연결하지 못해 지금은 가입 · 로그인이 되지 않습니다. 새로고침하거나, 카카오톡 등 앱 안에서 열었다면 크롬 · 사파리 같은 기본 브라우저로 열어 주세요." : "미리보기 화면입니다. 서버가 연결되기 전이라 실제로 가입 · 로그인되지는 않습니다.";
   async function boot() {
   /* 필요한 자료를 처음부터 한꺼번에 요청 (차례로 기다리지 않게) */
   var wantLH = ["home", "progress"].indexOf(page) >= 0 && location.protocol !== "file:";
@@ -1296,7 +1299,7 @@
       '<label class="check" for="sPriv"><input type="checkbox" id="sPriv"> 개인정보 수집 · 이용에 동의합니다 (필수)</label>';
     C.innerHTML =
       '<div class="auth-wrap">' +
-      (PREVIEW ? '<div class="notice-box" style="margin-bottom:14px">미리보기 화면입니다. 서버가 연결되기 전이라 실제로 가입 · 로그인되지는 않습니다.</div>' : "") +
+      (PREVIEW ? '<div class="notice-box' + (CONN_FAIL ? " bad" : "") + '" style="margin-bottom:14px">' + PREVIEW_MSG + "</div>" : "") +
       (needsProfile ? "" : '<div class="tabs" role="tablist"><button type="button" role="tab" id="tLogin" aria-selected="' + (tab === "login") + '">로그인</button><button type="button" role="tab" id="tSignup" aria-selected="' + (tab === "signup") + '">회원가입</button></div>') +
 
       '<form class="panel" id="fLogin"' + (tab === "login" ? "" : " hidden") + ' novalidate>' +
@@ -1326,8 +1329,8 @@
       el("tSignup").addEventListener("click", function () { setTab("signup"); history.replaceState(null, "", "#signup"); });
     }
     if (PREVIEW) {
-      el("fLogin").addEventListener("submit", function (e) { e.preventDefault(); say("lMsg", "미리보기에서는 로그인되지 않습니다. 서버 연결 후 동작합니다."); });
-      el("fSignup").addEventListener("submit", function (e) { e.preventDefault(); say("sMsg", "미리보기에서는 가입되지 않습니다. 서버 연결 후 동작합니다."); });
+      el("fLogin").addEventListener("submit", function (e) { e.preventDefault(); say("lMsg", PREVIEW_MSG, CONN_FAIL); });
+      el("fSignup").addEventListener("submit", function (e) { e.preventDefault(); say("sMsg", PREVIEW_MSG, CONN_FAIL); });
       return;
     }
     el("fLogin").addEventListener("submit", async function (e) {
