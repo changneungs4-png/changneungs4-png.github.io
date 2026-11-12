@@ -733,3 +733,25 @@ body.noscroll{overflow:hidden}
   .org .role.head{padding:8px 28px}
   .org .link-line{height:8px}
 }
+
+/* 협의회 소개 첫머리 */
+.as-about{display:flex;flex-direction:column;gap:6px}
+.as-lead{font-family:var(--f-display);font-size:20px;line-height:1.6;margin:0;max-width:34em;text-wrap:balance}
+.as-about>.muted{margin:0 0 10px;max-width:46em}
+.as-acts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line)}
+.as-acts li{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:12px 12px 12px 0;border-bottom:1px solid var(--line);min-width:0}
+.as-acts li .num{grid-row:span 2;font-size:12px;color:var(--pine);padding-top:3px}
+.as-acts li b{font-size:15px}
+.as-acts li span:last-child{font-size:13px;color:var(--muted);line-height:1.5}
+/* 회칙 전문: 펼친 문서 + 목차 링크 */
+.bl-toc{display:flex;flex-wrap:wrap;gap:4px 14px;padding:10px 0 4px;font-size:14px}
+.bl-toc a{color:var(--pine);text-decoration:none}
+.bl-toc a:hover{text-decoration:underline}
+section.bl-ch{border-bottom:0;padding-top:18px}
+section.bl-ch:first-of-type{border-top:0}
+section.bl-ch>h2{font-size:18px;padding:8px 0;border-bottom:2px solid var(--fg);margin:0 0 4px;max-width:46em}
+section.bl-ch>h2 .bl-chno{font-size:13px;min-width:0;margin-right:2px}
+@media (max-width:640px){
+  .as-lead{font-size:18px}
+  .as-acts{grid-template-columns:minmax(0,1fr)}
+}

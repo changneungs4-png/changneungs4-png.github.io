@@ -628,9 +628,11 @@
     var o = S.org || {}, g = S.greeting, ac = S.accounting || { rows: [] }, rows = arr(ac.rows);
     var tin = 0, tout = 0; rows.forEach(function (r) { tin += r.in || 0; tout += r.out || 0; });
     function role(r, cls) { return '<div class="role ' + (cls || "") + '"><b>' + esc(r.role) + "</b><span>" + esc(r.name) + "</span></div>"; }
+    var ab = S.about;
     C.innerHTML =
+      (ab ? '<div class="as-about"><p class="as-lead">' + esc(ab.lead) + '</p><p class="muted">' + esc(ab.note) + "</p>" +
+        '<ul class="as-acts">' + arr(ab.activities).map(function (x, i) { return '<li><span class="num">0' + (i + 1) + "</span><b>" + esc(x[0]) + "</b><span>" + esc(x[1]) + "</span></li>"; }).join("") + "</ul></div>" : "") +
       (g && g.text ? '<div class="greeting"><div class="eyebrow">인사말</div><p class="content">' + esc(g.text) + '</p><p class="muted small">— ' + esc(g.from) + "</p></div>" : "") +
-      '<a class="as-agree" href="agreement.html"><span>위임동의</span><b class="num">' + n(agreedCount()) + '</b><span class="muted">/ ' + n(T) + "세대</span><em>현황판 · 동의서 제출 →</em></a>" +
       (o.head ? "<div>" + head("조직 구성(안)", '<span class="note">운영진 선출 전</span>') +
         '<div class="org">' + role(o.head, "head") + '<span class="link-line"></span><div class="lvl">' + arr(o.officers).map(function (r) { return role(r); }).join("") + '</div><span class="link-line"></span><div class="lvl">' + arr(o.teams).map(function (r) { return role(r); }).join("") + "</div>" +
         '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1인" }) + "</div></div></div>" : "") +
@@ -674,30 +676,26 @@
     }
     C.innerHTML =
       '<div class="bl-status">' + status + '<span class="bl-count">' + chs.length + "장 " + total + "개 조</span></div>" +
-      bylawsKeys() +
       '<div class="bl-body"><div class="bl-tools"><label class="bl-find"><span class="sr-only">조문 찾기</span><input id="blQ" type="search" placeholder="조문 찾기 (예: 회비, 감사)" autocomplete="off"></label>' +
-        '<button class="btn" type="button" id="blAll">모두 펼치기</button></div>' +
+        "</div>" +
+        '<nav class="bl-toc" aria-label="목차">' + chs.map(function (c, i) { return '<a href="#ch' + (i + 1) + '">' + (i + 1) + ". " + esc(c.t) + "</a>"; }).join("") + "</nav>" +
         chs.map(function (c, i) {
-          return '<details class="bl-ch" id="ch' + (i + 1) + '"><summary><span class="bl-chno">제' + (i + 1) + "장</span><b>" + esc(c.t) + '</b><span class="bl-range">제' + c.a[0].n + "~" + c.a[c.a.length - 1].n + "조</span></summary>" + arr(c.a).map(art).join("") + "</details>";
+          return '<section class="bl-ch" id="ch' + (i + 1) + '"><h2><span class="bl-chno">제' + (i + 1) + "장</span> " + esc(c.t) + "</h2>" + arr(c.a).map(art).join("") + "</section>";
         }).join("") +
         '<p class="bl-none" id="blNone" hidden>찾는 조문이 없습니다.</p>' +
         '<p class="bl-foot">' + esc(B.title || "회칙") + " · 제정일 " + (B.enacted ? esc(B.enacted) : "창립총회 의결 후 기재") +
         (arr(B.revisions).length ? "<br>" + B.revisions.map(function (r) { return esc(r.date) + " 개정 · " + esc(r.note); }).join("<br>") : "") + "</p>" +
       "</div>";
-    var dets = C.querySelectorAll(".bl-ch");
-    function openAll(on) { Array.prototype.forEach.call(dets, function (d) { d.open = on; }); el("blAll").textContent = on ? "모두 접기" : "모두 펼치기"; }
-    el("blAll").addEventListener("click", function () { openAll(!Array.prototype.every.call(dets, function (d) { return d.open; })); });
     var q = el("blQ"), arts = C.querySelectorAll(".bl-art"), chsEl = C.querySelectorAll(".bl-ch");
     q.addEventListener("input", function () {
       var v = q.value.trim().toLowerCase(), any = false;
       Array.prototype.forEach.call(arts, function (x) { var hit = !v || x.getAttribute("data-q").indexOf(v) >= 0; x.hidden = !hit; if (hit) any = true; });
-      Array.prototype.forEach.call(chsEl, function (s) { s.hidden = !s.querySelector(".bl-art:not([hidden])"); s.open = !!v && !s.hidden; });
+      Array.prototype.forEach.call(chsEl, function (s) { s.hidden = !s.querySelector(".bl-art:not([hidden])"); });
       el("blNone").hidden = any;
     });
     function jump() {
       var id = (location.hash || "").slice(1); if (!/^(a|ch)\d+$/.test(id)) return;
       var t = el(id); if (!t) return;
-      var ch = t.closest ? t.closest("details") : null; if (ch) ch.open = true;
       if (q.value) { q.value = ""; q.dispatchEvent(new Event("input")); }
       t.scrollIntoView({ block: "start" });
       if (id[0] === "a") { t.classList.remove("hl"); void t.offsetWidth; t.classList.add("hl"); }
