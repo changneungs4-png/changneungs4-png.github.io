@@ -191,6 +191,9 @@
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
     memberUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; var r = await sb.rpc("member_units"); return r.error ? [] : r.data; },
     /* 입주민 오픈채팅 입장 정보 (위임 회원 · 운영진만) */
+    /* 회비 안내 · 월별 합계 (누구나), 우리 세대 납부 상태 (회원) */
+    duesPublic: async function () { need(); var r = await sb.rpc("dues_public"); return r.error ? null : r.data; },
+    duesMine: async function () { need(); if (!API.isMember) return null; var r = await sb.rpc("dues_mine"); return r.error ? null : (r.data || [])[0] || null; },
     chatInfo: async function () { need(); if (!API.isDelegate && !API.isAdmin) return null; var r = await sb.rpc("chat_info_get"); if (r.error) return null; return (r.data || [])[0] || null; },
     memberStats: async function () { need(); var r = await sb.rpc("member_stats"); return r.error ? null : r.data; },
     agreedUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
@@ -395,7 +398,17 @@
         if (pw.length > 40) throw new Error("비밀번호는 40자까지 넣을 수 있습니다.");
         must(await sb.rpc("chat_info_set", { p_url: url, p_password: pw }));
       },
-      deleteCampaign: async function (id) { need(); must(await sb.from("campaigns").delete().eq("id", id)); }
+      deleteCampaign: async function (id) { need(); must(await sb.from("campaigns").delete().eq("id", id)); },
+      /* 회비: 은행 거래내역 올리기 · 고치기 · 설정 */
+      bankImport: async function (rows) { need(); return (must(await sb.rpc("bank_import", { p_rows: rows })) || [])[0] || { added: 0, skipped: 0, matched: 0 }; },
+      bankTx: async function () { need(); return must(await sb.rpc("bank_tx_list", { p_limit: 3000 })) || []; },
+      bankTxSet: async function (id, unit, cat, note) { need(); must(await sb.rpc("bank_tx_set", { p_id: id, p_unit: unit || "", p_category: cat || "", p_note: note || "" })); },
+      bankTxDelete: async function (id) { need(); must(await sb.rpc("bank_tx_delete", { p_id: id })); },
+      duesUnits: async function () { need(); return must(await sb.rpc("dues_units")) || []; },
+      duesConfigSet: async function (c) {
+        need();
+        must(await sb.rpc("dues_config_set", { p_bank: c.bank || "", p_account: c.account || "", p_holder: c.holder || "", p_tiers: c.tiers || [] }));
+      }
     },
     errorText: kor
   };

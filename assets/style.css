@@ -772,3 +772,32 @@ ol.bl-keys .bl-key span:last-child{grid-column:2/-1;font-size:13px;color:var(--m
   .as-acts li b{font-size:14px}
   .as-acts li span:last-child{display:none}
 }
+
+/* 회비 */
+.dues-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dues-stats>div{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.dues-stats b{font-size:24px;color:var(--pine)}
+.dues-stats b.hot{color:var(--signal)}
+.dues-up h3,#fDues h3{margin:0 0 6px}
+.bk-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:12px 0}
+.bk-map label{display:flex;flex-direction:column;gap:2px}
+.bk-map select{font:inherit;font-size:13px;padding:4px}
+.dues-tier{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.dues-tier input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg);min-width:0}
+.dues-tier .tAmt{width:8em;text-align:right}
+.dues-tx input,.dues-tx select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--fg);max-width:100%}
+.dues-tx .xN{min-width:8em}
+.dues-tx td{vertical-align:middle}
+.nowrap{white-space:nowrap}
+.dues-acc{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--pine);border-radius:6px;background:var(--surface)}
+.dues-acc>div{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.dues-acc b{font-size:17px;word-break:break-all}
+.dues-tiers tr.now td{font-weight:700}
+.dues-pub{margin-bottom:12px}
+@media (max-width:640px){
+  .dues-stats{gap:6px}
+  .dues-stats>div{padding:10px}
+  .dues-stats b{font-size:20px}
+}
+.dues-up{margin:0}
+#adminBody>.dues-stats+.dues-up{margin-top:0}
