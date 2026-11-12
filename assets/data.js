@@ -7,7 +7,7 @@
 window.SITE = {
   name: "고양창릉 S-4블록 입주예정자협의회",
   short: "창릉 S-4 입예협",
-  updated: "2026.11.05",
+  updated: "2026.11.12",
 
   /* 단지 기본 정보 (모집공고 기준) */
   totalUnits: 1024,

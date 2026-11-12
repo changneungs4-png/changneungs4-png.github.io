@@ -65,7 +65,7 @@
     account: ["MY PAGE", "내 정보", "가입 상태와 위임동의 내역을 확인합니다."],
     consent: ["CONSENT", "위임동의서", "공급계약을 마친 계약자가 제출합니다."],
     privacy: ["PRIVACY", "개인정보처리방침", "협의회가 어떤 정보를 왜 받고, 언제 지우는지 안내합니다."],
-    admin: ["ADMIN", "운영진", "가입 승인, 위임동의 명단, 투표 · 민원을 관리합니다."],
+    admin: ["ADMIN", "운영진", "가입 승인부터 위임동의 · 회비 · 투표 · 민원 · 자료 수집까지 관리합니다."],
     notice: ["NOTICE", "공지사항", "협의회와 LH의 안내입니다."],
     schedule: ["SCHEDULE", "주요 일정", "청약부터 입주까지의 흐름입니다."],
     news: ["MEDIA", "언론보도", "S-4블록 · 창릉신도시 · 교통(고양은평선 · GTX 창릉역) 관련 기사입니다."],
@@ -869,7 +869,7 @@
       '<div class="dongs' + (canSee ? "" : " compact") + '" id="agDongs"></div>' +
       '<div class="panel ag-info" id="agInfo" hidden></div>' +
       (canSee ? "<div>" + head("타입별 현황") + '<div class="tablebox"><table class="spec"><thead><tr><th>타입</th><th class="r">세대</th><th class="r">동의</th><th class="r">동의율</th><th style="width:40%"><span class="sr">막대</span></th></tr></thead><tbody id="agTypeTbl"></tbody></table></div></div>' : "") +
-      '<p class="muted small">' + esc(S.layoutNote || "") + " 배치표 집계 " + n(UNITS.length) + "세대, 공고 " + n(T) + "세대.</p>" +
+      (LIVE && API.isAdmin ? '<p class="muted small">운영진 메모: ' + esc(S.layoutNote || "") + " 배치표 집계 " + n(UNITS.length) + "세대, 공고 " + n(T) + "세대.</p>" : "") +
       (LIVE ? "" : '<p class="muted small">회원 기능이 연결되면 승인된 회원이 낸 위임동의서가 이 화면에 자동으로 반영됩니다.</p>');
 
     function render() {
@@ -1701,6 +1701,13 @@
     }
   }
 
+  /* 긴 기록 표: 앞 15줄만 보이고 '더 보기' */
+  function moreRow(h, i) { return i < 15 ? h : h.replace("<tr>", '<tr class="more-row" hidden>'); }
+  function moreBtn(total) { return total > 15 ? '<tr><td colspan="4"><button type="button" class="linkbtn show-more-rows">' + (total - 15) + "건 더 보기</button></td></tr>" : ""; }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".show-more-rows"); if (!b) return;
+    b.closest("tbody").querySelectorAll(".more-row").forEach(function (r) { r.hidden = false; }); b.closest("tr").remove();
+  });
   R.admin = async function () {
     if (!LIVE || !API.loggedIn) { C.innerHTML = gate("login"); return; }
     if (!API.isAdmin) { C.innerHTML = empty("운영진만 볼 수 있습니다", ""); return; }
@@ -1749,26 +1756,39 @@
           arr(await API.admin.agreements().catch(function () { return []; })).forEach(function (a) { if (a.user_id) AGU[a.user_id] = a; AGN[a.unit_id] = a; });
           var agOf = function (p) { return AGU[p.id] || AGN[p.unit_id] || null; };
           var CI = await API.chatInfo().catch(function () { return null; }) || {};
-          B.innerHTML = '<form class="panel chat-admin" id="fChat" novalidate><h3 style="margin-bottom:10px">입주민 오픈채팅 입장 정보 <span class="muted small">위임 세대에게만 보임</span></h3>' +
+          var cntS = function (s) { return M.filter(function (p) { return p.status === s; }).length; }, cntAg = M.filter(function (p) { return p.status === "approved" && agOf(p); }).length;
+          B.innerHTML =
+            '<div class="toolbar"><div class="chips" id="mSt" role="group" aria-label="회원 걸러 보기">' +
+              '<button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + "</button>" +
+              '<button type="button" class="chip" data-s="approved" aria-pressed="false">승인 ' + cntS("approved") + "</button>" +
+              '<button type="button" class="chip" data-s="pending" aria-pressed="false">대기 ' + cntS("pending") + "</button>" +
+              '<button type="button" class="chip" data-s="rejected" aria-pressed="false">반려 ' + cntS("rejected") + "</button>" +
+              '<span class="chip-sep" aria-hidden="true"></span>' +
+              '<button type="button" class="chip" data-s="agreed" aria-pressed="false" title="승인 회원 중 위임동의서를 낸 세대">위임 완료 ' + cntAg + "</button>" +
+              '<button type="button" class="chip" data-s="noagree" aria-pressed="false" title="승인 회원 중 아직 위임동의서를 내지 않은 세대">위임 미제출 ' + (cntS("approved") - cntAg) + "</button></div>" +
+            '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>위임동의</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
+            '<div class="adm-sec">' + head("가입 · 승인 기록", '<span class="note">최근 100건 · 지우지 않고 보관</span>') + '<div class="tablebox"><table class="spec"><tbody id="mLog"><tr><td class="muted">불러오는 중…</td></tr></tbody></table></div></div>' +
+            (O.length ? '<div class="adm-sec">' + head("가입 중단 계정", '<span class="note">계정만 있고 계약서 사진이 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div></div>" : "") +
+            '<div class="adm-sec">' + '<form class="panel chat-admin" id="fChat" novalidate><h3 style="margin-bottom:10px">입주민 오픈채팅 입장 정보 <span class="muted small">위임 세대에게만 보임</span></h3>' +
             '<div class="two" style="gap:12px"><div class="field"><label for="chUrl">채팅방 주소</label><input id="chUrl" placeholder="https://open.kakao.com/o/..." value="' + esc(CI.url || "") + '"></div>' +
             '<div class="field"><label for="chPw">입장 비밀번호</label><input id="chPw" maxlength="40" value="' + esc(CI.password || "") + '"></div></div>' +
-            '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit">저장</button>' + (CI.updated_at ? '<span class="muted small">마지막 변경 ' + fmtTime(CI.updated_at) + "</span>" : "") + '</p></form>' +
-            '<div class="toolbar"><div class="chips" id="mSt"><button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + M.length + '</button><button type="button" class="chip" data-s="approved" aria-pressed="false">승인</button><button type="button" class="chip" data-s="pending" aria-pressed="false">대기</button><button type="button" class="chip" data-s="rejected" aria-pressed="false">반려</button><button type="button" class="chip" data-s="agreed" aria-pressed="false">위임 완료</button><button type="button" class="chip" data-s="noagree" aria-pressed="false">승인 · 위임 전</button></div>' +
-            '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>위임동의</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
-            head("가입 · 승인 기록", '<span class="note">최근 100건 · 지우지 않고 보관</span>') + '<div class="tablebox"><table class="spec"><tbody id="mLog"><tr><td class="muted">불러오는 중…</td></tr></tbody></table></div>' +
-            (O.length ? head("가입 중단 계정", '<span class="note">계정만 있고 계약서 사진이 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : "");
+            '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit">저장</button>' + (CI.updated_at ? '<span class="muted small">마지막 변경 ' + fmtTime(CI.updated_at) + "</span>" : "") + '</p></form>' + "</div>";
           el("fChat").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.setChatInfo(el("chUrl").value, el("chPw").value); say("admMsg", "오픈채팅 입장 정보를 저장했습니다. 위임 세대의 카페 · 바로가기 화면에 바로 나옵니다."); } catch (er) { err(er); } });
           var sf = "", WHO = {}; M.forEach(function (p) { WHO[p.id] = p.unit_id; });
           var ACT = { signup: "가입 신청", approve: "승인", reject: "반려", reapply: "재신청", revoke: "승인 취소", admin_on: "운영진 지정", admin_off: "운영진 해제", "delete": "계정 삭제" };
           API.admin.memberLog().then(function (L) {
-            el("mLog").innerHTML = L.slice(0, 100).map(function (x) {
+            var lim = 15, rows = L.slice(0, 100);
+            var drawLog = function () { el("mLog").innerHTML = rows.slice(0, lim).map(function (x) {
               var by = !x.by_user ? "시스템" : x.by_user === x.profile_id ? "본인" : "운영진 " + (WHO[x.by_user] || "");
               return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + esc(ACT[x.action] || x.action) + (x.note ? ' <span class="muted small">(' + esc(x.note) + ")</span>" : "") + '</td><td class="muted small">' + esc(by) + "</td></tr>";
             }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>';
+              if (rows.length > lim) el("mLog").insertAdjacentHTML("beforeend", '<tr><td colspan="4"><button type="button" class="linkbtn" id="mLogMore">' + (rows.length - lim) + "건 더 보기</button></td></tr>");
+              var mb = el("mLogMore"); if (mb) mb.addEventListener("click", function () { lim = 100; drawLog(); });
+            }; drawLog();
           }).catch(function (e) { el("mLog").innerHTML = '<tr><td class="muted">기록을 불러오지 못했습니다.</td></tr>'; });
           function draw() {
             el("mList").innerHTML = M.filter(function (p) {
-              var okS = !sf || (sf === "agreed" ? !!agOf(p) : sf === "noagree" ? p.status === "approved" && !agOf(p) : p.status === sf);
+              var okS = !sf || (sf === "agreed" ? p.status === "approved" && !!agOf(p) : sf === "noagree" ? p.status === "approved" && !agOf(p) : p.status === sf);
               return okS && (!q || (p.unit_id + (p.nickname || "")).indexOf(q) >= 0);
             }).map(function (p) {
               var ag = agOf(p);
@@ -1831,7 +1851,7 @@
               return '<tr' + (counted(a) ? "" : ' class="muted"') + '><td class="num">' + esc(a.unit_id) + ' <span class="muted small">' + esc(u.type || "") + "</span></td><td>" + esc(a.signer_name || "-") + "</td><td>" + how(a) + (counted(a) ? "" : " · 승인 전") + '</td><td class="num">' + fmtTime(a.signed_at) + "</td><td>" + (a.agree_third_party ? "동의" : "-") + '</td><td class="num">' + (a.agree_contact ? esc(a.phone || "") : "-") + "</td><td>" +
                 '<button type="button" class="linkbtn wiOne" data-u="' + esc(a.unit_id) + '">위임장</button>' + (a.paper_path ? ' <button type="button" class="linkbtn paperView" data-u="' + esc(a.unit_id) + '">원본</button>' : "") +
                 (a.source === "paper" ? ' <button type="button" class="linkbtn paperDel" data-u="' + esc(a.unit_id) + '">서면 철회</button>' : "") + "</td></tr>"; }).join("") || '<tr><td colspan="7" class="muted">아직 제출된 위임동의서가 없습니다.</td></tr>') +
-            "</tbody></table></div>" + head("최근 기록") + '<div class="tablebox"><table class="spec"><tbody>' + (lg.slice(0, 50).map(function (x) { return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + (x.action === "sign" ? "제출" : "철회") + '</td><td class="muted small">' + (!x.by_user ? "시스템" : x.by_user === x.user_id ? "본인" : "운영진") + "</td></tr>"; }).join("") || '<tr><td class="muted">기록이 없습니다.</td></tr>') + "</tbody></table></div>" +
+            "</tbody></table></div>" + head("최근 기록", '<span class="note">제출 · 철회 최근 50건</span>') + '<div class="tablebox"><table class="spec"><tbody>' + (lg.slice(0, 50).map(function (x) { return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + (x.action === "sign" ? "제출" : "철회") + '</td><td class="muted small">' + (!x.by_user ? "시스템" : x.by_user === x.user_id ? "본인" : "운영진") + "</td></tr>"; }).map(moreRow).join("") + moreBtn(Math.min(lg.length, 50)) || '<tr><td class="muted">기록이 없습니다.</td></tr>') + "</tbody></table></div>" +
             '<textarea class="out" id="csvOut" readonly hidden aria-label="CSV"></textarea>';
           var byU = {}; A.forEach(function (a) { byU[a.unit_id] = a; });
           bindUnitPicker("pp");

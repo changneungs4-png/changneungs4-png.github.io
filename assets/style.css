@@ -845,3 +845,32 @@ ol.bl-keys .bl-key span:last-child{grid-column:2/-1;font-size:13px;color:var(--m
 .c-full[open]>summary{border-bottom:1px solid var(--line)}
 .c-full>section{padding:0 14px}
 @media (max-width:640px){.c-sum>div{grid-template-columns:minmax(0,1fr);gap:2px}}
+.adm-sec{margin-top:32px}
+.chip-sep{width:1px;align-self:stretch;background:var(--line);margin:2px 4px}
+/* 바닥글 아랫줄: 줄 맞춤 */
+footer.foot .wrap:not(.sitemap){align-items:center}
+footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
+@media (max-width:640px){footer.foot .wrap:not(.sitemap){flex-direction:column;align-items:flex-start;gap:6px}}
+.dues-tier{flex-wrap:wrap}
+.dues-tier .tUntil{flex:1 1 9em;min-width:0;max-width:12em}
+#tiers{max-width:100%}
+.field .lbl{display:block;overflow-wrap:anywhere}
+@media (max-width:900px){.dues-card{grid-template-columns:minmax(0,1fr)}}
+/* 표 · 목록 · 폼 바로 뒤에 오는 소제목은 띄우기 */
+:is(.tablebox,.panel,form,ul,ol,table,.toolbar,p,.dues-stats)+.sec-head{margin-top:32px}
+/* 운영진 표: 폰에서는 칸을 짓누르지 않고 옆으로 밀어 보기 */
+@media (max-width:640px){
+  #adminBody .tablebox{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #adminBody .tablebox>table.spec{min-width:640px}
+  #adminBody .tablebox>table.spec td,#adminBody .tablebox>table.spec th{white-space:nowrap}
+  #adminBody .tablebox>table.spec td.num{white-space:nowrap}
+}
+.dues-stats{margin-bottom:12px}
+.dues-up{margin:0 0 16px}
+@media (max-width:640px){
+  .dues-tier{flex-wrap:nowrap;gap:4px}
+  .dues-tier .tUntil{flex:1 1 auto;width:0}
+  .dues-tier .tAmt{width:5.8em;flex:0 0 auto}
+  .dues-tier .tDel{padding:4px 8px;flex:0 0 auto}
+}
+#accDues:not(:empty){margin-top:32px}

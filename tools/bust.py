@@ -2,6 +2,12 @@
 사용: python3 tools/bust.py"""
 import glob, hashlib, os, re
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 바닥글 '최종 갱신' 날짜를 배포하는 날로 (한국 시간)
+import datetime
+today = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))).strftime("%Y.%m.%d")
+dp = os.path.join(root, "assets", "data.js"); ds = open(dp, encoding="utf-8").read()
+dn = re.sub(r'updated: "\d{4}\.\d{2}\.\d{2}"', 'updated: "' + today + '"', ds, count=1)
+if dn != ds: open(dp, "w", encoding="utf-8").write(dn)
 def h(rel):
     with open(os.path.join(root, rel), "rb") as f: return hashlib.sha256(f.read()).hexdigest()[:10]
 for page in glob.glob(os.path.join(root, "*.html")):
