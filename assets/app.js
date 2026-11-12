@@ -332,8 +332,8 @@
       '<a class="shortcut" href="checklist.html"><span class="k">' + arr(S.checklist).reduce(function (s, g) { return s + arr(g.items).length; }, 0) + '항목</span><b>사전점검</b><span>공간별 체크리스트</span></a>' +
       "</div></div></section>";
     if (LIVE && API.isMember) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
-      var m = r[0], d = r[1]; if (!m || !d || (m.paid > 0 && m.paid >= (m.due || 1))) return;
-      var h = duesCardHtml(m, d, true); if (!h) return;
+      var m = r[0], d = r[1]; if (!m || (m.paid > 0 && m.paid >= (m.due || 1))) return;
+      var h = duesCardHtml(m, d, true) || duesAdminHint(d); if (!h) return;
       var s = el("homeDues"); s.querySelector(".wrap").innerHTML = head("회비 안내") + h; s.hidden = false; bindCopy(s);
     }).catch(function () {});
   };
@@ -696,6 +696,12 @@
         "<div><dt>입금 계좌</dt><dd><b class=\"num\">" + esc(d.bank || "") + " " + esc(d.account) + '</b> <button type="button" class="btn sm" data-copy="' + esc(d.account) + '">복사</button><span class="small muted">' + esc(d.holder || "") + "</span></dd></div>" +
         '<div><dt>입금자명</dt><dd><b class="num">' + esc(duesPayer()) + '</b> <button type="button" class="btn sm" data-copy="' + esc(duesPayer()) + '">복사</button><span class="small muted">이대로 적어야 자동으로 확인됩니다</span></dd></div>' +
       "</dl>" + (compact ? '<a class="small" href="account.html">내 정보에서 보기 →</a>' : "") + "</div>";
+  }
+  /* 운영진: 설정 전이면 회원에게 안내가 안 보인다는 걸 알려 줌 */
+  function duesAdminHint(d) {
+    if (!API.isAdmin || (d && d.account && arr(d.tiers).length)) return "";
+    return '<div class="dues-card hint"><div class="dc-amt"><span class="muted small">운영진에게만 보입니다</span><b>회비 설정 전</b></div>' +
+      '<p class="small" style="margin:0">계좌와 세대당 금액을 저장하면 회원의 홈 · 내 정보에 이 자리에 납부 금액 · 계좌 · 입금자명 안내가 나타납니다. <a href="admin.html#dues">회비 설정하기 →</a></p></div>';
   }
   function nextTierNote(tiers) {
     var now = duesTierNow(tiers), L = arr(tiers), i = L.indexOf(now), nx = i >= 0 ? L[i + 1] : null;
@@ -1351,7 +1357,7 @@
       '<form class="panel" id="fPw" novalidate><h3 style="margin-bottom:10px">비밀번호 바꾸기</h3><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form></div>';
     el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
     if (el("accDues")) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
-      var h = duesCardHtml(r[0], r[1]); if (!h) return;
+      var h = duesCardHtml(r[0], r[1]) || duesAdminHint(r[1]); if (!h) return;
       el("accDues").innerHTML = head("회비") + h + '<p class="muted small">총무가 은행 거래내역을 올리면 반영됩니다. 입금하고 며칠이 지나도 그대로면 게시판이나 메일로 알려 주세요.</p>';
       bindCopy(el("accDues"));
     }).catch(function () {});

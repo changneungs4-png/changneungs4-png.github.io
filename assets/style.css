@@ -819,3 +819,5 @@ ol.bl-keys .bl-key span:last-child{grid-column:2/-1;font-size:13px;color:var(--m
   .dues-card{grid-template-columns:minmax(0,1fr);padding:14px}
   .dc-amt b{font-size:24px}
 }
+.dues-card.hint{border-left-color:var(--muted);border-style:dashed;border-left-style:solid}
+.dues-card.hint b{font-size:18px;color:var(--fg)}
