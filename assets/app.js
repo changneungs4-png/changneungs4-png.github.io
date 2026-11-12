@@ -674,7 +674,7 @@
     if (!d || !d.account) return "";
     return '<div class="dues-acc"><div><span class="muted small">입금 계좌</span><b class="num">' + esc(d.bank || "") + " " + esc(d.account) + '</b><span class="small">' + esc(d.holder || "") + "</span></div>" +
       '<button type="button" class="btn" data-copy="' + esc(d.account) + '">계좌번호 복사</button>' +
-      '<p class="small" style="flex-basis:100%;margin:0">입금자명은 <b>동호수+닉네임</b>으로 적어 주세요. 예: <span class="num">403-1804홍길동</span> · 동호수가 있어야 자동으로 납부 확인이 됩니다.</p></div>';
+      '<p class="small" style="flex-basis:100%;margin:0">입금자명은 <b>동호수+이름</b>으로 적어 주세요. 예: <span class="num">403-1804홍길동</span> · 동호수가 있어야 자동으로 납부 확인이 됩니다.</p></div>';
   }
   function bindCopy(root) {
     root.querySelectorAll("[data-copy]").forEach(function (b) { b.addEventListener("click", function () {
@@ -684,8 +684,8 @@
   }
   /* 회원용 회비 안내: 우리 세대 금액 · 계좌 · 입금자명 */
   function duesPayer() {
-    var p = API.profile || {}, nick = String(p.nickname || "").replace(/\s+/g, "").slice(0, 6);
-    return (p.unit_id || "") + nick;
+    var p = API.profile || {};
+    return p.unit_id || "";
   }
   function duesCardHtml(m, d, compact) {
     if (!m || !d) return "";
@@ -697,7 +697,7 @@
         (paid ? '<span class="small muted">' + won(paid) + " 입금 확인됨 · 총 " + won(due) + "</span>" : nextTierNote(d.tiers)) + "</div>" +
       '<dl class="dc-info">' +
         "<div><dt>입금 계좌</dt><dd><b class=\"num\">" + esc(d.bank || "") + " " + esc(d.account) + '</b> <button type="button" class="btn sm" data-copy="' + esc(d.account) + '">복사</button><span class="small muted">' + esc(d.holder || "") + "</span></dd></div>" +
-        '<div><dt>입금자명</dt><dd><b class="num">' + esc(duesPayer()) + '</b> <button type="button" class="btn sm" data-copy="' + esc(duesPayer()) + '">복사</button><span class="small muted">이대로 적어야 자동으로 확인됩니다</span></dd></div>' +
+        '<div><dt>입금자명</dt><dd><b class="num">' + esc(duesPayer()) + '</b> <span class="muted">+ 입금자 이름</span> <button type="button" class="btn sm" data-copy="' + esc(duesPayer()) + '">복사</button><span class="small muted">예: ' + esc(duesPayer()) + '홍길동 · 칸이 모자라면 ' + esc(duesPayer().replace("-", "")) + '홍길동 · 동호수가 있어야 자동으로 확인됩니다</span></dd></div>' +
       "</dl>" + (compact ? '<a class="small" href="account.html">내 정보에서 보기 →</a>' : "") + "</div>";
   }
   /* 운영진: 설정 전이면 회원에게 안내가 안 보인다는 걸 알려 줌 */
@@ -992,7 +992,7 @@
           var cc = b.comments && b.comments[0] ? b.comments[0].count : 0;
           return '<tr data-no="' + b.id + '" data-cat="' + esc(b.cat) + '" tabindex="0"><td class="r num no">' + b.id + '</td><td class="cat"><span class="tag">' + esc(b.cat) + '</span></td><td class="title">' + esc(b.title) + (cc ? ' <span class="muted num">[' + cc + "]</span>" : "") + '</td><td class="who">' + esc(b.author_label) + '</td><td class="r num when">' + fmtDate(b.created_at).slice(5) + "</td></tr>";
         }).join("") + "</tbody></table></div>" : empty("아직 게시글이 없습니다", "첫 글을 남겨주세요.")) + "</div>" +
-      '<div id="write">' + head("글쓰기", '<span class="note">작성자: ' + esc(API.profile.nickname ? API.profile.nickname + " · " + API.profile.unit_id : API.profile.unit_id) + ' · <a href="account.html">닉네임 설정</a></span>') +
+      '<div id="write">' + head("글쓰기", '<span class="note">작성자: ' + esc(API.profile.unit_id) + "</span>") +
       '<form class="panel" id="wForm"><div class="field"><label for="wCat">분류</label><select id="wCat">' + cats.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div>" +
       '<div class="field"><label for="wTitle">제목</label><input id="wTitle" maxlength="80" required></div>' +
       '<div class="field"><label for="wBody">내용</label><textarea id="wBody" maxlength="5000" required></textarea></div>' +
@@ -1192,9 +1192,9 @@
 
   R.privacy = function () {
     var rows = [
-      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 계약서 사진, 가입 · 접속 기록, 닉네임(선택)", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지"],
+      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 계약서 사진, 가입 · 접속 기록", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지"],
       ["위임동의서", "주택형 · 동 · 호수, 계약자 성명, 휴대전화번호, 카페 닉네임(선택), 서명, 동의 일시, 공동명의자 성명 · 서명(공동명의자 본인이 서명할 때만) (서면 접수 시 위임장 스캔본)", "계약자 확인, 과반수 동의 집계, 협의회 공지 · 의견수렴 · 투표", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
-      ["카페 등업", "네이버 카페 닉네임(선택), 등업 처리 기록", "공식 카페 회원 등급 관리", "닉네임 삭제 · 탈퇴 또는 협의회 해산 시까지"],
+      ["카페 등업", "위임동의서의 네이버 카페 닉네임(선택), 등업 처리 기록", "공식 카페 회원 등급 관리", "위임 철회 · 탈퇴 또는 협의회 해산 시까지"],
       ["회비", "협의회 통장 거래내역(입금 일시 · 금액 · 입금자명), 세대별 납부 여부", "회비 납부 확인, 회계 공개(월별 합계만 공개, 입금자 이름은 비공개)", "협의회 해산 시 결산 · 인계 후 파기"],
       ["게시판 · 투표 · 민원", "작성 글과 댓글, 세대별 투표 · 참여 여부", "커뮤니티 운영, 1세대 1표 집계", "삭제 시 또는 협의회 해산 시까지"]
     ];
@@ -1205,7 +1205,7 @@
       head("처리 위탁 · 국외 이전") + '<ul class="muted plain-list"><li><b>Supabase Inc.</b> (미국, support@supabase.com) — 회원 정보 · 위임동의 · 게시글 · 계약서 사진 저장과 로그인 처리. 데이터는 서울(대한민국) 리전에 저장되며, 회원가입 · 이용 시 인터넷으로 전송됩니다. 보유 기간은 위 표와 같습니다.</li>' +
       '<li><b>GitHub Inc.</b> (미국) — 홈페이지 호스팅과 LH 공고문 자동 읽기. 회원 개인정보는 다루지 않으며, 접속 기록(IP 등)이 남을 수 있습니다.</li></ul>' +
       '<p class="muted small">위 이전은 서비스 제공에 필요한 처리로, 원하지 않으면 회원가입을 하지 않거나 탈퇴하면 됩니다.</p></div>' +
-      "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원과 운영진에게만 보입니다. 게시판 작성자는 승인된 회원에게만 "동-호"(닉네임을 정하면 "닉네임 · 동-호")로 표시합니다.</p>' +
+      "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원과 운영진에게만 보입니다. 게시판 작성자는 승인된 회원에게만 "동-호"로 표시합니다.</p>' +
       head("권리 행사") + '<p class="muted">위임동의 철회는 내 정보 화면에서 바로 할 수 있습니다. 회원 정보 열람 · 정정 · 삭제(탈퇴)는 운영진에게 요청하면 지체 없이 처리합니다.</p>' +
       head("파기 · 안전 조치") + '<p class="muted">보유 기간이 끝나거나 철회 · 탈퇴하면 데이터베이스에서 즉시 삭제합니다. 비밀번호는 암호화해 저장하고, 계약서 사진은 운영진만 열람할 수 있는 비공개 저장소에 두었다가 확인 즉시 삭제합니다. 로그인 상태 유지를 위해 브라우저 저장소에 로그인 정보를 저장합니다.</p>' +
       head("개인정보 보호책임자") + '<p class="muted">' + esc((S.privacyOfficer && S.privacyOfficer.role) || "협의회 운영진 대표") + (S.privacyOfficer && S.privacyOfficer.contact ? " · " + esc(S.privacyOfficer.contact) : " · 연락처는 공지사항으로 안내합니다") + '</p></div></div>' +
@@ -1363,7 +1363,7 @@
     var dongLabel = p.unit_id.split("-")[0] + "동";
     C.innerHTML =
       '<div class="two"><div class="panel"><div class="acct-head"><b>' + esc(unitLabel(p.unit_id)) + '</b><span class="' + badge[0] + '">' + badge[1] + "</span>" + (API.isAdmin ? '<span class="tag">운영진</span>' : "") + "</div>" +
-      '<table class="spec kv"><tr><th>아이디</th><td class="num">' + esc(p.unit_id) + "</td></tr><tr><th>게시판 표시</th><td>" + esc(p.nickname ? p.nickname + " · " + p.unit_id : p.unit_id) + "</td></tr><tr><th>가입 신청</th><td>" + fmtDate(p.created_at) + "</td></tr>" +
+      '<table class="spec kv"><tr><th>아이디</th><td class="num">' + esc(p.unit_id) + "</td></tr><tr><th>게시판 표시</th><td class=\"num\">" + esc(p.unit_id) + "</td></tr><tr><th>가입 신청</th><td>" + fmtDate(p.created_at) + "</td></tr>" +
       (p.reviewed_at ? "<tr><th>" + (p.status === "approved" ? "승인일" : "처리일") + "</th><td>" + fmtDate(p.reviewed_at) + "</td></tr>" : "") + "</table>" +
       (p.status === "pending" ? '<p class="notice-box">운영진이 올려주신 사진으로 세대를 확인하고 있습니다. 승인되면 게시판을 이용할 수 있습니다.</p>' : "") +
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
@@ -1378,10 +1378,7 @@
         '<p class="muted small" style="margin:10px 0 0">세대를 잘못 골랐다면 운영진에게 계정 삭제를 요청한 뒤 맞는 세대로 다시 가입하세요.</p></form>' : "") +
       "</div></div>" +
 
-      '<div class="two"><form class="panel" id="fNick" novalidate><h3 style="margin-bottom:10px">닉네임 <span class="muted small">선택</span></h3><div class="field"><label for="nNick">게시판 닉네임 <span class="muted small">비워 두면 "' + esc(p.unit_id) + '"로 표시</span></label><input id="nNick" maxlength="20" value="' + esc(p.nickname || "") + '"></div>' +
-        (p.status === "approved" ? '<div class="field"><label for="nCafe">네이버 카페 닉네임 <span class="muted small">적어 두면 운영진이 확인하고 카페 등업</span></label><input id="nCafe" maxlength="30" autocomplete="off" value="' + esc(p.cafe_nick || "") + '"></div>' : "") +
-        '<button class="btn" type="submit">저장</button><p class="notice-box" id="nMsg" role="status" hidden></p></form>' +
-      '<form class="panel" id="fPw" novalidate><h3 style="margin-bottom:10px">비밀번호 바꾸기</h3><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form></div>';
+      '<div class="two">' + '<form class="panel" id="fPw" novalidate><h3 style="margin-bottom:10px">비밀번호 바꾸기</h3><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form></div>';
     el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
     if (el("accDues")) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
       var h = duesCardHtml(r[0], r[1]) || duesAdminHint(r[1]); if (!h) return;
@@ -1399,7 +1396,7 @@
       e.preventDefault(); var btn = this.querySelector("button"); busy(btn, true);
       try { await API.reapply({ file: el("rFile").files[0] }); await R.account(); } catch (err) { busy(btn, false); say("rMsg", API.errorText(err), true); }
     });
-    el("fNick").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.updateNickname(el("nNick").value); if (el("nCafe")) await API.setCafeNick(el("nCafe").value); await R.account(); say("nMsg", "저장했습니다."); } catch (err) { say("nMsg", API.errorText(err), true); } });
+
     el("fPw").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.changePassword(el("pPw").value, el("pPw2").value); el("pPw").value = el("pPw2").value = ""; say("pMsg2", "비밀번호를 바꿨습니다."); } catch (err) { say("pMsg2", API.errorText(err), true); } });
   };
 
@@ -1502,7 +1499,7 @@
     function cnt(k) { return L.filter(function (r) { var x = kind(r); return k === "wait" ? x === "wait" || x === "changed" : x === k; }).length; }
     B.innerHTML =
       '<div class="panel cafe-how"><b>카페 등업 하는 법</b><ol class="small">' +
-        "<li>회원이 내 정보(또는 위임장)에 네이버 카페 닉네임을 적으면 아래 <b>등업 대기</b>에 나옵니다. 계약서는 홈페이지에서 이미 확인했습니다.</li>" +
+        "<li>회원이 위임동의서에 네이버 카페 닉네임을 적으면 아래 <b>등업 대기</b>에 나옵니다. 계약서는 홈페이지에서 이미 확인했습니다.</li>" +
         "<li>카페 관리 › 멤버 관리에서 그 닉네임을 찾아 등급을 올리고, 여기서 <b>등업함</b>을 누릅니다.</li>" +
         "<li>승인이 취소되거나 (위임 세대만 등업하는 경우) 위임을 철회하면 <b>내려야 함</b>에 나옵니다. 카페에서 등급을 내리고 <b>내림</b>을 누르세요.</li></ol>" +
         '<label class="chk" style="margin:8px 0 0"><input type="checkbox" id="cfOnly"' + (only ? " checked" : "") + "> 위임동의를 낸 세대만 등업 대상으로 보기</label></div>" +
@@ -1709,7 +1706,7 @@
     function dl(name, rows) { var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv(rows)], { type: "text/csv" })); a.download = name; a.click(); }
     el("txCsv").addEventListener("click", function () { dl("거래내역.csv", [["일시", "입금", "출금", "잔액", "입금자·내용", "세대", "구분", "공개 메모"]].concat(TX.map(function (t) { return [fmtTime(t.at), t.amount_in, t.amount_out, t.balance, t.payer, t.unit_id, t.category, t.public_note]; }))); });
     el("duCsv").addEventListener("click", function () { dl("세대별납부.csv", [["세대", "입금", "낼 금액", "첫 입금"]].concat(DU.map(function (u) { return [u.unit_id, u.paid, u.due, fmtDate(u.first_at)]; }))); });
-    el("unCsv").addEventListener("click", function () { dl("미납세대.csv", [["세대", "닉네임", "입금"]].concat(unpaidMem.map(function (p) { return [p.unit_id, p.nickname || "", (byU[p.unit_id] || {}).paid || 0]; }))); });
+    el("unCsv").addEventListener("click", function () { dl("미납세대.csv", [["세대", "입금"]].concat(unpaidMem.map(function (p) { return [p.unit_id, (byU[p.unit_id] || {}).paid || 0]; }))); });
 
     // 설정
     function readTiers() {
@@ -1847,7 +1844,7 @@
               '<span class="chip-sep" aria-hidden="true"></span>' +
               '<button type="button" class="chip" data-s="agreed" aria-pressed="false" title="승인 회원 중 위임동의서를 낸 세대">위임 완료 ' + cntAg + "</button>" +
               '<button type="button" class="chip" data-s="noagree" aria-pressed="false" title="승인 회원 중 아직 위임동의서를 내지 않은 세대">위임 미제출 ' + (cntS("approved") - cntAg) + "</button></div>" +
-            '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>닉네임</th><th>상태</th><th>위임동의</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
+            '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 카페 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>카페 닉네임</th><th>상태</th><th>위임동의</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
             '<div class="adm-sec">' + head("가입 · 승인 기록", '<span class="note">최근 100건 · 지우지 않고 보관</span>') + '<div class="tablebox"><table class="spec"><tbody id="mLog"><tr><td class="muted">불러오는 중…</td></tr></tbody></table></div></div>' +
             (O.length ? '<div class="adm-sec">' + head("가입 중단 계정", '<span class="note">계정만 있고 계약서 사진이 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div></div>" : "") +
             '<div class="adm-sec">' + '<form class="panel chat-admin" id="fChat" novalidate><h3 style="margin-bottom:10px">입주민 오픈채팅 입장 정보 <span class="muted small">위임 세대에게만 보임</span></h3>' +
@@ -1870,10 +1867,10 @@
           function draw() {
             el("mList").innerHTML = M.filter(function (p) {
               var okS = !sf || (sf === "agreed" ? p.status === "approved" && !!agOf(p) : sf === "noagree" ? p.status === "approved" && !agOf(p) : p.status === sf);
-              return okS && (!q || (p.unit_id + (p.nickname || "")).indexOf(q) >= 0);
+              return okS && (!q || (p.unit_id + ((agOf(p) || {}).cafe_nick || "")).indexOf(q) >= 0);
             }).map(function (p) {
               var ag = agOf(p);
-              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.nickname || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.unit_id === OWNER ? " · 최고 관리자" : p.is_admin ? " · 운영진" : "") + "</td><td>" + (ag ? '<span class="tag">' + (ag.source === "paper" ? "서면" : "온라인") + '</span> <span class="num small">' + fmtDate(ag.signed_at) + "</span>" : '<span class="tag off">미제출</span>') + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
+              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc((agOf(p) || {}).cafe_nick || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.unit_id === OWNER ? " · 최고 관리자" : p.is_admin ? " · 운영진" : "") + "</td><td>" + (ag ? '<span class="tag">' + (ag.source === "paper" ? "서면" : "온라인") + '</span> <span class="num small">' + fmtDate(ag.signed_at) + "</span>" : '<span class="tag off">미제출</span>') + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
                 (p.unit_id === OWNER ? '<span class="muted small">다른 운영진이 바꿀 수 없음</span>' : "") +
                 (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER ? '<button type="button" class="linkbtn revoke" data-id="' + p.id + '">승인 취소</button>' : "") +
                 (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER && (meOwner || !OWNER) ? ' <button type="button" class="linkbtn setadm" data-id="' + p.id + '" data-on="' + (p.is_admin ? "0" : "1") + '">' + (p.is_admin ? "운영진 해제" : "운영진 지정") + "</button>" : "") +
