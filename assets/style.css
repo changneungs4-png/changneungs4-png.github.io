@@ -874,3 +874,5 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
   .dues-tier .tDel{padding:4px 8px;flex:0 0 auto}
 }
 #accDues:not(:empty){margin-top:32px}
+.cafe-how{margin-bottom:16px}
+.cafe-how ol{margin:6px 0 0;padding-left:1.4em;display:grid;gap:4px}

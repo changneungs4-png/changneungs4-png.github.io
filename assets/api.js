@@ -169,6 +169,12 @@
       if (nick && (nick.length < 2 || nick.length > 20)) throw new Error("닉네임은 2~20자로 입력하세요. 비워 두면 동-호수만 표시됩니다.");
       must(await sb.from("profiles").update({ nickname: nick || null }).eq("id", uid())); await loadProfile();
     },
+    /* 네이버 카페 닉네임: 운영진이 이걸 보고 카페 등업 */
+    setCafeNick: async function (nick) {
+      need(); nick = String(nick || "").trim();
+      if (nick.length > 30) throw new Error("카페 닉네임은 30자까지입니다.");
+      must(await sb.rpc("set_my_cafe_nick", { p_nick: nick })); await loadProfile();
+    },
     changePassword: async function (pw, pw2) {
       need(); if (!pw || pw.length < 8) throw new Error("비밀번호는 8자 이상이어야 합니다.");
       if (pw !== pw2) throw new Error("비밀번호 확인이 일치하지 않습니다.");
@@ -403,6 +409,8 @@
       },
       deleteCampaign: async function (id) { need(); must(await sb.from("campaigns").delete().eq("id", id)); },
       /* 회비: 은행 거래내역 올리기 · 고치기 · 설정 */
+      cafeList: async function () { need(); return must(await sb.rpc("cafe_list")) || []; },
+      cafeMark: async function (unit, state) { need(); must(await sb.rpc("cafe_mark", { p_unit: unit, p_state: state || "" })); },
       bankImport: async function (rows) { need(); return (must(await sb.rpc("bank_import", { p_rows: rows })) || [])[0] || { added: 0, skipped: 0, matched: 0 }; },
       bankTx: async function () { need(); return must(await sb.rpc("bank_tx_list", { p_limit: 3000 })) || []; },
       bankTxSet: async function (id, unit, cat, note) { need(); must(await sb.rpc("bank_tx_set", { p_id: id, p_unit: unit || "", p_category: cat || "", p_note: note || "" })); },

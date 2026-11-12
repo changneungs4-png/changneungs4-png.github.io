@@ -1212,7 +1212,7 @@
         '<details class="terms"><summary>위임동의서 전문 보기</summary><div class="body">' + CONSENT.map(function (c) { return "<b>" + esc(c[0]) + "</b>\n" + esc(c[1]); }).join("\n\n") + "</div></details>" : "") +
       '<div class="field"><label for="' + p + 'Name">계약자 성명</label><input id="' + p + 'Name" maxlength="30" autocomplete="name"></div>' +
       '<div class="field"><label for="' + p + 'Phone">휴대전화번호</label><input id="' + p + 'Phone" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" maxlength="13"></div>' +
-      '<div class="field"><label for="' + p + 'Cafe">카페 닉네임 <span class="muted small">선택 · 카페에 가입했다면</span></label><input id="' + p + 'Cafe" maxlength="30" autocomplete="off"></div>' +
+      '<div class="field"><label for="' + p + 'Cafe">카페 닉네임 <span class="muted small">선택 · 적으면 카페 등업에 씁니다</span></label><input id="' + p + 'Cafe" maxlength="30" autocomplete="off" value="' + esc(((API.profile || {}).cafe_nick) || "") + '"></div>' +
       '<div class="field"><label for="' + p + 'Sig">서명 (계약자) <span class="muted small">손가락이나 마우스로 이름을 쓰듯 서명하세요</span></label>' +
       '<div class="sigpad"><canvas id="' + p + 'Sig" width="600" height="200" aria-label="계약자 서명 칸"></canvas><button type="button" class="linkbtn" id="' + p + 'SigClear">지우기</button></div></div>' +
       '<label class="check" for="' + p + 'Co"><input type="checkbox" id="' + p + 'Co"> 공동명의자도 함께 서명합니다 <span class="muted small">(공동명의자 본인이 직접 쓰는 경우에만)</span></label>' +
@@ -1371,7 +1371,9 @@
         '<p class="muted small" style="margin:10px 0 0">세대를 잘못 골랐다면 운영진에게 계정 삭제를 요청한 뒤 맞는 세대로 다시 가입하세요.</p></form>' : "") +
       "</div></div>" +
 
-      '<div class="two"><form class="panel" id="fNick" novalidate><h3 style="margin-bottom:10px">게시판 닉네임 <span class="muted small">선택</span></h3><div class="field"><label for="nNick">닉네임 <span class="muted small">비워 두면 "' + esc(p.unit_id) + '"로 표시</span></label><input id="nNick" maxlength="20" value="' + esc(p.nickname || "") + '"></div><button class="btn" type="submit">저장</button><p class="notice-box" id="nMsg" role="status" hidden></p></form>' +
+      '<div class="two"><form class="panel" id="fNick" novalidate><h3 style="margin-bottom:10px">닉네임 <span class="muted small">선택</span></h3><div class="field"><label for="nNick">게시판 닉네임 <span class="muted small">비워 두면 "' + esc(p.unit_id) + '"로 표시</span></label><input id="nNick" maxlength="20" value="' + esc(p.nickname || "") + '"></div>' +
+        (p.status === "approved" ? '<div class="field"><label for="nCafe">네이버 카페 닉네임 <span class="muted small">적어 두면 운영진이 확인하고 카페 등업</span></label><input id="nCafe" maxlength="30" autocomplete="off" value="' + esc(p.cafe_nick || "") + '"></div>' : "") +
+        '<button class="btn" type="submit">저장</button><p class="notice-box" id="nMsg" role="status" hidden></p></form>' +
       '<form class="panel" id="fPw" novalidate><h3 style="margin-bottom:10px">비밀번호 바꾸기</h3><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form></div>';
     el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
     if (el("accDues")) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
@@ -1390,7 +1392,7 @@
       e.preventDefault(); var btn = this.querySelector("button"); busy(btn, true);
       try { await API.reapply({ file: el("rFile").files[0] }); await R.account(); } catch (err) { busy(btn, false); say("rMsg", API.errorText(err), true); }
     });
-    el("fNick").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.updateNickname(el("nNick").value); await R.account(); say("nMsg", "저장했습니다."); } catch (err) { say("nMsg", API.errorText(err), true); } });
+    el("fNick").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.updateNickname(el("nNick").value); if (el("nCafe")) await API.setCafeNick(el("nCafe").value); await R.account(); say("nMsg", "저장했습니다."); } catch (err) { say("nMsg", API.errorText(err), true); } });
     el("fPw").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.changePassword(el("pPw").value, el("pPw2").value); el("pPw").value = el("pPw2").value = ""; say("pMsg2", "비밀번호를 바꿨습니다."); } catch (err) { say("pMsg2", API.errorText(err), true); } });
   };
 
@@ -1475,6 +1477,73 @@
   };
 
   /* ── 운영진 ── */
+  /* ── 운영진: 카페 등업 (홈페이지에서 확인한 세대 ↔ 카페 닉네임) ── */
+  async function adminCafe(B, err, show, csv) {
+    var L = await API.admin.cafeList(), only = false, filt = "wait", q = "";
+    try { only = localStorage.getItem("s4-cafe-only-agreed") === "1"; } catch (e) {}
+    var ST = { approved: "승인", pending: "대기", rejected: "반려" };
+    function eligible(r) { return (r.status === "approved" || (r.agreed && !r.status)) && (!only || r.agreed); }
+    function kind(r) {
+      var el2 = eligible(r);
+      if (r.state === "up" && !el2) return "down";
+      if (r.state === "up" && r.nick && r.marked_nick && r.nick !== r.marked_nick) return "changed";
+      if (r.state === "up") return "done";
+      if (!el2) return "out";
+      if (!r.nick) return "nonick";
+      return "wait";
+    }
+    var K = { wait: ["등업 대기", "hot"], changed: ["닉네임 바뀜", "hot"], down: ["내려야 함", "hot"], done: ["등업 완료", ""], nonick: ["닉네임 없음", ""], out: ["대상 아님", ""] };
+    function cnt(k) { return L.filter(function (r) { var x = kind(r); return k === "wait" ? x === "wait" || x === "changed" : x === k; }).length; }
+    B.innerHTML =
+      '<div class="panel cafe-how"><b>카페 등업 하는 법</b><ol class="small">' +
+        "<li>회원이 내 정보(또는 위임장)에 네이버 카페 닉네임을 적으면 아래 <b>등업 대기</b>에 나옵니다. 계약서는 홈페이지에서 이미 확인했습니다.</li>" +
+        "<li>카페 관리 › 멤버 관리에서 그 닉네임을 찾아 등급을 올리고, 여기서 <b>등업함</b>을 누릅니다.</li>" +
+        "<li>승인이 취소되거나 (위임 세대만 등업하는 경우) 위임을 철회하면 <b>내려야 함</b>에 나옵니다. 카페에서 등급을 내리고 <b>내림</b>을 누르세요.</li></ol>" +
+        '<label class="chk" style="margin:8px 0 0"><input type="checkbox" id="cfOnly"' + (only ? " checked" : "") + "> 위임동의를 낸 세대만 등업 대상으로 보기</label></div>" +
+      '<div class="toolbar"><div class="chips" id="cfF">' +
+        [["wait", "등업 대기 " + cnt("wait")], ["down", "내려야 함 " + cnt("down")], ["done", "등업 완료 " + cnt("done")], ["nonick", "닉네임 없음 " + cnt("nonick")], ["all", "전체 " + L.length]].map(function (c) {
+          return '<button type="button" class="chip" data-f="' + c[0] + '" aria-pressed="' + (c[0] === filt) + '">' + c[1] + "</button>"; }).join("") +
+        '</div><form class="find" id="cfFind"><label for="cfQ" class="sr">검색</label><input id="cfQ" placeholder="동-호, 카페 닉네임"></form><button type="button" class="btn" id="cfCsv">대기 명단 CSV</button></div>' +
+      '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>카페 닉네임</th><th>위임</th><th>회원</th><th>처리</th><th></th></tr></thead><tbody id="cfB"></tbody></table></div>';
+    function rows() {
+      return L.filter(function (r) {
+        var x = kind(r);
+        var okF = filt === "all" || (filt === "wait" ? x === "wait" || x === "changed" : x === filt);
+        return okF && (!q || (r.unit_id + " " + (r.nick || "")).toLowerCase().indexOf(q) >= 0);
+      });
+    }
+    function draw() {
+      var R2 = rows();
+      el("cfB").innerHTML = R2.length ? R2.map(function (r) {
+        var x = kind(r), k = K[x];
+        return '<tr data-u="' + esc(r.unit_id) + '"><td class="num">' + esc(r.unit_id) + "</td>" +
+          "<td>" + (r.nick ? "<b>" + esc(r.nick) + '</b> <button type="button" class="btn sm" data-copy="' + esc(r.nick) + '">복사</button>' + (x === "changed" ? ' <span class="muted small">(등업 때: ' + esc(r.marked_nick) + ")</span>" : "") : '<span class="muted">-</span>') + "</td>" +
+          "<td>" + (r.agreed ? "완료" : '<span class="muted">미제출</span>') + "</td><td>" + (r.status ? ST[r.status] || r.status : '<span class="muted">서면만</span>') + "</td>" +
+          '<td><span class="tag' + (k[1] ? " hot" : "") + '">' + k[0] + "</span>" + (r.marked_at ? ' <span class="muted small">' + fmtDate(r.marked_at) + "</span>" : "") + "</td>" +
+          '<td class="nowrap">' + (x === "wait" || x === "changed" ? '<button type="button" class="btn sm solid cfUp">등업함</button>' : "") +
+            (x === "down" ? '<button type="button" class="btn sm solid cfDown">내림</button>' : "") +
+            (x === "done" ? '<button type="button" class="btn sm cfDown">내림</button>' : "") +
+            (r.state ? ' <button type="button" class="linkbtn cfClear">기록 지움</button>' : "") + "</td></tr>";
+      }).join("") : '<tr><td colspan="6" class="muted">' + (filt === "wait" ? "등업을 기다리는 세대가 없습니다." : "해당하는 세대가 없습니다.") + "</td></tr>";
+      bindCopy(el("cfB"));
+    }
+    draw();
+    el("cfOnly").addEventListener("change", function () { only = this.checked; try { localStorage.setItem("s4-cafe-only-agreed", only ? "1" : "0"); } catch (e) {} show(); });
+    el("cfF").addEventListener("click", function (e) { var b = e.target.closest("[data-f]"); if (!b) return; filt = b.dataset.f; el("cfF").querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", c === b); }); draw(); });
+    el("cfQ").addEventListener("input", function () { q = this.value.trim().toLowerCase(); draw(); });
+    el("cfFind").addEventListener("submit", function (e) { e.preventDefault(); });
+    el("cfCsv").addEventListener("click", function () {
+      var W = L.filter(function (r) { var x = kind(r); return x === "wait" || x === "changed"; });
+      var a2 = document.createElement("a"); a2.href = URL.createObjectURL(new Blob(["﻿" + csv([["세대", "카페 닉네임", "위임", "회원"]].concat(W.map(function (r) { return [r.unit_id, r.nick, r.agreed ? "완료" : "미제출", ST[r.status] || "서면만"]; })))], { type: "text/csv" }));
+      a2.download = "카페등업대기.csv"; a2.click();
+    });
+    el("cfB").addEventListener("click", async function (e) {
+      var tr = e.target.closest("tr[data-u]"); if (!tr) return; var u = tr.dataset.u, st = null;
+      if (e.target.closest(".cfUp")) st = "up"; else if (e.target.closest(".cfDown")) st = "down"; else if (e.target.closest(".cfClear")) st = ""; else return;
+      try { await API.admin.cafeMark(u, st); var m3 = u + (st === "up" ? " 등업 처리했습니다." : st === "down" ? " 등급을 내린 것으로 기록했습니다." : " 처리 기록을 지웠습니다."); show().then(function () { say("admMsg", m3); }); } catch (er) { err(er); }
+    });
+  }
+
   /* ── 운영진: 회비 (은행 거래내역 파일 → 세대 자동 확인) ── */
   var UNIT_RE = /(\d{3})\s*(?:동|-|_|\.|\/|\s)?\s*(\d{3,4})(?!\d)/;
   function unitFrom(s) { var m = String(s || "").match(UNIT_RE); if (!m) return null; var id = m[1] + "-" + Number(m[2]); return UNIT[id] ? id : null; }
@@ -1711,7 +1780,7 @@
   R.admin = async function () {
     if (!LIVE || !API.loggedIn) { C.innerHTML = gate("login"); return; }
     if (!API.isAdmin) { C.innerHTML = empty("운영진만 볼 수 있습니다", ""); return; }
-    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["dues", "회비"], ["polls", "투표"], ["campaigns", "민원"], ["photos", "사진 · 방문"], ["news", "자동 수집"]];
+    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["cafe", "카페 등업"], ["dues", "회비"], ["polls", "투표"], ["campaigns", "민원"], ["photos", "사진 · 방문"], ["news", "자동 수집"]];
     var cur = (location.hash || "#pending").slice(1); if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
     C.innerHTML = '<div class="tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '<span class="cnt" id="cnt-' + t[0] + '"></span></button>'; }).join("") + "</div>" +
       '<p class="notice-box" id="admMsg" role="status" hidden></p><div id="adminBody"></div>';
@@ -1722,6 +1791,11 @@
     async function counts() {
       try { var pd = await API.admin.profiles("pending"); el("cnt-pending").textContent = pd.length ? " " + pd.length : ""; } catch (e) {}
       try { var wd = await API.admin.withdrawals(); el("cnt-agreements").textContent = wd.length ? " " + wd.length : ""; } catch (e) {}
+      try {   // 카페: 등업 대기(닉네임 있는 승인 회원 중 미처리 · 닉네임 바뀜) + 내려야 함
+        var cl = await API.admin.cafeList(), nc = cl.filter(function (r) { var ok2 = r.status === "approved" || (r.agreed && !r.status);
+          return (ok2 && r.nick && (r.state !== "up" || (r.marked_nick && r.nick !== r.marked_nick))) || (r.state === "up" && !ok2); }).length;
+        el("cnt-cafe").textContent = nc ? " " + nc : "";
+      } catch (e) {}
     }
 
     async function show() {
@@ -1882,6 +1956,7 @@
           el("csvCopy").addEventListener("click", function () { var o = el("csvOut"), b = this; o.value = text; o.hidden = false; try { navigator.clipboard.writeText(text).then(function () { b.textContent = "복사했습니다"; }, function () { o.select(); }); } catch (e) { o.select(); } });
           el("csvDl").addEventListener("click", function () { var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + text], { type: "text/csv;charset=utf-8" })); a.download = "위임동의_" + fmtDate(new Date()).replace(/\./g, "") + ".csv"; document.body.appendChild(a); a.click(); a.remove(); });
         }
+        if (cur === "cafe") await adminCafe(B, err, show, csv);
         if (cur === "dues") await adminDues(B, err, show, csv);
         if (cur === "polls") {
           var P = await API.polls();
