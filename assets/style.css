@@ -885,3 +885,7 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 .c-priv td.body,.wi-priv td.body{white-space:pre-line}
 .c-protect{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;font-size:14px}
 .c-protect p{margin:6px 0 0}
+/* 내 정보: 왼쪽(계정 · 비밀번호) / 오른쪽(위임동의 · 회비) 모두 제목부터 시작 */
+.acct-grid{align-items:start}
+.acct-col{display:flex;flex-direction:column}
+.acct-col>.panel+.sec-head{margin-top:32px}
