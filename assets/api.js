@@ -17,7 +17,7 @@
     if (c.coOwner && !c.coSignature) throw new Error("공동명의자 서명 칸에 서명해 주세요.");
     if (!c.delegation || !c.privacy || !c.identity) throw new Error("위임동의서의 필수 항목에 모두 동의해야 합니다.");
   }
-  var st = { session: null, profile: null, openAt: new Date(((window.SITE || {}).consentOpenAt) || "2026-11-16T00:00:00+09:00") };
+  var st = { session: null, profile: null, openAt: new Date(((window.SITE || {}).consentOpenAt) || "2026-11-16T00:00:00+09:00"), signupAt: null };
 
   var MSG = [
     [/invalid login credentials/i, "동 · 호수 또는 비밀번호가 맞지 않습니다."],
@@ -101,6 +101,8 @@
     /* 가입 · 위임장 제출 시작(공급계약 시작) */
     get consentOpenAt() { return st.openAt; },
     get consentOpen() { return Date.now() >= st.openAt.getTime(); },
+    get signupOpenAt() { return st.signupAt || st.openAt; },
+    get signupOpen() { return Date.now() >= (st.signupAt || st.openAt).getTime(); },
     get isApproved() { return !!(st.profile && st.profile.status === "approved"); },
     get hasAgreement() { return !!st.hasAgreement; },
     get isAdmin() { return !!(st.profile && st.profile.status === "approved" && st.profile.is_admin); },
@@ -109,7 +111,9 @@
     init: async function () {
       if (!enabled) return st;
       // 시작 시각 조회와 로그인 확인을 동시에 (페이지가 빨리 뜨게)
-      var open = sb.rpc("consent_open_at").then(function (o) { if (!o.error && o.data) st.openAt = new Date(o.data); }, function () { /* 기본값 사용 */ });
+      var open = Promise.all([
+        sb.rpc("consent_open_at").then(function (o) { if (!o.error && o.data) st.openAt = new Date(o.data); }, function () { /* 기본값 사용 */ }),
+        sb.rpc("signup_open_at").then(function (o) { if (!o.error && o.data) st.signupAt = new Date(o.data); }, function () { /* 없으면 위임 시작과 같음 */ })]);
       var who = sb.auth.getSession().then(function (r) {
         st.session = r.data && r.data.session;
         if (st.session) return loadProfile();
@@ -139,7 +143,7 @@
       if (o.password !== o.password2) throw new Error("비밀번호 확인이 일치하지 않습니다.");
       checkFile(o.file);
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
-      if (!API.consentOpen) throw new Error("가입은 공급계약이 시작되는 " + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터 받습니다.");
+      if (!API.signupOpen) { var sa = st.signupAt || st.openAt; throw new Error("가입은 " + (sa.getMonth() + 1) + "월 " + sa.getDate() + "일부터 받습니다."); }
       if (await API.unitTaken(o.unit)) throw new Error("이 세대는 이미 가입되어 있습니다. 본인 세대인데 가입한 적이 없다면 운영진에게 문의하세요.");
       var r = await sb.auth.signUp({ email: emailOf(o.unit), password: o.password });
       must(r);

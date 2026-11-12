@@ -787,6 +787,10 @@
     return "";
   }
   /* 위임장 제출 시작일 (공급계약 시작) */
+  function signupOpenLabel() {
+    var d = (LIVE && API.signupOpenAt) || new Date(S.consentOpenAt || "2026-11-16T00:00:00+09:00"), k = new Date(d.getTime() + 9 * 3600 * 1000);
+    return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일";
+  }
   function consentOpenLabel() {
     var d = API.consentOpenAt || new Date(S.consentOpenAt || "2026-11-16T00:00:00+09:00");
     var k = new Date(d.getTime() + 9 * 3600 * 1000);
@@ -1286,7 +1290,7 @@
     var needsProfile = !PREVIEW && API.loggedIn && !API.profile;
     if (!PREVIEW && API.loggedIn && !needsProfile) { location.replace("account.html"); return; }
     var tab = needsProfile || location.hash === "#signup" ? "signup" : "login";
-    var closed = !PREVIEW && !needsProfile && !API.consentOpen;   // 가입은 공급계약 시작부터
+    var closed = !PREVIEW && !needsProfile && !API.signupOpen;   // 가입 시작 시각 (서버 설정)
     var fileField = '<div class="field"><label for="sFile">계약서 사진 <span class="muted small">첫 장, 동 · 호수와 계약자 이름만 보이게 나머지는 가려주세요 · <b>주민등록번호는 반드시 가리세요</b> · 5MB 이하</span></label><input id="sFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required></div>';
     var privacy = '<details class="terms"><summary>개인정보 수집 · 이용 안내 보기</summary><p class="body">' + esc(PRIVACY_SIGNUP) + "</p></details>" +
       '<label class="check" for="sPriv"><input type="checkbox" id="sPriv"> 개인정보 수집 · 이용에 동의합니다 (필수)</label>';
@@ -1301,7 +1305,7 @@
       '<button class="btn solid wide" type="submit">로그인</button><p class="notice-box" id="lMsg" role="alert" hidden></p>' +
       '<p class="muted small" style="margin:12px 0 0">비밀번호를 잊었다면 운영진에게 문의하세요. 본인 확인 후 다시 가입할 수 있게 도와드립니다.</p></form>' +
 
-      (closed ? '<div class="panel" id="fSignup"' + (tab === "signup" ? "" : " hidden") + '><div class="empty" style="border:0;padding:8px 0"><b>가입은 ' + esc(consentOpenLabel()) + ' 공급계약 시작과 함께 받습니다</b><span>계약을 마친 계약자만 가입하도록 해, 계약을 포기한 세대가 섞이지 않게 하려는 것입니다. 가입할 때 계약서 첫 장 사진이 필요합니다. 그 전에도 공지 · LH 공고 · 일정 · FAQ · 계산기는 누구나 볼 수 있습니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn" href="notice.html">공지사항 보기</a><a class="btn" href="faq.html">FAQ</a></p></div></div></div>' :
+      (closed ? '<div class="panel" id="fSignup"' + (tab === "signup" ? "" : " hidden") + '><div class="empty" style="border:0;padding:8px 0"><b>가입은 ' + esc(signupOpenLabel()) + ' 공급계약 시작과 함께 받습니다</b><span>계약을 마친 계약자만 가입하도록 해, 계약을 포기한 세대가 섞이지 않게 하려는 것입니다. 가입할 때 계약서 첫 장 사진이 필요합니다. 그 전에도 공지 · LH 공고 · 일정 · FAQ · 계산기는 누구나 볼 수 있습니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn" href="notice.html">공지사항 보기</a><a class="btn" href="faq.html">FAQ</a></p></div></div></div>' :
       '<form class="panel" id="fSignup"' + (tab === "signup" ? "" : " hidden") + ' novalidate>' +
       (needsProfile
         ? '<div class="notice-box" style="margin-bottom:14px">' + esc(unitLabel(API.accountUnit)) + " 계정은 만들어졌지만 계약서 사진이 아직 없습니다. 사진을 올려 가입을 마무리하세요.</div>"
