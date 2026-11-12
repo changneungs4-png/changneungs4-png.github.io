@@ -182,7 +182,7 @@ window.SITE = {
   /* 회칙 — 창립총회에서 의결하면 status를 "확정", enacted에 제정일을 적어주세요 */
   bylaws: {
     title: "고양창릉 S4블록 입주예정자협의회 회칙",
-    status: "안",            // 창립총회 의결 뒤 "확정"으로
+    status: "확정",          // "안"이면 제정(안)으로 표시
     enacted: "",             // 제정일. 예: "2026.12.05"
     revisions: [],           // { date: "2027.03.02", note: "제28조 지출 기준 변경" }
     chapters: [
