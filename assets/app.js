@@ -1275,7 +1275,7 @@
         '<p class="muted small" style="margin:8px 0 0">세금 · 등기비 · 대출이자는 빠진 금액입니다. 실제 금액은 LH 계약서로 확인하세요.</p></aside>' +
       "</div>" +
       '<div class="oc-bar" id="ocBar" aria-hidden="true"><span>예상 총액</span><b class="num" id="ocBarTotal"></b><a href="#ocSum">자세히</a></div>' +
-      '<dialog class="oc-lb" id="ocLb" aria-label="사진 크게 보기"><button type="button" class="oc-lb-x" id="ocLbX" aria-label="닫기">×</button><img id="ocLbImg" alt=""><p id="ocLbCap"></p></dialog>' +
+      '<dialog class="oc-lb" id="ocLb" aria-label="사진 크게 보기"><button type="button" class="oc-lb-x" id="ocLbX" aria-label="닫기">×</button><img id="ocLbImg" alt=""><div id="ocLbCrop" class="oc-lb-crop" role="img" aria-label="팸플릿 사진" hidden></div><p id="ocLbCap"></p></dialog>' +
       "<div>" + '<div class="oc-payh"><h2 class="oc-h"><span class="oc-no">3</span>회차별 납부 예정액</h2><button type="button" class="btn sm" id="ocPayFull" aria-pressed="false">항목별로 보기</button></div><p class="muted small" style="margin:-4px 0 10px">입주 시 잔여금액은 대출 적용 전 금액입니다.</p>' +
         '<div class="tablebox"><table class="spec oc-pay" id="ocPayT"><thead><tr><th>회차 · 예정일</th><th class="r d">주택</th><th class="r d">발코니</th><th class="r d">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
       '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
@@ -1315,9 +1315,23 @@
         Object.keys(sc).map(function (r) { return '<a class="chip" href="' + esc(mu(M.vr, F)) + "?startscene=" + encodeURIComponent(sc[r]) + '" target="_blank" rel="noopener">' + esc(r) + " ↗</a>"; }).join("") +
         '</div><p class="muted small" style="margin:6px 0 0">VR은 대표 타입의 발코니 확장형 기준이며, 전시 품목과 실제 계약 옵션은 다를 수 있습니다.</p>';
     }
+    // 품목 번호(①②…) → 팸플릿 페이지의 그 품목 칸만 잘라 보여 줌. 사진이 없는 품목(아트월 · 욕실 · 바닥재 등)은 사진 없음
+    var CIRC = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳";
+    function pnum(o) { return CIRC.indexOf(String(o[2]).charAt(0)) + 1; }
+    function cropCss(F, num) {
+      var g = M && M.pages && M.pages[F], c = g && g.p[num]; if (!c) return "";
+      var x = c[1], y = g.rows[c[0]], w = Math.min(c[2] * 105 + 4, g.W - x), h = Math.min(g.h, g.H - y);
+      return "background-image:url('" + mu(M.page, F) + "');background-size:" + (g.W / w * 100).toFixed(2) + "% auto;background-position:" + (x / Math.max(g.W - w, 1) * 100).toFixed(2) + "% " + (y / Math.max(g.H - h, 1) * 100).toFixed(2) + "%;aspect-ratio:" + w + " / " + h;
+    }
+    function thumb(o) {
+      var F = D.types[TY.value][0], cap = F + " · " + o[2].replace(/^\S+\s/, "") + " (팸플릿)";
+      if (o[4] === "air" && M) return '<button type="button" class="oc-thumb oc-ph" data-src="' + esc(mu(M.photo, F).replace("{K}", "aircon")) + '" data-cap="' + esc(F + " · 시스템에어컨 설치 위치 (팸플릿)") + '" aria-label="시스템에어컨 설치 위치 사진"><img src="' + esc(mu(M.photo, F).replace("{K}", "aircon")) + '" alt="" loading="lazy"></button>';
+      var css = cropCss(F, pnum(o));
+      return css ? '<button type="button" class="oc-thumb" data-crop="' + esc(css) + '" data-cap="' + esc(cap) + '" aria-label="' + esc(cap) + ' 사진 크게 보기"><i style="' + esc(css) + '"></i></button>' : "";
+    }
     function row(o, g) {
       var id = "oc-" + o[0], typ = o[4] ? "radio" : "checkbox";
-      return '<label class="oc-row" for="' + id + '"><input type="' + typ + '" id="' + id + '" data-id="' + esc(o[0]) + '"' + (o[4] ? ' name="ocg-' + esc(o[4]) + '"' : "") + '><span class="oc-l"><span>' + esc(o[2]) + '</span><small class="oc-why"></small></span><span class="oc-p num">' + (o[3] ? "+" + won(o[3]) : "무상") + "</span></label>";
+      return '<div class="oc-item">' + '<label class="oc-row" for="' + id + '"><input type="' + typ + '" id="' + id + '" data-id="' + esc(o[0]) + '"' + (o[4] ? ' name="ocg-' + esc(o[4]) + '"' : "") + '><span class="oc-l"><span>' + esc(o[2]) + '</span><small class="oc-why"></small></span><span class="oc-p num">' + (o[3] ? "+" + won(o[3]) : "무상") + "</span></label>" + thumb(o) + "</div>";
     }
     function build() {
       var F = fam(), fl = D.types[TY.value][1], keep = FL.value;
@@ -1338,9 +1352,8 @@
             '<label class="oc-row none" for="oc-none-' + esc(o[4]) + '"><input type="radio" id="oc-none-' + esc(o[4]) + '" name="ocg-' + esc(o[4]) + '" data-none="' + esc(o[4]) + '" checked><span class="oc-l"><span>선택 안 함 (기본 사양)</span></span><span class="oc-p num">0원</span></label>' +
             L.filter(function (x) { return x[4] === o[4]; }).map(row).join("") + "</div>";
         });
-        var ph = M && M.keys[c] ? photoBtn(mu(M.photo, D.types[TY.value][0]).replace("{K}", M.keys[c]), D.types[TY.value][0] + " · " + c + " 선택품목 (팸플릿)") : "";
         return '<details class="oc-acc" data-cat="' + esc(c) + '"' + (c === "침실" || window.innerWidth > 1000 ? " open" : "") + '><summary><b>' + esc(c) + '</b><span class="oc-acc-c muted small">' + L.length + '개 품목</span><span class="oc-acc-s num"></span></summary>' +
-          '<div class="oc-acc-b">' + ph + '<div class="oc-acc-l">' + h + "</div></div></details>";
+          '<div class="oc-acc-b"><div class="oc-acc-l">' + h + "</div></div></details>";
       }).join("");
       enforce(); calc();
     }
@@ -1416,7 +1429,10 @@
     C.addEventListener("error", function (e) { var b = e.target && e.target.closest && e.target.closest(".oc-ph"); if (b) b.hidden = true; }, true);
     var LB = el("ocLb");
     C.addEventListener("click", function (e) {
-      var b = e.target.closest(".oc-ph"); if (!b) return;
+      var b = e.target.closest(".oc-ph, .oc-thumb"); if (!b) return;
+      e.preventDefault();
+      var cr = el("ocLbCrop"); cr.hidden = !b.dataset.crop; el("ocLbImg").hidden = !!b.dataset.crop;
+      if (b.dataset.crop) { cr.setAttribute("style", b.dataset.crop); el("ocLbCap").textContent = b.dataset.cap + " · 실제 시공 · 계약 품목과 다를 수 있습니다."; if (LB.showModal) LB.showModal(); return; }
       el("ocLbImg").src = b.dataset.src; el("ocLbImg").alt = b.dataset.cap; el("ocLbCap").textContent = b.dataset.cap + " · 실제 시공 · 계약 품목과 다를 수 있습니다.";
       if (LB.showModal) LB.showModal(); else window.open(b.dataset.src, "_blank", "noopener");
     });
