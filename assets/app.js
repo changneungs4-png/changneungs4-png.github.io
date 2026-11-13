@@ -1286,9 +1286,8 @@
           '<div class="field oc-loan-k"><span class="lbl">대출로 낼 회차 <span class="muted small">빼면 그 회차는 현금으로 냄</span></span><div class="oc-chips">' +
             D.dates.slice(1, 7).map(function (d, i) { return '<label><input type="checkbox" id="ocLn' + (i + 1) + '" checked><span>' + (i + 1) + "차 <small>" + esc(d.slice(2)) + "</small></span></label>"; }).join("") + "</div></div>" +
           '<label class="check"><input type="checkbox" id="ocLnAll"> 발코니 · 선택품목 중도금도 대출로 (보통은 현금 납부)</label>' +
-          '<div class="field"><label for="ocPre">일부 상환 <span class="muted small">만원</span></label><input id="ocPre" type="number" inputmode="numeric" min="0" step="100" placeholder="예: 3000"></div>' +
-          '<div class="field"><label for="ocPreAt">상환 시점</label><select id="ocPreAt"></select></div>' +
-        "</form>" +
+          '<div class="field oc-loan-k"><span class="lbl">일부 상환 <span class="muted small">여유 자금이 생길 때마다 여러 번 나눠 갚는 경우</span></span><div id="ocPres" class="oc-pres"></div><button type="button" class="btn sm" id="ocPreAdd">+ 상환 추가</button></div>' +
+                  "</form>" +
         '<div class="oc-loan-sum" id="ocLoanSum"></div>' +
         '<div class="tablebox"><table class="spec oc-loan-t"><thead><tr><th>기간</th><th class="r">대출 잔액</th><th class="r">매월 이자</th><th class="r">개월</th><th class="r d">기간 이자</th></tr></thead><tbody id="ocLoanT"></tbody></table></div>' +
         '<p class="muted small">월 이자 = 그달 대출 잔액 × 금리 ÷ 12로 어림한 값입니다. 실제로는 은행의 일 단위 계산 · 납입일 · 금리 변동에 따라 다르고, 입주(' + esc(S.moveInText || "2030년 3월") + ') 때 남은 대출은 잔금과 함께 갚거나 잔금대출로 바꿉니다. 중도금 대출은 협약 은행 · 개인 신용 · 정부 대출 규제에 따라 한도가 줄거나 안 될 수도 있습니다.</p></div>' +
@@ -1429,21 +1428,29 @@
     function ym(d) { return d.slice(0, 7); }
     function addM(m, k) { var y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7)) - 1 + k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return y + "." + String(mo + 1).padStart(2, "0"); }
     function months(a, b) { var out = [], m = a; while (m <= b && out.length < 120) { out.push(m); m = addM(m, 1); } return out; }
-    (function () {   // 상환 시점: 첫 대출 다음 달 ~ 입주 월
-      var L = months(addM(ym(D.dates[1]), 1), MOVE);
-      el("ocPreAt").innerHTML = L.map(function (m) { return '<option value="' + m + '">' + m.slice(0, 4) + "년 " + Number(m.slice(5)) + "월</option>"; }).join("");
-      el("ocPreAt").value = L[Math.min(12, L.length - 1)];
-    })();
+    // 일부 상환: 여러 번 (금액 만원 · 시점). 상환 시점은 첫 대출 다음 달 ~ 입주 월
+    var PRE_M = months(addM(ym(D.dates[1]), 1), MOVE);
+    function preRow(amt, at) {
+      var d = document.createElement("div"); d.className = "oc-pre";
+      if (!at || PRE_M.indexOf(at) < 0) { var used = preList().map(function (x) { return x.at; }); at = PRE_M.filter(function (m) { return used.indexOf(m) < 0 && m > (used.sort().slice(-1)[0] || addM(PRE_M[0], 11)); })[0] || PRE_M[PRE_M.length - 1]; }
+      d.innerHTML = '<input type="number" inputmode="numeric" min="0" step="100" placeholder="금액 (만원)" aria-label="상환 금액 (만원)" value="' + esc(amt || "") + '"><select aria-label="상환 시점">' +
+        PRE_M.map(function (m) { return '<option value="' + m + '"' + (m === at ? " selected" : "") + ">" + m.slice(0, 4) + "년 " + Number(m.slice(5)) + "월</option>"; }).join("") +
+        '</select><button type="button" class="linkbtn" data-del aria-label="이 상환 빼기">빼기</button>';
+      el("ocPres").appendChild(d);
+    }
+    function preList() { return Array.prototype.map.call(el("ocPres").querySelectorAll(".oc-pre"), function (d) { return { amt: d.querySelector("input").value, at: d.querySelector("select").value }; }); }
+    el("ocPreAdd").addEventListener("click", function () { preRow("", ""); el("ocPres").lastChild.querySelector("input").focus(); });
+    el("ocPres").addEventListener("click", function (e) { var b = e.target.closest("[data-del]"); if (b) { b.parentNode.remove(); calc(); } });
     function loanSnap() {
       var k = []; for (var i = 1; i <= 6; i++) if (el("ocLn" + i).checked) k.push(i);
-      return { r: String(el("ocRate").value), k: k.join(""), a: el("ocLnAll").checked ? 1 : 0, p: String(el("ocPre").value || ""), pm: el("ocPreAt").value };
+      return { r: String(el("ocRate").value), k: k.join(""), a: el("ocLnAll").checked ? 1 : 0, p: preList().filter(function (x) { return Number(x.amt) > 0; }).map(function (x) { return Number(x.amt) + "@" + x.at; }).join(","), pm: "" };
     }
     function loanSet(l) {
       if (!l) return;
       if (l.r) el("ocRate").value = l.r;
       for (var i = 1; i <= 6; i++) el("ocLn" + i).checked = String(l.k || "").indexOf(String(i)) >= 0;
-      el("ocLnAll").checked = !!l.a; el("ocPre").value = l.p || "";
-      if (l.pm && Array.prototype.some.call(el("ocPreAt").options, function (o) { return o.value === l.pm; })) el("ocPreAt").value = l.pm;
+      el("ocLnAll").checked = !!l.a; el("ocPres").innerHTML = "";
+      String(l.p || "").split(",").forEach(function (x) { if (!x) return; var q = x.split("@"); preRow(q[0], q[1] || l.pm); });   // 예전 저장본(금액 하나 + pm)도 읽음
     }
     function loan(H, B, O) {
       var rate = Math.max(0, Math.min(20, parseFloat(el("ocRate").value) || 0)) / 100, all = el("ocLnAll").checked;
@@ -1452,13 +1459,14 @@
         var amt = (H[i] + (all ? B[i] + O[i] : 0)) * 1000, rest = (all ? 0 : B[i] + O[i]) * 1000;
         if (el("ocLn" + i).checked) { var mm = ym(D.dates[i]); ev[mm] = (ev[mm] || 0) + amt; total += amt; cash += rest; } else cash += amt + rest;
       }
-      var pre = Math.max(0, (parseFloat(el("ocPre").value) || 0) * 10000), preAt = el("ocPreAt").value;
+      var PRE = {}; preList().forEach(function (x) { var a = Math.max(0, (parseFloat(x.amt) || 0) * 10000); if (a) PRE[x.at] = (PRE[x.at] || 0) + a; });
       if (!total) { el("ocLoanSum").innerHTML = '<p class="muted small">대출로 낼 회차를 고르면 매월 이자를 계산합니다. 지금 계획은 중도금 ' + won(cash / 1000) + "을 모두 현금으로 냅니다.</p>"; el("ocLoanT").innerHTML = ""; return; }
       // 대출 실행 다음 달부터 입주 월까지, 그달 초 잔액에 이자
-      var bal = 0, rows = [], maxI = 0, sumI = 0, preDone = 0, first = addM(ym(D.dates[1]), 0);
+      var bal = 0, rows = [], maxI = 0, sumI = 0, preDone = 0, base = 0, bbal = 0, first = addM(ym(D.dates[1]), 0);
       months(first, MOVE).forEach(function (m) {
-        if (m === preAt && pre > 0 && bal > 0) { preDone = Math.min(pre, bal); bal -= preDone; rows.push({ from: m, to: m, bal: bal, it: 0, n: 0, sum: 0, ev: "일부 상환 −" + eok(preDone), only: 1 }); }
+        if (PRE[m] && bal > 0) { var pd = Math.min(PRE[m], bal); preDone += pd; bal -= pd; rows.push({ from: m, to: m, bal: bal, it: 0, n: 0, sum: 0, ev: "일부 상환 −" + eok(pd) + (pd < PRE[m] ? " (남은 대출만큼)" : ""), only: 1 }); }
         var it = m > first ? Math.round(bal * rate / 12) : 0;
+        if (m > first) base += Math.round(bbal * rate / 12); if (ev[m]) bbal += ev[m];   // 상환 안 했을 때 비교용
         if (it) { sumI += it; maxI = Math.max(maxI, it); }
         var last = rows[rows.length - 1];
         if (last && !last.only && last.bal === bal && last.it === it) { last.to = m; last.n++; last.sum += it; }
@@ -1471,7 +1479,7 @@
         '<div class="hl"><span class="muted small">최대 매월 이자</span><b class="num">' + n(maxI) + "원</b></div>" +
         '<div><span class="muted small">입주까지 이자 합계</span><b class="num">' + eok(sumI) + "</b></div>" +
         '<div><span class="muted small">중도금 중 현금 납부</span><b class="num">' + eok(cash) + "</b></div></div>" +
-        (preDone ? '<p class="small oc-loan-pre">' + esc(preAt.slice(0, 4) + "년 " + Number(preAt.slice(5)) + "월 ") + eok(preDone) + " 일부 상환 → 그 뒤 매월 이자 약 <b>" + n(Math.round(preDone * rate / 12)) + "원</b> 줄어듭니다.</p>" : "");
+        (preDone ? '<p class="small oc-loan-pre">일부 상환 합계 ' + eok(preDone) + " → 입주까지 이자가 상환하지 않을 때(" + eok(base) + ")보다 약 <b>" + eok(base - sumI) + "</b> 줄고, 입주 때 남는 대출은 " + eok(bal) + "입니다.</p>" : "");
       el("ocLoanT").innerHTML = rows.map(function (r) {
         if (r.only) return '<tr class="ev"><td>' + r.from + '</td><td class="r num">' + eok(r.bal) + '</td><td colspan="3" class="muted small ev-t">' + esc(r.ev) + "</td></tr>";
         return "<tr><td>" + r.from + (r.to !== r.from ? "~" + r.to.slice(r.to.slice(0, 4) === r.from.slice(0, 4) ? 5 : 0) : "") +
@@ -1531,6 +1539,7 @@
       API.myOptions().then(function (r) {
         SV_READY = true;
         if (r && r.data) {
+          var l0 = r.data.l; if (l0 && l0.p && String(l0.p).indexOf("@") < 0 && l0.pm) { l0.p = Number(l0.p) + "@" + l0.pm; l0.pm = ""; }   // 예전 저장 형식 → 새 형식
           SAVED_AT = r.updated_at; SAVED = r.data; apply(r.data);
         }
         saveState();

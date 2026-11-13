@@ -1212,6 +1212,11 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 .oc-loan-cards .hl{border-color:var(--pine);background:var(--pine-soft)}
 .oc-loan-cards .hl b{color:var(--pine)}
 .oc-loan-pre{margin:0 0 10px}
+.oc-pres{display:grid;gap:8px;margin:4px 0 8px}
+.oc-pres:empty{display:none}
+#ocPreAdd{width:auto;display:inline-flex}
+.oc-pre{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center}
+.oc-pre input,.oc-pre select{width:100%;min-width:0}
 .oc-loan-t tr.ev td{background:var(--pine-soft)}
 .oc-loan-t td,.oc-loan-t th{white-space:nowrap}
 .oc-loan-t tr.ev td.muted{white-space:normal}
