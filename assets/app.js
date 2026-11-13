@@ -74,7 +74,7 @@
     floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
     progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
     bylaws: ["BYLAWS", "회칙", "협의회가 어떻게 운영되는지 회원 모두가 함께 정한 약속입니다."],
-    accounting: ["ACCOUNTING", "회계", "회비 안내와 매월 수입 · 지출을 공개합니다. 입예협 명의 통장으로만 관리합니다(회칙 제26조 · 제28조)."],
+    accounting: ["ACCOUNTING", "회계", "회비 안내와 매월 수입 · 지출을 공개합니다. 입예협 명의 통장으로만 관리합니다(회칙 제25조 · 제27조)."],
     association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH와 관계 기관에 전달하는 자발적 모임입니다."],
     agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수별 위임동의 현황입니다."],
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
@@ -789,7 +789,7 @@
       (o.head ? "<div>" + head("조직 구성(안)", '<span class="note">운영진 선출 전</span>') +
         '<div class="org">' + role(o.head, "head") + '<span class="link-line"></span><div class="lvl">' + arr(o.officers).map(function (r) { return role(r); }).join("") + "</div>" + (arr(o.teams).length ? '<span class="link-line"></span><div class="lvl">' + arr(o.teams).map(function (r) { return role(r); }).join("") + "</div>" : "") +
         '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1명 · 동 회원이 선출" }) + "</div></div>" +
-        '<p class="muted small org-note"><b class="fg">운영위원회</b> = 회장 · 부회장 · 총무(운영진) + 동대표. 입예협의 유일한 의결기구이며, 감사는 참석해 의견을 말하지만 의결권은 없습니다(회칙 제17조). 전체회의는 매년 1회 이상 열어 보고와 의견을 듣습니다.</p></div>' : "") +
+        '<p class="muted small org-note"><b class="fg">운영위원회</b> = 회장 · 부회장 · 총무(운영진) + 동대표. 입예협의 유일한 의결기구이며, 감사는 참석해 의견을 말하지만 의결권은 없습니다(회칙 제17조). 결산과 한 해 사업 내용은 회계 연도가 끝나면 카페에 게시합니다(제27조).</p></div>' : "") +
       "<div>" + head("회칙", more("bylaws.html", "전문 보기")) + bylawsKeys() + "</div>" +
       '<a class="panel as-acc-link" href="accounting.html"><b>회계</b><span class="muted">회비 안내 · 월별 수입과 지출 · 회계 원칙을 따로 모았습니다.</span><span class="more">회계 보기 →</span></a>';
   };
@@ -798,9 +798,9 @@
   R.accounting = function () {
     var ac = S.accounting || { rows: [] }, rows = arr(ac.rows), tin = 0, tout = 0;
     rows.forEach(function (r) { tin += r.in || 0; tout += r.out || 0; });
-    var RULES = [["재원", "회비와 후원금 등. 업체의 대가성 후원 · 리베이트는 받지 않습니다.", 24], ["회비", "금액과 납부 방법은 운영위원회가 정해 카페에 공지합니다. 납부는 자율이며, 낸 회원은 우수회원이 됩니다.", 25],
-      ["통장", "고유번호증으로 만든 입예협 명의 통장으로만 관리합니다. 개인 계좌로 받지 않습니다. 총무가 관리하고 감사는 언제든 열람합니다.", 26], ["지출", "예산 범위 안에서 쓰고, 1회 30만 원 이상은 운영위원회 의결을 거칩니다. 모든 지출에 영수증 등 증빙을 갖춥니다.", 27],
-      ["공개 · 감사", "총무가 매월 수입 · 지출을 공개하고, 감사가 마지막 분기에 회계를 감사해 결과를 보고합니다.", 28], ["회계 연도", "매년 1월 1일부터 12월 31일까지입니다.", 29]];
+    var RULES = [["재원", "회비와 후원금 등. 업체의 대가성 후원 · 리베이트는 받지 않습니다.", 23], ["회비", "금액과 납부 방법은 운영위원회가 정해 카페에 공지합니다. 납부는 자율이며, 낸 회원은 우수회원이 됩니다.", 24],
+      ["통장", "고유번호증으로 만든 입예협 명의 통장으로만 관리합니다. 개인 계좌로 받지 않습니다. 총무가 관리하고 감사는 언제든 열람합니다.", 25], ["지출", "예산 범위 안에서 쓰고, 1회 30만 원 이상은 운영위원회 의결을 거칩니다. 모든 지출에 영수증 등 증빙을 갖춥니다.", 27],
+      ["공개 · 감사", "총무가 매월 수입 · 지출을 공개하고, 감사가 마지막 분기에 회계를 감사해 결과를 운영위원회에 보고하고 카페에 공개합니다. 회장은 해마다 사업 내용과 결산을 카페에 게시합니다.", 27], ["회계 연도", "매년 1월 1일부터 12월 31일까지입니다.", 28]];
     C.innerHTML = (LIVE && API.isMember ? '<div id="acMine"></div>' : "") +
       '<div id="acMoney">' + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
       (rows.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>날짜</th><th>항목</th><th class="r">수입</th><th class="r">지출</th><th>비고</th></tr></thead><tbody>' +
@@ -895,7 +895,7 @@
         months.map(function (m) { return '<tr><td class="num">' + esc(m.month.replace("-", ".")) + '</td><td class="r num">' + n(m.dues) + '</td><td class="r num">' + n(m.other) + '</td><td class="r num">' + n(m.out) + '</td><td class="r num">' + (m.balance == null ? "—" : n(m.balance)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
       if (spend.length) h += '<h3 class="small" style="margin:12px 0 4px">주요 지출</h3><ul class="list">' + spend.slice(0, 20).map(function (s) { return '<li><span class="t">' + esc(s.note) + '</span><span class="d num">' + fmtDate(s.at) + " · " + won(s.amount) + "</span></li>"; }).join("") + "</ul>";
     } else if (!d.account) h += empty("수입 · 지출 내역이 없습니다", "협의회는 현재 회비를 걷지 않습니다.");
-    h += '<p class="muted small">' + (d.account ? "수입 · 지출은 매월 공개합니다(회칙 제28조)." : esc(note || "")) + " 입금자 이름은 공개하지 않습니다.</p>";
+    h += '<p class="muted small">' + (d.account ? "수입 · 지출은 매월 공개합니다(회칙 제27조)." : esc(note || "")) + " 입금자 이름은 공개하지 않습니다.</p>";
     setTimeout(function () { var r = el("acMoney"); if (r) bindCopy(r); }, 0);
     return h;
   }
@@ -1203,9 +1203,9 @@
         '<ul class="cm-check"><li class="' + (LIVE && API.loggedIn ? "on" : "") + '">홈페이지 로그인</li><li class="' + (LIVE && (API.isDelegate || API.isAdmin) ? "on" : "") + '">위임동의서 제출</li><li class="' + (st === "ok" ? "on" : "") + '">입장 비밀번호 확인</li></ul>' +
         chatBtn + "</section></div>" +
       '<section class="panel cm-rule"><h3>함께 지킬 약속 <span class="muted small">회칙 제6장</span></h3><ul>' +
-        "<li>정치 · 종교 관련 글, 업체 홍보, 욕설과 비방은 금지합니다(제30조).</li>" +
-        "<li>회칙에 어긋나는 게시물은 운영진이 안내 없이 삭제하거나 숨길 수 있습니다(제31조).</li>" +
-        "<li>회원 정보와 회원 전용으로 공유된 내용은 밖으로 옮기지 않습니다(제8조 · 제32조).</li>" +
+        "<li>정치 · 종교 관련 글, 업체 홍보, 욕설과 비방은 금지합니다(제29조).</li>" +
+        "<li>회칙에 어긋나는 게시물은 운영진이 안내 없이 삭제하거나 숨길 수 있습니다(제30조).</li>" +
+        "<li>회원 정보와 회원 전용으로 공유된 내용은 밖으로 옮기지 않습니다(제8조 · 제31조).</li>" +
         "<li>개인 연락처 · 계약서 · 동호수 사진을 올리지 않습니다.</li>" +
         "<li>문제가 생기면 운영진에게 카페 쪽지나 협의회 메일(" + esc((S.privacyOfficer || {}).contact || "changneung.s4@gmail.com") + ")로 알려 주세요.</li></ul></section>";
     if (el("chatOpen")) el("chatOpen").addEventListener("click", openChat);
@@ -1482,7 +1482,7 @@
     var LB = ["구분", "항목", "목적", "보유 기간"];
     C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec stack"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
       rows.map(function (r) { return "<tr>" + r.map(function (c, i) { return '<td data-label="' + LB[i] + '">' + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
-      '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">회원 정보(동 · 호수, 성명, 연락처, 서명 등)는 LH · 시공사 · 관계기관 · 법무법인 등 외부에 제공하지 않습니다(회칙 제32조). 협의 · 민원에서 대표성을 보일 때는 동별 위임 세대 수만 알립니다.</p>' +
+      '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">회원 정보(동 · 호수, 성명, 연락처, 서명 등)는 LH · 시공사 · 관계기관 · 법무법인 등 외부에 제공하지 않습니다(회칙 제31조). 협의 · 민원에서 대표성을 보일 때는 동별 위임 세대 수만 알립니다.</p>' +
       head("처리 위탁 · 국외 이전") + '<ul class="muted plain-list"><li><b>Supabase Inc.</b> (미국, support@supabase.com) — 회원 정보 · 위임동의 · 게시글 · 계약서 사진 저장과 로그인 처리. 데이터는 서울(대한민국) 리전에 저장되며, 회원가입 · 이용 시 인터넷으로 전송됩니다. 보유 기간은 위 표와 같습니다.</li>' +
       '<li><b>Google LLC</b> (미국, Gemini API) — 민원 페이지의 "AI로 글 쓰기"를 누를 때 고른 글 종류 · 상황 · 말투와 공개된 민원 요지만 보내 문장을 받습니다. 이름 · 동호수 등 회원 정보는 보내지 않습니다.</li>' +
       '<li><b>GitHub Inc.</b> (미국) — 홈페이지 호스팅과 LH 공고문 자동 읽기. 회원 개인정보는 다루지 않으며, 접속 기록(IP 등)이 남을 수 있습니다.</li></ul>' +
@@ -1559,7 +1559,7 @@
     var sig = function (src, paperNote) { return blank ? '<span class="sigline"></span> (서명)' : src ? '<img src="' + esc(src) + '" alt="서명">' : paperNote; };
     return '<article class="wi-doc"><h1>' + esc(CONSENT_TITLE) + "</h1><p>" + esc(CONSENT_INTRO) + "</p>" +
       "<section><h2>01 구성 및 위임 동의</h2>" + CONSENT.map(function (c) { return "<h3>" + esc(c[0]) + "</h3><p>" + esc(c[1]) + "</p>"; }).join("") +
-      "<p>회칙: 고양창릉 S4블록 입주예정자협의회 회칙 (37개 조) · 홈페이지 협의회 › 회칙</p></section>" +
+      "<p>회칙: 고양창릉 S4블록 입주예정자협의회 회칙 (35개 조) · 홈페이지 협의회 › 회칙</p></section>" +
       "<section><h2>02 개인정보 수집 및 이용 (필수)</h2>" + consentPrivHtml("wi-priv") + "</section>" +
       '<ul class="wi-checks"><li>' + box(!blank) + " 위 구성 및 위임 내용에 동의합니다 (필수)</li><li>" + box(!blank) + " 위 개인정보 수집 · 이용에 동의합니다 (필수)</li></ul>" +
       "<section><h2>03 확인 및 서명</h2><p class=\"wi-oath\">" + esc(CONSENT_OATH) + "</p></section>" +
@@ -1756,7 +1756,7 @@
     var form = '<article class="consent-doc"><p class="eyebrow">CONSENT · 동의서</p><h2>' + esc(CONSENT_TITLE) + '</h2><p class="muted small">양식 버전 ' + esc(API.formVersion || "2026-11-v1") + "</p>" +
       '<p class="c-intro">' + esc(CONSENT_INTRO) + "</p>" +
       '<h3 class="c-step"><span>01</span> 구성 및 위임 동의</h3>' + consentSecs("h4") +
-      '<p class="c-bylaw">회칙: 고양창릉 S4블록 입주예정자협의회 회칙 (36개 조) · <a href="bylaws.html" target="_blank" rel="noopener">회칙 전문 보기 →</a></p>' +
+      '<p class="c-bylaw">회칙: 고양창릉 S4블록 입주예정자협의회 회칙 (35개 조) · <a href="bylaws.html" target="_blank" rel="noopener">회칙 전문 보기 →</a></p>' +
       '<h3 class="c-step"><span>02</span> 개인정보 수집 및 이용 <span class="tag hot">필수</span></h3>' + consentPrivHtml() +
       '<h3 class="c-step"><span>03</span> 확인 및 서명</h3><p class="c-oath">' + esc(CONSENT_OATH) + '</p><p class="c-to">' + esc(CONSENT_TO) + "</p>" +
       '<p class="cta-row" style="margin:8px 0 0"><button type="button" class="btn" id="docPdf">동의서 PDF로 저장</button></p></article>' +
@@ -1967,7 +1967,7 @@
             return '<tr><td class="num">' + esc(u.unit_id) + '</td><td class="r num">' + n(u.paid) + '</td><td class="r num">' + (u.due ? n(u.due) : "—") + '</td><td><span class="tag' + (ok ? "" : " hot") + '">' + (ok ? "완납" : "부족") + "</span></td></tr>";
           }).join("") : '<tr><td colspan="4" class="muted">아직 없습니다</td></tr>') + "</tbody></table></div>" +
           '<p class="muted small">승인 회원 중 미납 ' + n(unpaidMem.length) + '세대 <button type="button" class="btn" id="unCsv">미납 세대 CSV</button></p></div>' +
-        '<form class="panel" id="fDues" novalidate><h3>회비 설정 <span class="muted small">운영위원회에서 정한 대로 (회칙 제25조)</span></h3>' +
+        '<form class="panel" id="fDues" novalidate><h3>회비 설정 <span class="muted small">운영위원회에서 정한 대로 (회칙 제24조)</span></h3>' +
           '<div class="two" style="gap:10px"><div class="field"><label for="dBank">은행</label><input id="dBank" maxlength="20" value="' + esc(D.bank || "") + '" placeholder="우리은행"></div>' +
           '<div class="field"><label for="dAcc">계좌번호</label><input id="dAcc" class="num" maxlength="30" value="' + esc(D.account || "") + '" placeholder="1005-000-000000"></div></div>' +
           '<div class="field"><label for="dHolder">예금주</label><input id="dHolder" maxlength="40" value="' + esc(D.holder || "") + '" placeholder="고양창릉S4블록입주예정자협의회"></div>' +
@@ -2282,7 +2282,7 @@
             showPrint('<article class="wi-doc wi-list"><h1>고양창릉 S-4블록 입주예정자협의회 위임 현황</h1><p class="muted">' + esc(fmtTime(new Date().toISOString())) + " 기준 · 전체 " + n(T) + "세대 중 위임 <b>" + n(tot) + "세대</b> (" + (tot / T * 100).toFixed(1) + "%)</p>" +
               '<table><thead><tr><th>동</th><th>세대수</th><th>위임 세대</th><th>비율</th></tr></thead><tbody>' + Object.keys(dongs).sort().map(function (d) {
                 var k = by[d] || 0; return "<tr><td>" + esc(d) + "동</td><td>" + n(dongs[d]) + "</td><td>" + n(k) + "</td><td>" + (k / dongs[d] * 100).toFixed(1) + "%</td></tr>"; }).join("") +
-              '</tbody></table><p class="wi-foot">회칙 제32조에 따라 세대별 성명 · 연락처 등 회원 정보는 외부에 제공하지 않습니다. 세대별 위임장 원문은 협의회가 보관합니다.</p></article>', "기관 제출용 위임 현황");
+              '</tbody></table><p class="wi-foot">회칙 제31조에 따라 세대별 성명 · 연락처 등 회원 정보는 외부에 제공하지 않습니다. 세대별 위임장 원문은 협의회가 보관합니다.</p></article>', "기관 제출용 위임 현황");
           });
           el("csvCopy").addEventListener("click", function () { var o = el("csvOut"), b = this; o.value = text; o.hidden = false; try { navigator.clipboard.writeText(text).then(function () { b.textContent = "복사했습니다"; }, function () { o.select(); }); } catch (e) { o.select(); } });
           el("csvDl").addEventListener("click", function () { var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + text], { type: "text/csv;charset=utf-8" })); a.download = "위임동의_" + fmtDate(new Date()).replace(/\./g, "") + ".csv"; document.body.appendChild(a); a.click(); a.remove(); });
