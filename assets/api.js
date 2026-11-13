@@ -6,7 +6,7 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v7";
+  var FORM_VERSION = "2026-11-v8";
   function phoneOk(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(String(v || "").replace(/\s/g, "")); }
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성하세요.");
@@ -133,6 +133,14 @@
     },
     signOut: async function () { if (enabled) await sb.auth.signOut(); st.session = null; st.profile = null; },
 
+    // 민원 문구 AI 새로 쓰기 (승인 회원 · 하루 횟수 제한은 서버에서)
+    petitionAi: async function (o) {
+      need();
+      var r = await fetch(CFG.supabaseUrl + "/functions/v1/petition-ai", { method: "POST", headers: { authorization: "Bearer " + st.session.access_token, apikey: CFG.supabaseAnonKey, "content-type": "application/json" }, body: JSON.stringify(o) });
+      var j = {}; try { j = await r.json(); } catch (e) {}
+      if (!r.ok || !j.text) throw new Error(j.error || (r.status === 404 ? "AI 기능이 아직 설치되지 않았습니다" : "AI 응답을 받지 못했습니다 (HTTP " + r.status + ")"));
+      return j;
+    },
     unitTaken: async function (unit) { need(); return !!must(await sb.rpc("unit_taken", { p_unit: unit })); },
 
     /* 로그인 계정의 세대 (아이디 = 동-호) */

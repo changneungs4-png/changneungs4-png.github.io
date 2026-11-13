@@ -319,10 +319,125 @@
       return '<a class="pt-card" href="petition.html#pt-' + esc(x.id) + '"><span class="tag hot">' + esc(x.tag || "민원 참여") + '</span><span class="pt-txt"><b>' + esc(x.title) + "</b><span>" + esc(x.short || "참여 방법과 접수처를 한 곳에 모았습니다.") + '</span></span><span class="pt-go">참여하기 →</span></a>';
     }).join("") + "</div></section>";
   }
+  /* ── 민원 페이지: 참여 도구(문구 자동 바꾸기 · AI 새로 쓰기 · 복사 · 연락처 · 게시판) ── */
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function sentences(t) { return String(t).match(/[^.!?]+[.!?]+["'”’]?\s*/g) || [t]; }
+  // 같은 주제의 다른 버전 문장을 섞어 새 조합을 만듦 (앞 문장 + 다른 버전의 뒷부분)
+  function remix(list, cur) {
+    for (var k = 0; k < 8; k++) {
+      var a = pick(list), b = pick(list), out = a;
+      if (a !== b && Math.random() < 0.6) {
+        var sa = sentences(a), sb = sentences(b);
+        if (sa.length > 1 && sb.length > 1) out = (sa[0].trim() + " " + sb.slice(1).join("").trim()).trim();
+      }
+      if (out !== cur) return out;
+    }
+    return pick(list);
+  }
+  function boardText(B) {
+    var order = shuffle([0, 1, 2, 3]);
+    return pick(B.intros) + "\n\n" + order.map(function (pi, i) { return (i + 1) + ". " + pick(B.paras[pi]); }).join("\n\n") + "\n\n" + pick(B.outros);
+  }
+  function withPersona(kind, text, persona) {
+    if (!persona) return text;
+    if (kind === "board") { var i = text.indexOf("\n\n"); return i > 0 ? text.slice(0, i) + "\n\n" + persona + text.slice(i) : persona + "\n\n" + text; }
+    if (kind === "sns3") { var ss = sentences(text); return ss.length > 1 ? (ss[0].trim() + " " + persona + " " + ss.slice(1).join("").trim()).trim() : persona + " " + text; }
+    return text;
+  }
+  var SNS_ICON = { fb: "페이스북", ig: "인스타그램", th: "스레드", x: "X", yt: "유튜브" };
+  function kitHtml(x, K) {
+    var box = function (kind, label, hint) {
+      return '<div class="kit-box" data-kind="' + kind + '"><div class="kit-bh"><b>' + label + '</b><span class="muted small">' + hint + '</span><span class="kit-len num muted small"></span></div>' +
+        '<textarea class="kit-t" rows="' + (kind === "board" ? 14 : 4) + '" aria-label="' + esc(label) + '"></textarea>' +
+        '<div class="kit-act"><button type="button" class="btn sm kit-re">🔄 문장 바꾸기</button><button type="button" class="btn sm kit-ai">✨ AI로 새로 쓰기</button><button type="button" class="btn sm solid kit-cp">📋 복사</button></div></div>';
+    };
+    var host = function (u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
+    var kb = arr(K.boards), seen = {}; kb.forEach(function (b) { seen[host(b.url)] = 1; });
+    var chans = kb.map(function (b) { return { org: b.org, what: b.what, url: b.url }; }).concat(arr(x.channels).filter(function (c) { return !c.url || !seen[host(c.url)]; }));
+    return '<div class="kit">' +
+      '<div class="kit-facts"><b>핵심 요지</b><ul>' + arr(K.facts).map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></div>" +
+      '<div class="kit-persona"><span class="muted small">내 상황 한 줄 넣기 (DM · 본문에 들어가 글이 사람마다 달라집니다)</span><div class="chips" id="kitPersona">' + arr(K.personas).map(function (p, i) {
+        return '<button type="button" class="chip" data-p="' + i + '" aria-pressed="' + (i === 0) + '">' + esc(p[1]) + "</button>"; }).join("") + "</div></div>" +
+      '<section class="kit-step"><h3><span>1</span> SNS 댓글 · 메시지 문구 <button type="button" class="btn sm" id="kitAll">🎲 전체 바꾸기</button></h3>' +
+        box("sns1", "댓글 A", "페이스북 · 인스타 · 유튜브") + box("sns2", "짧은 댓글 B", "스레드 · X") + box("sns3", "DM · 문자", "의원 메시지 · 문자") + "</section>" +
+      '<section class="kit-step"><h3><span>2</span> 의원 · 기관에 보내기</h3><p class="muted small">버튼을 눌러 공식 SNS에 댓글 · 메시지를 남기거나, 이메일 주소를 복사해 메일 받는 사람 칸에 붙여 넣으세요. ' + esc(K.asOf) + ' 기준 공개 정보입니다.</p>' +
+        '<p class="kit-act" style="margin:0 0 8px"><button type="button" class="btn sm" data-mails="all">✉️ 전체 이메일 한 번에 복사</button></p>' +
+        arr(K.contacts).map(function (g, gi) {
+          var mails = g.list.map(function (c) { return c[5]; }).filter(Boolean);
+          return '<details class="kit-grp"' + (gi === 0 ? " open" : "") + '><summary><b>' + esc(g.group) + '</b> <span class="muted small">' + g.list.length + "곳</span></summary>" +
+            (mails.length ? '<p class="kit-act" style="margin:6px 0"><button type="button" class="btn sm" data-mails="' + gi + '">✉️ 이 그룹 이메일 ' + mails.length + "개 복사</button></p>" : "") +
+            '<ul class="kit-ct">' + g.list.map(function (c) {
+              var L = c[4] || {};
+              return "<li><div><span class=\"muted small\">" + esc(c[0]) + " · " + esc(c[1]) + "</span><b>" + esc(c[2]) + '</b><span class="muted small">' + esc(c[3]) + "</span></div>" +
+                '<div class="kit-links">' + Object.keys(SNS_ICON).filter(function (k) { return L[k]; }).map(function (k) { return '<a class="chip" href="' + esc(safeUrl(L[k])) + '" target="_blank" rel="noopener">' + SNS_ICON[k] + "</a>"; }).join("") +
+                (c[5] ? '<button type="button" class="chip" data-copy="' + esc(c[5]) + '">✉️ ' + esc(c[5]) + "</button>" : "") +
+                (c[6] ? '<button type="button" class="chip" data-copy="' + esc(c[6]) + '">📞 ' + esc(c[6]) + "</button>" : "") + "</div></li>";
+            }).join("") + "</ul></details>";
+        }).join("") + "</section>" +
+      '<section class="kit-step"><h3><span>3</span> 공식 민원 게시판 · 담당 부서</h3><ul class="pt-ch">' + chans.map(function (c) {
+          return "<li><b>" + esc(c.org) + '</b><span class="muted small">' + esc(c.what || "") + (c.note ? " · " + esc(c.note) : "") + "</span>" +
+            '<span class="pt-act">' + (c.tel ? '<button type="button" class="btn sm" data-copy="' + esc(c.tel) + '">📞 ' + esc(c.tel) + "</button>" : "") + (c.url ? '<a class="btn sm" href="' + esc(safeUrl(c.url)) + '" target="_blank" rel="noopener">바로가기 ↗</a>' : "") + "</span></li>";
+        }).join("") + "</ul></section>" +
+      '<section class="kit-step"><h3><span>4</span> 게시판 · 이메일용 제목과 본문</h3>' +
+        '<div class="kit-titles"><div class="kit-bh"><b>추천 제목</b><button type="button" class="btn sm" id="kitTitleRe">🔄 제목 바꾸기</button></div><ol id="kitTitles"></ol></div>' +
+        box("board", "정식 민원 · 이메일 본문", "경기도의회 · 고양시의회 · 국민신문고 · 이메일") + "</section>" +
+      '<p class="kit-note small">⚖️ ' + esc(K.notice) + "</p>" +
+      '<p class="muted small">문구 · 연락처: <a href="' + esc(safeUrl(K.source.url)) + '" target="_blank" rel="noopener">' + esc(K.source.label) + " ↗</a> (" + esc(K.source.by) + ", " + esc(K.asOf) + " 기준)을 옮겨 정리했습니다. 문장은 열 때마다, 버튼을 누를 때마다 바뀝니다.</p>" +
+      "</div>";
+  }
+  function bindKit(root, K) {
+    var persona = "";
+    var gen = function (kind, cur) { return kind === "board" ? boardText(K.board) : remix(K[kind], cur); };
+    var boxes = root.querySelectorAll(".kit-box");
+    function setText(b, t) { var ta = b.querySelector(".kit-t"); ta.value = t; b.querySelector(".kit-len").textContent = n(t.length) + "자"; b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); }
+    function fresh(b) { var k = b.dataset.kind; b._base = gen(k, b._base); setText(b, withPersona(k, b._base, persona)); }
+    boxes.forEach(function (b) {
+      fresh(b);
+      b.querySelector(".kit-t").addEventListener("input", function () { b.querySelector(".kit-len").textContent = n(this.value.length) + "자"; });
+      b.querySelector(".kit-re").addEventListener("click", function () { fresh(b); });
+      b.querySelector(".kit-cp").addEventListener("click", function () { copyText(b.querySelector(".kit-t").value, this); });
+      b.querySelector(".kit-ai").addEventListener("click", async function () {
+        var btn = this, k = b.dataset.kind;
+        if (!(LIVE && API.isMember)) { fresh(b); toast("AI 새로 쓰기는 승인 회원만 쓸 수 있어 조합 문장으로 바꿨습니다."); return; }
+        busy(btn, true, "AI가 쓰는 중…");
+        try { var r = await API.petitionAi({ kind: k, persona: persona, base: b._base }); b._base = r.text; setText(b, r.text); toast("AI가 새 문장을 썼습니다. 사실과 다른 부분이 없는지 한 번 읽고 보내 주세요."); }
+        catch (e) { fresh(b); toast((e && e.message ? e.message + " · " : "") + "조합 문장으로 바꿨습니다."); }
+        busy(btn, false);
+      });
+    });
+    function titles() { el("kitTitles").innerHTML = shuffle(K.titles).slice(0, 3).map(function (t) { return '<li><span>' + esc(t) + '</span><button type="button" class="btn sm" data-copy="' + esc(t) + '">📋 복사</button></li>'; }).join(""); }
+    titles();
+    el("kitTitleRe").addEventListener("click", titles);
+    el("kitAll").addEventListener("click", function () { boxes.forEach(function (b) { if (b.dataset.kind !== "board") fresh(b); }); toast("문구를 모두 새로 바꿨습니다."); });
+    el("kitPersona").addEventListener("click", function (e) {
+      var c = e.target.closest(".chip"); if (!c) return;
+      el("kitPersona").querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", x === c ? "true" : "false"); });
+      persona = K.personas[Number(c.dataset.p)][0];
+      boxes.forEach(function (b) { if (b.dataset.kind === "sns3" || b.dataset.kind === "board") setText(b, withPersona(b.dataset.kind, b._base, persona)); });
+    });
+    root.addEventListener("click", function (e) {
+      var m = e.target.closest("[data-mails]"); if (!m) return;
+      var gs = m.dataset.mails === "all" ? K.contacts : [K.contacts[Number(m.dataset.mails)]];
+      var list = []; gs.forEach(function (g) { g.list.forEach(function (c) { if (c[5] && list.indexOf(c[5]) < 0) list.push(c[5]); }); });
+      copyText(list.join(", "), m);
+    });
+    bindCopy(root);
+  }
   R.petition = function () {
-    var h = petitionsHtml();
-    C.innerHTML = h ? h.replace('<section class="band petition-band"><div class="wrap">', '<div class="petition-page">').replace(/<\/div><\/section>$/, "</div>") : empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다.");
+    var L = arr(S.petitions).filter(function (x) { return x.active; });
+    if (!L.length) { C.innerHTML = empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다."); return; }
+    var KIT = window.S4_PETITION_KIT || {};
+    C.innerHTML = '<div class="petition-page">' + L.map(function (x) {
+      var K = KIT[x.id];
+      if (!K) return petitionsHtml().replace('<section class="band petition-band"><div class="wrap">', "").replace(/<\/div><\/section>$/, "");
+      return '<article class="petition kit-wrap" id="pt-' + esc(x.id) + '"><div class="pt-head"><span class="tag hot">' + esc(x.tag || "민원 참여") + "</span><h2>" + esc(x.title) + "</h2><p>" + esc(x.lead || "") + "</p></div>" +
+        (x.privateKey ? '<div class="pt-private" data-key="' + esc(x.privateKey) + '">' + (LIVE && API.isMember ? '<p class="muted small">회원 전용 안내를 불러오는 중…</p>'
+          : '<p class="small"><b>안건 정보 · 의원 연락처</b>는 외부 유출 금지라 승인 회원에게만 보입니다. ' + (LIVE && API.loggedIn ? "가입 승인 후 볼 수 있습니다." : '<a href="login.html">로그인 →</a>') + "</p>") + "</div>" : "") +
+        kitHtml(x, K) + "</article>";
+    }).join("") + "</div>";
     bindPetitions();
+    L.forEach(function (x) { var K = KIT[x.id]; if (K) bindKit(el("pt-" + x.id), K); });
     var id = location.hash.slice(1), t = id && document.getElementById(id); if (t) setTimeout(function () { t.scrollIntoView({ block: "start" }); }, 0);
   };
   function linkify(t) {
@@ -707,11 +822,24 @@
       '<button type="button" class="btn" data-copy="' + esc(d.account) + '">계좌번호 복사</button>' +
       '<p class="small" style="flex-basis:100%;margin:0">입금자명은 <b>동호수+이름</b>으로 적어 주세요. 예: <span class="num">403-1804홍길동</span> · 동호수가 있어야 자동으로 납부 확인이 됩니다.</p></div>';
   }
+  // 복사: 클립보드 → 안 되면 숨은 칸 선택 복사 → 그래도 안 되면 직접 복사하도록 보여줌
+  function copyText(v, b) {
+    var was = b ? b.textContent : "", done = function () { if (b) { b.textContent = "✓ 복사했습니다"; setTimeout(function () { b.textContent = was; }, 1600); } toast("복사했습니다. 붙여 넣기 하세요."); };
+    var legacy = function () {
+      var t = document.createElement("textarea"); t.value = v; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;top:-1000px;opacity:0"; document.body.appendChild(t); t.select();
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) {} t.remove();
+      if (ok) done(); else prompt("아래 내용을 길게 눌러 복사하세요", v);
+    };
+    try { navigator.clipboard.writeText(v).then(done, legacy); } catch (e) { legacy(); }
+  }
+  var toastT;
+  function toast(msg) {
+    var t = document.getElementById("s4Toast");
+    if (!t) { t = document.createElement("div"); t.id = "s4Toast"; t.className = "s4-toast"; t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); document.body.appendChild(t); }
+    t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove("show"); }, 2600);
+  }
   function bindCopy(root) {
-    root.querySelectorAll("[data-copy]").forEach(function (b) { b.addEventListener("click", function () {
-      var v = b.getAttribute("data-copy"), was = b.textContent, done = function () { b.textContent = "복사했습니다"; setTimeout(function () { b.textContent = was; }, 1600); };
-      try { navigator.clipboard.writeText(v).then(done, function () { prompt("계좌번호", v); }); } catch (e) { prompt("계좌번호", v); }
-    }); });
+    root.querySelectorAll("[data-copy]").forEach(function (b) { if (b._cp) return; b._cp = 1; b.addEventListener("click", function () { copyText(b.getAttribute("data-copy"), b); }); });
   }
   /* 회원용 회비 안내: 우리 세대 금액 · 계좌 · 입금자명 */
   function duesPayer() {
@@ -1124,6 +1252,7 @@
         '<div class="field"><label for="ocSpace">공간선택</label><select id="ocSpace"><option value="basic">침실2/3 분리</option><option value="A">A형 · 침실2+3 통합</option></select></div>' +
         '<p class="muted small oc-note">세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.</p>' +
       "</form>" +
+      '<section class="oc-media" id="ocMedia" aria-label="평면 · 공간 미리보기"></section>' +
       '<div class="oc-opthead"><h2>선택품목</h2><span class="muted small" id="ocFamInfo"></span><button type="button" class="btn sm" id="ocReset">선택 초기화</button></div>' +
       '<p class="oc-msg" id="ocMsg" role="status" aria-live="polite"></p>' +
       '<div id="ocOpts" class="oc-opts"></div></div>' +
@@ -1132,13 +1261,14 @@
         '<p class="muted small" style="margin:8px 0 0">세금 · 등기비 · 대출이자는 빠진 금액입니다. 실제 금액은 LH 계약서로 확인하세요.</p></aside>' +
       "</div>" +
       '<div class="oc-bar" id="ocBar" aria-hidden="true"><span>예상 총액</span><b class="num" id="ocBarTotal"></b><a href="#ocSum">자세히</a></div>' +
+      '<dialog class="oc-lb" id="ocLb" aria-label="사진 크게 보기"><button type="button" class="oc-lb-x" id="ocLbX" aria-label="닫기">×</button><img id="ocLbImg" alt=""><p id="ocLbCap"></p></dialog>' +
       "<div>" + head("회차별 납부 예정액", '<span class="note">입주 시 잔여금액은 대출 적용 전</span>') + '<div class="tablebox"><table class="spec oc-pay"><thead><tr><th>회차 · 예정일</th><th class="r">주택</th><th class="r">발코니</th><th class="r">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
       '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
         '<label class="check"><input type="checkbox" id="ocFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
         '<div class="tablebox"><table class="spec"><tbody id="ocTax"></tbody></table></div></div>' +
       '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">금액은 ' + esc(D.src) + "의 표를 옮긴 값입니다. 계약금과 중도금 1~6차는 각 항목 금액의 10%(천원 미만 버림), 입주 시 잔여금액은 나머지입니다. 마이너스옵션을 고르면 주택 · 발코니 금액이 마이너스옵션 가격으로 바뀌고 선택품목은 고를 수 없습니다.</p>" +
         '<p class="muted small">취득세 과세표준은 총 분양비용(주택 + 발코니 + 선택품목)입니다. 세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%이며 지방교육세는 취득세의 10%입니다. 취득세는 잔금을 내는 입주 시점(2030년 예정)의 법을 따르므로 실제 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p>' +
-        (D.credit ? '<p class="muted small">화면 구성은 입주예정자가 만든 <a href="' + esc(safeUrl(D.credit.url)) + '" target="_blank" rel="noopener">' + esc(D.credit.label) + " ↗</a>을 참고했습니다. 팸플릿 사진과 공식 VR은 그곳에서 볼 수 있습니다.</p>" : "") +
+        (D.credit ? '<p class="muted small">품목 사진 · 평면도와 화면 구성은 ' + esc(D.credit.by || "입주예정자") + '이 만든 <a href="' + esc(safeUrl(D.credit.url)) + '" target="_blank" rel="noopener">' + esc(D.credit.label) + " ↗</a>에서 가져왔고, 공간 미리보기 · VR은 LH 공식 사이버모델하우스입니다. 사진은 팸플릿 기준이라 실제와 다를 수 있습니다.</p>" : "") +
       "</div></div>";
     var TY = el("ocType"), FL = el("ocFloor"), SPC = el("ocSpace"), BOX = el("ocOpts");
     function mode() { var r = C.querySelector('input[name="ocMode"]:checked'); return r ? r.value : "basic"; }
@@ -1155,6 +1285,21 @@
       if (r.block && r.block.some(function (x) { return ids[x]; })) return "선택한 드레스룸 · 팬트리 · 알파룸과 함께 고를 수 없음";
       return "";
     }
+    var M = D.media || null;
+    function mu(t, F) { return t.replace("{F}", F).replace("{f}", F.toLowerCase()); }
+    function photoBtn(src, cap, cls) {
+      return '<button type="button" class="' + (cls || "oc-ph") + '" data-src="' + esc(src) + '" data-cap="' + esc(cap) + '" aria-label="' + esc(cap) + ' 사진 크게 보기"><img src="' + esc(src) + '" alt="" loading="lazy" decoding="async"><span>사진 크게</span></button>';
+    }
+    function media(F) {
+      if (!M) return "";
+      var sc = M.scenes[F] || M.scenes.std;
+      return '<div class="oc-mgrid">' +
+        "<figure>" + photoBtn(mu(M.plan, F), F + " 평면도", "oc-ph wide") + "<figcaption>" + esc(F) + " 평면도 · 발코니 확장형</figcaption></figure>" +
+        "<figure>" + photoBtn(mu(M.iso, F), F + " 공식 사이버모델하우스 대표 평면", "oc-ph wide") + "<figcaption>LH 공식 사이버모델하우스 · " + esc(F) + " 대표 타입</figcaption></figure></div>" +
+        '<div class="oc-vr"><a class="btn sm solid" href="' + esc(mu(M.vr, F)) + '" target="_blank" rel="noopener">공식 VR로 둘러보기 ↗</a>' +
+        Object.keys(sc).map(function (r) { return '<a class="chip" href="' + esc(mu(M.vr, F)) + "?startscene=" + encodeURIComponent(sc[r]) + '" target="_blank" rel="noopener">' + esc(r) + " ↗</a>"; }).join("") +
+        '</div><p class="muted small" style="margin:6px 0 0">VR은 대표 타입의 발코니 확장형 기준이며, 전시 품목과 실제 계약 옵션은 다를 수 있습니다.</p>';
+    }
     function row(o, g) {
       var id = "oc-" + o[0], typ = o[4] ? "radio" : "checkbox";
       return '<label class="oc-row" for="' + id + '"><input type="' + typ + '" id="' + id + '" data-id="' + esc(o[0]) + '"' + (o[4] ? ' name="ocg-' + esc(o[4]) + '"' : "") + '><span class="oc-l"><span>' + esc(o[2]) + '</span><small class="oc-why"></small></span><span class="oc-p num">' + (o[3] ? "+" + won(o[3]) : "무상") + "</span></label>";
@@ -1163,7 +1308,9 @@
       var F = fam(), fl = D.types[TY.value][1], keep = FL.value;
       FL.innerHTML = Object.keys(fl).map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + "</option>"; }).join("");
       if (fl[keep]) FL.value = keep; else FL.value = Object.keys(fl)[Object.keys(fl).length - 1];
-      el("ocFamInfo").textContent = D.types[TY.value][0] + " 계열 · " + F.opts.length + "개 품목 · 표준안내문 " + F.src;
+      var FK = D.types[TY.value][0];
+      el("ocFamInfo").textContent = FK + " 계열 · " + F.opts.length + "개 품목 · 표준안내문 " + F.src;
+      if (el("ocMedia").dataset.f !== FK) { el("ocMedia").innerHTML = media(FK); el("ocMedia").dataset.f = FK; }
       BOX.innerHTML = CATS.map(function (c) {
         var L = F.opts.filter(function (o) { return o[1] === c; }); if (!L.length) return "";
         var done = {}, h = "";
@@ -1174,7 +1321,8 @@
             '<label class="oc-row none" for="oc-none-' + esc(o[4]) + '"><input type="radio" id="oc-none-' + esc(o[4]) + '" name="ocg-' + esc(o[4]) + '" data-none="' + esc(o[4]) + '" checked><span class="oc-l"><span>선택 안 함 (기본 사양)</span></span><span class="oc-p num">0원</span></label>' +
             L.filter(function (x) { return x[4] === o[4]; }).map(row).join("") + "</div>";
         });
-        return '<fieldset class="oc-cat"><legend>' + esc(c) + "</legend>" + h + "</fieldset>";
+        var ph = M && M.keys[c] ? photoBtn(mu(M.photo, D.types[TY.value][0]).replace("{K}", M.keys[c]), D.types[TY.value][0] + " · " + c + " 선택품목 (팸플릿)") : "";
+        return '<fieldset class="oc-cat"><legend>' + esc(c) + "</legend>" + ph + h + "</fieldset>";
       }).join("");
       enforce(); calc();
     }
@@ -1238,6 +1386,16 @@
     BOX.addEventListener("change", function () { enforce(); calc(); });
     el("ocReset").addEventListener("click", function () { BOX.querySelectorAll("input[data-id]").forEach(function (x) { x.checked = false; }); SPC.value = "basic"; enforce(); calc(); el("ocMsg").textContent = "선택품목을 모두 풀었습니다."; });
     el("ocFirst").addEventListener("change", calc);
+    // 사진: 못 불러오면 칸을 숨김, 누르면 크게
+    C.addEventListener("error", function (e) { var b = e.target && e.target.closest && e.target.closest(".oc-ph"); if (b) b.hidden = true; }, true);
+    var LB = el("ocLb");
+    C.addEventListener("click", function (e) {
+      var b = e.target.closest(".oc-ph"); if (!b) return;
+      el("ocLbImg").src = b.dataset.src; el("ocLbImg").alt = b.dataset.cap; el("ocLbCap").textContent = b.dataset.cap + " · 실제 시공 · 계약 품목과 다를 수 있습니다.";
+      if (LB.showModal) LB.showModal(); else window.open(b.dataset.src, "_blank", "noopener");
+    });
+    el("ocLbX").addEventListener("click", function () { LB.close(); });
+    LB.addEventListener("click", function (e) { if (e.target === LB) LB.close(); });
     if (saved.t && D.types[saved.t]) TY.value = saved.t;
     if (saved.m === "minus") { C.querySelector('input[name="ocMode"][value="minus"]').checked = true; SPC.disabled = true; }
     else if (saved.s === "A") SPC.value = "A";
@@ -1506,15 +1664,28 @@
   };
 
   /* ── 위임동의서 ── */
-  /* 구성 및 위임 동의서 — 입예협 확정본(2026-11-12). 선택 항목(카페 닉네임 · 계약서 첨부)은 받지 않음.
+  /* 구성 및 위임 동의서 — 입예협 최신본(2026-11-13, v8: 제2조② 수행 주체 '입예협', 제3조 '개별 세대의' 하자보수 청구권). 선택 항목(카페 닉네임 · 계약서 첨부)은 받지 않음.
      문구를 바꾸면 api.js FORM_VERSION도 올려 주세요 */
   var CONSENT_TITLE = "고양창릉 S4 입주예정자협의회 구성 및 위임 동의서";
   var CONSENT_INTRO = "이 동의서는 입주예정자협의회 구성, 공동 현안에 대한 대표 협의 및 입주 편의 업무의 위임 범위를 확인하기 위한 것입니다. 개별 세대의 계약 변경, 비용 부담 또는 권리 포기를 대신 결정할 권한은 포함하지 않습니다.";
   var CONSENT_PRE = [];
+  var CONSENT_HERO = { kicker: "OUR HOME, OUR VOICE", title: "함께 만드는 창릉 S4,\n우리의 동의에서 시작합니다.", lead: "한 세대의 목소리는 민원이지만,\n모인 목소리는 협의가 됩니다.", credit: "이미지 출처: LH 고양창릉 S4 공식 팸플릿 · 투시도는 실제 시공과 다를 수 있습니다." };
+  var CONSENT_WHY = [
+    ["하나", "개인 민원은 접수로 끝납니다", "혼자 넣은 의견은 답변 한 줄로 마무리되기 쉽습니다. 계약자의 위임을 모은 단체는 협의 상대로 인정받고, 설계 변경 · 마감재 · 조경 · 통학로 확보 및 개선과 같은 사안은 대부분 그 자리에서 정해집니다."],
+    ["둘", "계약자만 모아야 힘이 됩니다", "위임동의는 계약 사실이 확인된 세대만 받습니다. 그래야 협의회가 이 단지를 대표한다고 말할 수 있고, 상대방도 매번 그 근거를 요구합니다."],
+    ["셋", "지금 해야 반영됩니다", "공사가 진행될수록 바꿀 수 있는 폭은 줄어듭니다. 준공 뒤에 남는 것은 하자보수뿐입니다. 2030년 3월 입주까지 남은 기간이 우리가 쓸 수 있는 시간의 전부입니다."]
+  ];
+  function consentHeroHtml() {
+    return '<section class="c-hero"><img src="assets/img/s4-view-1600.webp" srcset="assets/img/s4-view-800.webp 800w, assets/img/s4-view-1600.webp 1600w" sizes="(max-width: 700px) 100vw, 1100px" alt="고양창릉 S4블록 조감 투시도" width="1600" height="996" fetchpriority="high">' +
+      '<div class="c-hero-txt"><span class="c-kick">' + esc(CONSENT_HERO.kicker) + "</span><h2>" + esc(CONSENT_HERO.title).replace(/\n/g, "<br>") + "</h2><p>" + esc(CONSENT_HERO.lead).replace(/\n/g, "<br>") + '</p></div><small class="c-credit">' + esc(CONSENT_HERO.credit) + "</small></section>" +
+      '<section class="c-why"><h3>위임동의가 필요한 이유 <span>세 가지만 말씀드립니다.</span></h3><div class="c-why-grid">' + CONSENT_WHY.map(function (w) {
+        return '<div><span class="c-no">' + esc(w[0]) + "</span><b>" + esc(w[1]) + "</b><p>" + esc(w[2]) + "</p></div>";
+      }).join("") + "</div></section>";
+  }
   var CONSENT = [
     ["제1조 구성 및 회칙 동의", "① 본인은 고양창릉 S4블록의 계약자로서 「고양창릉 S4블록 입주예정자협의회」(이하 “입예협”)의 구성에 동의하고 회원으로 참여합니다. 입예협을 본인이 위임한 범위에서 공동 의견을 전달하는 대표 협의 창구로 인정합니다.\n② 별도로 제공된 입예협 회칙을 확인하고 이에 동의합니다. 의결권은 1세대(동 · 호수)당 1표이며, 공동명의 세대는 대표 회원 1인을 정합니다."],
-    ["제2조 위임 범위", "① 본인은 입예협에 시공 품질, 주거환경 및 입주 준비 등 공동 현안에 관하여 LH · 시공사 · 관계기관과 협의하고, 자료 · 설명을 요청하며, 의견 · 민원 · 건의를 제출하는 권한을 위임합니다.\n② 입예협은 회원 의견을 수렴하고 관련 정보와 협의 결과를 공유합니다. 위임 업무는 회칙에 따라 구성된 회장단이 수행하며, 구성 전 준비위원회는 구성 준비와 동의서 접수 · 집계 업무를 담당합니다.\n③ 본인은 입예협에 공동구매 · 입주박람회 추진과 법무법인 · 법무사 선정을 위한 후보 모집, 조건 비교 · 협의 및 선정 권한을 위임합니다. 추진 및 선정은 회칙에 따른 의결 절차를 거치고, 주요 조건과 결과를 회원에게 공개합니다. 개별 세대의 참여 · 구매 · 수임계약 체결 여부는 각 세대가 자율적으로 결정하며, 특정 업체 이용을 강제하지 않습니다."],
-    ["제3조 위임의 한계", "본 동의에는 개별 세대의 공급계약 변경 · 해제, 재산권 처분 · 제한, 비용 부담 약정, 소송 · 수임계약 체결, 하자보수 · 손해배상 청구권이나 민원 제기권의 포기 · 제한 및 제3자에 대한 재위임 권한이 포함되지 않습니다. 필요한 경우 해당 권리자의 별도 동의를 받아야 합니다."],
+    ["제2조 위임 범위", "① 본인은 입예협에 시공 품질, 주거환경 및 입주 준비 등 공동 현안에 관하여 LH · 시공사 · 관계기관과 협의하고, 자료 · 설명을 요청하며, 의견 · 민원 · 건의를 제출하는 권한을 위임합니다.\n② 입예협은 회원 의견을 수렴하고 관련 정보와 협의 결과를 공유합니다. 위임 업무는 회칙에 따라 구성된 입예협이 수행하며, 구성 전 준비위원회는 구성 준비와 동의서 접수 · 집계 업무를 담당합니다.\n③ 본인은 입예협에 공동구매 · 입주박람회 추진과 법무법인 · 법무사 선정을 위한 후보 모집, 조건 비교 · 협의 및 선정 권한을 위임합니다. 추진 및 선정은 회칙에 따른 의결 절차를 거치고, 주요 조건과 결과를 회원에게 공개합니다. 개별 세대의 참여 · 구매 · 수임계약 체결 여부는 각 세대가 자율적으로 결정하며, 특정 업체 이용을 강제하지 않습니다."],
+    ["제3조 위임의 한계", "본 동의에는 개별 세대의 공급계약 변경 · 해제, 재산권 처분 · 제한, 비용 부담 약정, 소송 · 수임계약 체결, 개별 세대의 하자보수 · 손해배상 청구권이나 민원 제기권의 포기 · 제한 및 제3자에 대한 재위임 권한이 포함되지 않습니다. 필요한 경우 해당 권리자의 별도 동의를 받아야 합니다."],
     ["제4조 기간 및 철회", "위임은 서명일부터 입주자대표회의 구성 후 업무 인계 완료 시까지 유효합니다. 본인은 언제든 서면 · 카페 쪽지 · 문자로 위임을 철회할 수 있으며, 철회 의사가 도달한 때부터 효력을 잃습니다. 계약자 지위를 상실하면 위임도 종료되며, 승계인은 새로 동의해야 합니다.\n이 홈페이지로 낸 동의는 내 정보 화면에서 바로 철회할 수 있습니다."]
   ];
   var CONSENT_PRIV_INTRO = "입예협은 다음과 같이 개인정보를 수집 · 이용합니다. 구성 전에는 준비위원회가 접수 · 관리하며, 구성 후 입예협이 동일한 목적과 범위에서 관리합니다.";
@@ -1545,7 +1716,7 @@
 
   /* 휴대폰: 긴 동의서 위에 '제출 칸으로 이동' 버튼 */
   function consentLayout(form, side) {
-    return '<a class="btn jump-side" href="#consentSide">아래 제출 칸으로 이동 ↓</a><div class="two consent-grid"><div>' + form + '</div><div id="consentSide">' + side + "</div></div>";
+    return consentHeroHtml() + '<a class="btn jump-side" href="#consentSide">아래 제출 칸으로 이동 ↓</a><div class="two consent-grid"><div>' + form + '</div><div id="consentSide">' + side + "</div></div>";
   }
   R.consent = async function () {
     var form = '<article class="consent-doc"><p class="eyebrow">CONSENT · 동의서</p><h2>' + esc(CONSENT_TITLE) + '</h2><p class="muted small">양식 버전 ' + esc(API.formVersion || "2026-11-v1") + "</p>" +
