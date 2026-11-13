@@ -6,7 +6,7 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v8";
+  var FORM_VERSION = "2026-11-v9";
   function phoneOk(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(String(v || "").replace(/\s/g, "")); }
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성하세요.");

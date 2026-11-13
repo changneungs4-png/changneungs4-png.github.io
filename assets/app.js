@@ -73,18 +73,15 @@
     news: ["MEDIA", "언론보도", "S-4블록 · 창릉신도시 · 교통(고양은평선 · GTX 창릉역) 관련 기사입니다."],
     floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
     progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
-    gallery: ["PHOTO", "우리 단지 사진관", "현장과 주변 모습입니다."],
     bylaws: ["BYLAWS", "회칙", "협의회가 어떻게 운영되는지 회원 모두가 함께 정한 약속입니다."],
     association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH와 관계 기관에 전달하는 자발적 모임입니다."],
     agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수별 위임동의 현황입니다."],
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
-    board: ["COMMUNITY", "자유게시판", "입주예정자끼리 정보와 이야기를 나눕니다."],
     links: ["LINKS", "바로가기", "LH · 청약 · 세금 · 시청 등 자주 쓰는 기관 사이트와 문의처입니다."],
     calculator: ["MY HOME", "내 아파트", "가입한 동 · 호수 기준으로 우리 집 평형과 층이 정해집니다. 선택품목을 고르면 총 분양비용과 회차별 납부액, 예상 취득세를 계산합니다."],
     cafe: ["COMMUNITY", "카페 · 오픈채팅", "입주예정자끼리 이야기를 나누는 곳입니다. 공식 카페는 누구나, 오픈채팅은 위임동의 세대가 들어올 수 있습니다."],
     info: ["INFORMATION", "정보", "공고문 원문 · 협의회 정리 자료와 자주 묻는 질문입니다."],
     petition: ["PETITION", "민원 참여", "입주예정자가 함께 내는 민원입니다. 참여 방법과 접수처를 확인하세요."],
-    checklist: ["PRE-INSPECTION", "사전점검 체크리스트", "사전점검 날 공간별로 확인할 항목입니다. 체크한 내용은 이 기기에만 저장됩니다."],
     documents: ["ARCHIVE", "자료실", "공고문 원문과 협의회가 정리한 자료입니다."],
     faq: ["FAQ", "자주 묻는 질문", "협의회, 계약, 대출, 입주에 관한 질문입니다."]
   };
@@ -181,16 +178,13 @@
       news: R(30, 26, 150, 124, 4) + P("M46 46 H164 M46 60 H164") + R(46, 74, 56, 40, 2) + P("M112 78 H164 M112 90 H164 M112 102 H150 M46 126 H164 M46 138 H130") + P("M180 50 H206 V140 Q206 150 196 150 H180"),
       floorplan: R(24, 24, 192, 132, 2) + P("M24 92 H96 V156 M96 92 V24 M96 70 H150 V24 M150 70 V112 H216 M150 112 V156") + P("M96 120 Q116 120 116 140") + P("M150 40 Q166 40 166 56"),
       progress: P("M30 150 H220") + R(60, 70, 50, 80) + R(116, 96, 44, 54) + grid(68, 78, 3, 5, 10, 8, 6) + P("M180 150 V22 M168 22 H228 M180 34 L210 22 M222 22 V60") + R(214, 60, 16, 12, 2) + P("M160 96 V60 L200 60"),
-      gallery: R(30, 34, 180, 116, 8) + P("M30 128 L84 84 L118 112 L150 86 L210 130") + Cc(170, 62, 12),
       association: Cc(80, 66, 18) + P("M48 140 Q48 98 80 98 Q112 98 112 140") + Cc(150, 58, 22) + P("M112 140 Q112 92 150 92 Q188 92 188 140") + Cc(196, 78, 14) + P("M176 140 Q178 108 196 108 Q216 108 218 140"),
       bylaws: R(58, 18, 124, 152, 4) + P("M78 44 H162 M78 60 H162 M78 76 H146 M78 100 H162 M78 116 H138") + Cc(150, 144, 14) + P("M143 144 L148 149 L158 138"),
       consent: R(50, 20, 130, 150, 6) + P("M70 46 H160 M70 62 H160 M70 78 H140 M70 94 H160") + P("M72 134 Q86 112 96 132 T120 128 Q132 120 150 134") + P("M168 150 L210 108 L222 120 L180 162 L164 166 Z"),
       agreement: grid(30, 26, 8, 5, 18, 18, 5, [1, 2, 5, 9, 10, 12, 13, 18, 20, 21, 22, 27, 29, 33, 34, 36, 38]),
       participate: R(60, 80, 120, 80, 6) + P("M60 104 H180") + R(100, 20, 44, 66, 3) + P("M110 44 L118 52 L134 34") + P("M96 92 H148"),
-      board: R(24, 30, 120, 70, 14) + P("M50 100 L44 124 L72 100") + R(100, 84, 120, 64, 14) + P("M190 148 L198 168 L172 148") + P("M46 56 H120 M46 74 H100 M122 108 H196 M122 124 H176"),
       links: R(36, 70, 80, 40, 20) + R(124, 70, 80, 40, 20) + P("M96 90 H144"),
       calculator: R(60, 20, 120, 150, 10) + R(78, 38, 84, 30, 4) + grid(78, 82, 4, 4, 15, 14, 8, [15]),
-      checklist: R(40, 30, 22, 22, 4) + R(40, 76, 22, 22, 4) + R(40, 122, 22, 22, 4) + P("M45 41 L50 47 L58 36 M45 87 L50 93 L58 82") + P("M80 41 H200 M80 87 H180 M80 133 H160"),
       documents: P("M30 50 H90 L104 64 H210 V150 H30 Z") + P("M30 76 H210") + R(60, 30, 120, 30, 3),
       faq: Cc(90, 84, 46) + P("M76 72 Q76 56 92 56 Q108 56 108 70 Q108 82 92 88 V98") + Cc(92, 112, 2.5) + Cc(176, 64, 24) + P("M168 58 Q168 50 176 50 Q184 50 184 58 Q184 64 176 68 V74") + Cc(176, 82, 1.5),
       login: R(70, 76, 100, 80, 10) + P("M90 76 V56 Q90 30 120 30 Q150 30 150 56 V76") + Cc(120, 110, 8) + P("M120 118 V134"),
@@ -437,6 +431,13 @@
   }
   R.petition = async function () {
     var L = arr(S.petitions).filter(function (x) { return x.active; }), KIT = window.S4_PETITION_KIT || {};
+    // 민원은 로그인한 입주예정자만 (외부 공유 · 무관한 참여 방지)
+    if (LIVE && (!API.loggedIn || !API.profile || API.profile.status === "rejected")) {
+      C.innerHTML = '<div class="panel oc-gate"><span class="cm-ic" aria-hidden="true">📣</span><h2>입주예정자만 볼 수 있습니다</h2>' +
+        '<p class="muted">민원 참여 안내 · 의원 연락처 · AI 글쓰기는 홈페이지에 가입한 입주예정자에게만 보여 드립니다.' + (L.length ? " 지금 진행 중: <b class=\"fg\">" + esc(L[0].title) + "</b>" : "") + "</p>" +
+        (API.loggedIn && API.profile && API.profile.status === "rejected" ? gate("member") : '<p class="cta-row" style="justify-content:center"><a class="btn solid" href="login.html">로그인</a><a class="btn" href="login.html#signup">회원가입</a></p>') + "</div>";
+      return;
+    }
     C.innerHTML = (L.length ? L.map(function (x) {
       return KIT[x.id] ? ptHtml(x, KIT[x.id]) : petitionsHtml().replace('<section class="band petition-band"><div class="wrap">', "").replace(/<\/div><\/section>$/, "");
     }).join("") : empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다.")) + '<div id="ptMore"></div>';
@@ -770,23 +771,6 @@
   }
   function dotDate(d) { return d ? String(d).slice(0, 10).replace(/-/g, ".") : ""; }
   function livePhotos(rows) { return arr(rows).map(function (p) { return { id: p.id, cat: p.cat, title: p.title, date: dotDate(p.taken_on), src: API.photoUrl(p.path), w: p.width, h: p.height }; }); }
-
-  R.gallery = async function () {
-    var L = (LIVE ? livePhotos(await API.photos().catch(function () { return []; })) : []).concat(arr(S.gallery).map(function (g) { return { cat: g.cat, title: g.title, date: g.date, src: g.src ? safeUrl(g.src) : "" }; }));
-    if (!L.length) { C.innerHTML = empty("아직 등록된 사진이 없습니다", LIVE && API.isAdmin ? "운영진 페이지 → 사진 · 방문에서 올릴 수 있습니다." : ""); return; }
-    var cats = uniq(L.map(function (g) { return g.cat; }));
-    C.innerHTML = "<div>" + '<div class="toolbar">' + chips("gCats", cats, "분류") + '<span class="muted small">' + n(L.length) + "장</span></div>" +
-      '<div class="gallery" id="gList">' + L.map(function (g, i) {
-        var img = g.src ? '<button type="button" class="ph-open" data-i="' + i + '" aria-label="' + esc(g.title) + ' 크게 보기"><img src="' + esc(g.src) + '" alt="' + esc(g.title) + '" loading="lazy"' + (g.w ? ' width="' + g.w + '" height="' + g.h + '"' : "") + "></button>" : '<div class="img"><span>' + esc(g.cat) + "</span></div>";
-        return '<figure class="ph" data-cat="' + esc(g.cat) + '">' + img + "<figcaption>" + esc(g.title) + "<small>" + esc(g.date || "") + "</small></figcaption></figure>";
-      }).join("") + "</div></div>";
-    bindChips("gCats", filterBy("gList", "figure"));
-    el("gList").addEventListener("click", function (e) {
-      var b = e.target.closest(".ph-open"); if (!b) return;
-      var vis = [].slice.call(el("gList").querySelectorAll("figure")).filter(function (f) { return !f.hidden && f.style.display !== "none"; }).map(function (f) { var o = f.querySelector(".ph-open"); return o ? Number(o.dataset.i) : -1; }).filter(function (k) { return k >= 0; });
-      var list = vis.map(function (k) { return L[k]; }); lightbox(list, Math.max(0, vis.indexOf(Number(b.dataset.i))));
-    });
-  };
 
   R.association = function () {
     var o = S.org || {}, g = S.greeting, ac = S.accounting || { rows: [] }, rows = arr(ac.rows);
@@ -1148,56 +1132,6 @@
     });
   };
 
-  /* ── 자유게시판 ── */
-  R.board = async function () {
-    if (!LIVE) { C.innerHTML = gate("member"); return; }
-    var g = gate("member"); if (g) { C.innerHTML = g; return; }
-    var cats = arr(S.boardCats).length ? S.boardCats : ["자유"];
-    var L = await API.posts();
-    C.innerHTML =
-      '<div id="postView" hidden></div>' +
-      "<div>" + '<div class="toolbar">' + (L.length ? chips("bCats", cats, "분류") : "<span></span>") + '<a class="btn solid" href="#write">글쓰기</a></div>' +
-      (L.length ? '<div class="tablebox"><table class="spec board"><thead><tr><th class="r">번호</th><th>분류</th><th>제목</th><th>작성자</th><th class="r">날짜</th></tr></thead><tbody id="bList">' +
-        L.map(function (b) {
-          var cc = b.comments && b.comments[0] ? b.comments[0].count : 0;
-          return '<tr data-no="' + b.id + '" data-cat="' + esc(b.cat) + '" tabindex="0"><td class="r num no">' + b.id + '</td><td class="cat"><span class="tag">' + esc(b.cat) + '</span></td><td class="title">' + esc(b.title) + (cc ? ' <span class="muted num">[' + cc + "]</span>" : "") + '</td><td class="who">' + esc(b.author_label) + '</td><td class="r num when">' + fmtDate(b.created_at).slice(5) + "</td></tr>";
-        }).join("") + "</tbody></table></div>" : empty("아직 게시글이 없습니다", "첫 글을 남겨주세요.")) + "</div>" +
-      '<div id="write">' + head("글쓰기", '<span class="note">작성자: ' + esc(API.profile.unit_id) + "</span>") +
-      '<form class="panel" id="wForm"><div class="field"><label for="wCat">분류</label><select id="wCat">' + cats.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div>" +
-      '<div class="field"><label for="wTitle">제목</label><input id="wTitle" maxlength="80" required></div>' +
-      '<div class="field"><label for="wBody">내용</label><textarea id="wBody" maxlength="5000" required></textarea></div>' +
-      '<button class="btn solid" type="submit">등록</button><p class="notice-box" id="wMsg" role="status" hidden style="margin-top:12px"></p></form></div>';
-    async function show(id) {
-      var b = await API.post(id), v = el("postView");
-      if (!b) { v.hidden = false; v.innerHTML = empty("글을 찾을 수 없습니다", "삭제되었을 수 있습니다."); return; }
-      var mine = b.author_id === API.session.user.id;
-      v.innerHTML = '<article class="panel post"><span class="tag">' + esc(b.cat) + '</span><h3 style="margin-top:8px">' + esc(b.title) + '</h3><div class="meta">' + esc(b.author_label) + " · " + fmtTime(b.created_at) + '</div><div class="content">' + esc(b.body) + "</div>" +
-        '<ul class="comments">' + (b.comments.length ? b.comments.map(function (c) { var cm = c.author_id === API.session.user.id || API.isAdmin; return "<li><b>" + esc(c.author_label) + "</b>" + esc(c.body) + ' <span class="muted small">' + fmtTime(c.created_at) + "</span>" + (cm ? ' <button type="button" class="linkbtn delc" data-id="' + c.id + '">삭제</button>' : "") + "</li>"; }).join("") : '<li class="muted">아직 댓글이 없습니다.</li>') + "</ul>" +
-        '<form id="cForm" class="find" style="margin-top:10px"><label for="cBody" class="sr">댓글</label><input id="cBody" maxlength="1000" placeholder="댓글 쓰기" style="flex:1;width:auto;min-width:0"><button class="btn" type="submit">등록</button></form>' +
-        '<p class="cta-row" style="margin:14px 0 0"><button type="button" class="btn" id="closePost">목록으로</button>' + (mine || API.isAdmin ? '<button type="button" class="btn danger" id="delPost">글 삭제</button>' : "") + '</p><p class="notice-box" id="vMsg" role="status" hidden></p></article>';
-      v.hidden = false; v.scrollIntoView({ block: "start" });
-      el("closePost").addEventListener("click", function () { v.hidden = true; history.replaceState(null, "", "#"); });
-      el("cForm").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.addComment(b.id, el("cBody").value); await show(b.id); } catch (err) { say("vMsg", API.errorText(err), true); } });
-      v.querySelectorAll(".delc").forEach(function (x) { x.addEventListener("click", async function () { try { await API.deleteComment(Number(x.dataset.id)); await show(b.id); } catch (err) { say("vMsg", API.errorText(err), true); } }); });
-      if (el("delPost")) el("delPost").addEventListener("click", async function () {
-        var btn = this;
-        if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "한 번 더 누르면 삭제됩니다"; return; }
-        try { await API.deletePost(b.id); history.replaceState(null, "", "#"); await R.board(); } catch (err) { say("vMsg", API.errorText(err), true); }
-      });
-    }
-    if (L.length) {
-      el("bList").addEventListener("click", function (e) { var tr = e.target.closest("tr"); if (tr) { history.replaceState(null, "", "#p" + tr.dataset.no); show(tr.dataset.no); } });
-      el("bList").addEventListener("keydown", function (e) { if (e.key === "Enter") { var tr = e.target.closest("tr"); if (tr) show(tr.dataset.no); } });
-      bindChips("bCats", filterBy("bList", "tr"));
-      var hm = location.hash.match(/^#p(\d+)$/); if (hm) show(hm[1]);
-    }
-    el("wForm").addEventListener("submit", async function (e) {
-      e.preventDefault(); var btn = this.querySelector("button[type=submit]"); busy(btn, true, "등록 중…");
-      try { var p = await API.createPost({ cat: el("wCat").value, title: el("wTitle").value, body: el("wBody").value }); history.replaceState(null, "", "#p" + p.id); await R.board(); }
-      catch (err) { busy(btn, false); say("wMsg", API.errorText(err), true); }
-    });
-  };
-
   /* 입주민 오픈채팅: 바로가기를 누르면 위임 세대에게는 비밀번호를 보여주고 바로 카톡방으로 */
   function sheet(html) {
     var o = el("sheet"); if (o) o.remove();
@@ -1471,32 +1405,6 @@
     if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { el("ocBar").classList.toggle("show", !es[0].isIntersecting); }).observe(el("ocSum"));
   };
 
-  R.checklist = function () {
-    var KEY = "s4-checklist", saved = {}, total = 0;
-    try { saved = JSON.parse(store(KEY) || "{}") || {}; } catch (e) { saved = {}; }
-    C.innerHTML = '<div class="toolbar"><div class="meter" style="margin:0;flex:1;min-width:220px"><div class="row"><span>점검 진행률</span><b class="num" id="ckPct">0%</b></div><div class="bar-track"><i id="ckBar" style="width:0%"></i></div></div>' +
-      '<button type="button" class="btn" id="ckReset">체크 모두 지우기</button></div>' +
-      '<div class="ck-grid">' + arr(S.checklist).map(function (g, gi) {
-        return '<fieldset class="ck"><legend>' + esc(g.room) + "</legend>" + arr(g.items).map(function (it, ii) {
-          total++; var id = "ck" + gi + "-" + ii;
-          return '<label class="check" for="' + id + '"><input type="checkbox" id="' + id + '"' + (saved[id] ? " checked" : "") + "> " + esc(it) + "</label>";
-        }).join("") + "</fieldset>";
-      }).join("") + "</div>" +
-      '<div class="two"><div><h3 style="margin-bottom:8px">챙겨갈 준비물</h3><p class="muted">마스킹테이프(하자 표시), 수평계 앱, 멀티탭 테스터, 줄자, 손전등, 물 한 병(배수 확인), 휴대폰 충전기</p></div>' +
-      '<div><h3 style="margin-bottom:8px">하자 접수 팁</h3><p class="muted">하자 부위는 테이프로 표시하고 멀리서 한 장, 가까이서 한 장 찍습니다. 사진에 동·호수와 위치를 메모해 두면 접수가 빨라집니다.</p></div></div>';
-    function update(persist) {
-      var on = 0, st = {};
-      C.querySelectorAll(".ck input").forEach(function (b) { if (b.checked) { on++; st[b.id] = 1; } });
-      var q = pct(on, total);
-      el("ckPct").textContent = on + " / " + total + " · " + q.toFixed(0) + "%";
-      el("ckBar").style.width = q.toFixed(1) + "%";
-      if (persist) store(KEY, JSON.stringify(st));
-    }
-    C.addEventListener("change", function (e) { if (e.target.matches(".ck input")) update(true); });
-    el("ckReset").addEventListener("click", function () { C.querySelectorAll(".ck input").forEach(function (b) { b.checked = false; }); update(true); });
-    update(false);
-  };
-
   R.documents = function () {
     var L = arr(S.documents);
     if (!L.length) { C.innerHTML = empty("등록된 자료가 없습니다", ""); return; }
@@ -1745,7 +1653,7 @@
   };
 
   /* ── 위임동의서 ── */
-  /* 구성 및 위임 동의서 — 입예협 최신본(2026-11-13, v8: 제2조② 수행 주체 '입예협', 제3조 '개별 세대의' 하자보수 청구권). 선택 항목(카페 닉네임 · 계약서 첨부)은 받지 않음.
+  /* 구성 및 위임 동의서 — 입예협 최신본(2026-11-13, v9: 제1조② 회칙 동의 문장만 남김. v8: 제2조② 수행 주체 '입예협', 제3조 '개별 세대의' 하자보수 청구권). 선택 항목(카페 닉네임 · 계약서 첨부)은 받지 않음.
      문구를 바꾸면 api.js FORM_VERSION도 올려 주세요 */
   var CONSENT_TITLE = "고양창릉 S4 입주예정자협의회 구성 및 위임 동의서";
   var CONSENT_INTRO = "이 동의서는 입주예정자협의회 구성, 공동 현안에 대한 대표 협의 및 입주 편의 업무의 위임 범위를 확인하기 위한 것입니다. 개별 세대의 계약 변경, 비용 부담 또는 권리 포기를 대신 결정할 권한은 포함하지 않습니다.";
@@ -1764,7 +1672,7 @@
       }).join("") + "</div></section>";
   }
   var CONSENT = [
-    ["제1조 구성 및 회칙 동의", "① 본인은 고양창릉 S4블록의 계약자로서 「고양창릉 S4블록 입주예정자협의회」(이하 “입예협”)의 구성에 동의하고 회원으로 참여합니다. 입예협을 본인이 위임한 범위에서 공동 의견을 전달하는 대표 협의 창구로 인정합니다.\n② 별도로 제공된 입예협 회칙을 확인하고 이에 동의합니다. 의결권은 1세대(동 · 호수)당 1표이며, 공동명의 세대는 대표 회원 1인을 정합니다."],
+    ["제1조 구성 및 회칙 동의", "① 본인은 고양창릉 S4블록의 계약자로서 「고양창릉 S4블록 입주예정자협의회」(이하 “입예협”)의 구성에 동의하고 회원으로 참여합니다. 입예협을 본인이 위임한 범위에서 공동 의견을 전달하는 대표 협의 창구로 인정합니다.\n② 별도로 제공된 입예협 회칙을 확인하고 이에 동의합니다."],
     ["제2조 위임 범위", "① 본인은 입예협에 시공 품질, 주거환경 및 입주 준비 등 공동 현안에 관하여 LH · 시공사 · 관계기관과 협의하고, 자료 · 설명을 요청하며, 의견 · 민원 · 건의를 제출하는 권한을 위임합니다.\n② 입예협은 회원 의견을 수렴하고 관련 정보와 협의 결과를 공유합니다. 위임 업무는 회칙에 따라 구성된 입예협이 수행하며, 구성 전 준비위원회는 구성 준비와 동의서 접수 · 집계 업무를 담당합니다.\n③ 본인은 입예협에 공동구매 · 입주박람회 추진과 법무법인 · 법무사 선정을 위한 후보 모집, 조건 비교 · 협의 및 선정 권한을 위임합니다. 추진 및 선정은 회칙에 따른 의결 절차를 거치고, 주요 조건과 결과를 회원에게 공개합니다. 개별 세대의 참여 · 구매 · 수임계약 체결 여부는 각 세대가 자율적으로 결정하며, 특정 업체 이용을 강제하지 않습니다."],
     ["제3조 위임의 한계", "본 동의에는 개별 세대의 공급계약 변경 · 해제, 재산권 처분 · 제한, 비용 부담 약정, 소송 · 수임계약 체결, 개별 세대의 하자보수 · 손해배상 청구권이나 민원 제기권의 포기 · 제한 및 제3자에 대한 재위임 권한이 포함되지 않습니다. 필요한 경우 해당 권리자의 별도 동의를 받아야 합니다."],
     ["제4조 기간 및 철회", "위임은 서명일부터 입주자대표회의 구성 후 업무 인계 완료 시까지 유효합니다. 본인은 언제든 서면 · 카페 쪽지 · 문자로 위임을 철회할 수 있으며, 철회 의사가 도달한 때부터 효력을 잃습니다. 계약자 지위를 상실하면 위임도 종료되며, 승계인은 새로 동의해야 합니다.\n이 홈페이지로 낸 동의는 내 정보 화면에서 바로 철회할 수 있습니다."]

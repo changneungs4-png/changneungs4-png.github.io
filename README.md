@@ -172,7 +172,7 @@ PDF 읽기는 Supabase에서 돌리기에 무거워(실행당 CPU 2초 제한) *
 - 공지 추가: `notices` 맨 위에 `{ id: "n-1201", cat: "협의회", title: "제목", date: "2026.12.01", body: "내용" },`
 - 알림 띠: `banner`의 `text`와 `id`를 바꾸기 (필요 없으면 `banner: null`)
 - 공정률: `progress.overall`, `progressMonthly`
-- 사진: `photos/` 폴더에 넣고 `gallery`에 `src: "photos/파일명.jpg"`
+- 현장 사진: 운영진 페이지 › 현장 방문에서 방문 기록과 함께 올립니다(공사현황에 표시).
 - 카페 · 오픈채팅 주소: `links`의 `url`
 - 입주일 확정: `moveInDate`
 
