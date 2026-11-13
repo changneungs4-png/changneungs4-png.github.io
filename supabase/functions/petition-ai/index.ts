@@ -26,13 +26,14 @@ const KINDS = {
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type, x-client-info" };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, "content-type": "application/json" } });
 
-export function buildPrompt(kind, persona, base) {
+export function buildPrompt(kind, persona, base, tone) {
   const k = KINDS[kind];
   const system = "당신은 아파트 입주예정자가 지방의회 · 관계기관에 보내는 정중한 정책 건의 문구를 다듬는 도우미입니다.\n" +
     "아래 사실만 사용하세요. 숫자 · 단지명 · 요구사항을 바꾸거나 새 사실을 지어내지 마세요.\n" + FACTS.map((f) => "- " + f).join("\n") +
     "\n규칙: 특정인 · 특정 단지 · 정당을 비방하거나 언급하지 않습니다. 과장 · 허위 · 협박성 표현, 이모지, 해시태그를 쓰지 않습니다. 한국어 존댓말로 씁니다. 결과 문장만 출력하고 설명이나 따옴표를 붙이지 않습니다.";
   const user = "용도: " + k.name + "\n형식: " + k.rule +
     (persona ? "\n작성자 상황(자연스럽게 한 번만 반영): " + String(persona).slice(0, 120) : "") +
+    (tone ? "\n말투: " + String(tone).slice(0, 40) : "") +
     (base ? "\n참고 문장(이것과 표현 · 문장 구조가 확실히 다르게 새로 쓰기):\n" + String(base).slice(0, 2500) : "") +
     "\n새 버전 하나를 써 주세요.";
   return { system, user, max_tokens: kind === "board" ? 1600 : 500 };
@@ -84,7 +85,7 @@ export async function handle(req, env, fetcher = fetch) {
   const cnt = await fetcher(env.SUPABASE_URL + "/rest/v1/petition_ai_log?select=id&user_id=eq." + uid + "&at=gte." + encodeURIComponent(since), { headers: { ...H, prefer: "count=exact", range: "0-0" } });
   const used = Number((cnt.headers.get("content-range") || "*/0").split("/")[1]) || 0;
   if (used >= LIMIT) return json({ error: "오늘은 AI 새로 쓰기를 " + LIMIT + "번 모두 썼습니다" }, 429);
-  const p = buildPrompt(kind, body.persona, body.base);
+  const p = buildPrompt(kind, body.persona, body.base, body.tone);
   let text = "";
   try { text = await (env.GEMINI_API_KEY ? gemini : claude)(p, env, fetcher); }
   catch (e) {

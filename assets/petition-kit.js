@@ -98,7 +98,7 @@ window.S4_PETITION_KIT = {
     ],
     /* 연락처: [소속, 역할, 이름 · 직책, 설명, {fb, ig, th, x, yt}, 이메일, 전화] */
     contacts: [
-      { group: "경기도청 · 고양특례시청 · 지역구 국회의원 · 당협위원장", list: [
+      { group: "경기도청 · 고양특례시청 · 지역구 국회의원 · 당협위원장", short: "도청 · 시청 · 국회", list: [
         ["더불어민주당 · 경기도청", "고양은평선 설계 · 시행 최종 결정권자", "추미애 경기도지사", "경기도청 철도항만물류국(철도건설과) 지휘 및 기본 · 실시설계 최종 승인권자", { fb: "https://www.facebook.com/choomiae", ig: "https://www.instagram.com/choomiae_/", x: "https://x.com/ChooMiAe", yt: "https://www.youtube.com/channel/UCmWSQqLDN1Lq32J64qcsRqg" }, "", "031-8008-7000"],
         ["더불어민주당 · 고양특례시청", "고양시 철도교통과 최종 지휘권자", "민경선 고양특례시장", "고양시 도시교통정책실 · 철도교통과 총괄 (경기도에 고양시 공식 의견 제출)", { fb: "https://www.facebook.com/minksun71", ig: "https://www.instagram.com/minksun71/", yt: "https://www.youtube.com/channel/UCaL7TsrP4O84whGP-9xdIXw" }, "", "031-8075-2114"],
         ["더불어민주당 · 고양시 갑", "도내 · 흥도동 지역구 국회의원", "김성회 국회의원", "도내동(행정동 흥도동) 관할 · 국토부 대광위 및 경기도청 당정 협의", { fb: "https://www.facebook.com/sunghoiseankim", ig: "https://www.instagram.com/kimjakja/", th: "https://www.threads.net/@kimjakja", yt: "https://www.youtube.com/channel/UCm9p6ciSbWCWKe79LELwjFg" }, "kshoi72@naver.com", "02-784-3870"],
@@ -106,7 +106,7 @@ window.S4_PETITION_KIT = {
         ["국민의힘 · 고양시 갑", "도내 · 흥도동 국민의힘 당협위원장", "권순영 당협위원장", "도내 · 흥도동 관할 국민의힘 대표 · 소속 시 · 도의원 질의 지원", { fb: "https://www.facebook.com/goyangsigab", ig: "https://www.instagram.com/goyang_kwon/", th: "https://www.threads.net/@goyang_kwon", yt: "https://www.youtube.com/channel/UCdlCZzn-Sn2yQ-RgsojNXpQ" }, "salus214@naver.com", ""],
         ["국민의힘 · 고양시 을", "창릉신도시 국민의힘 당협위원장", "조용술 당협위원장", "창릉 · 덕양 권역 국민의힘 대표", { fb: "https://www.facebook.com/dreamofsuri" }, "loveroya@naver.com", ""]
       ] },
-      { group: "경기도의회 (제12대) — 도내 · 창릉 지역구 · 건설교통위원회", list: [
+      { group: "경기도의회 (제12대) — 도내 · 창릉 지역구 · 건설교통위원회", short: "경기도의회", list: [
         ["더불어민주당 · 경기도의회", "도내 · 흥도동 지역구 도의원", "변재석 경기도의원", "고양시 제2선거구(원신 · 흥도[도내] · 고양 · 관산동)", { fb: "https://www.facebook.com/profile.php?id=100001594756610", ig: "https://www.instagram.com/byeonjaeseok1/", th: "https://www.threads.net/@byeonjaeseok1", yt: "https://www.youtube.com/channel/UChlw-0tirUdy6PnzqXE1TmQ" }, "bjsj888@hanmail.net", "031-8008-7644"],
         ["더불어민주당 · 경기도의회", "창릉동 지역구 도의원", "송규근 경기도의원", "고양시 제6선거구(효자 · 삼송1 · 2 · 창릉동)", { fb: "https://www.facebook.com/profile.php?id=100012704299276", ig: "https://www.instagram.com/gyugeunsong/", yt: "https://www.youtube.com/channel/UC54zgGqVNMCImcBtdTY2y1Q" }, "cjsql@hanmail.net", "031-8008-7811"],
         ["더불어민주당 · 경기도의회", "건설교통위원회 위원장", "고찬석 건설교통위원장", "고양은평선 설계 · 예산 소관 철도항만물류국 감사 상임위원장", {}, "gcs3878@naver.com", "031-8008-7650"],
@@ -114,7 +114,7 @@ window.S4_PETITION_KIT = {
         ["국민의힘 · 경기도의회", "건설교통위원회 위원", "김진후 경기도의원", "건설교통위원회 위원", {}, "kim793j@naver.com", "031-8008-7980"],
         ["더불어민주당 · 경기도의회", "고양시 지역구 건설교통위원", "김해련 경기도의원", "건설교통위원회 고양시 지역구(고양7) 도의원", { fb: "https://www.facebook.com/versailles.ryon", ig: "https://www.instagram.com/ghaeryeon/", yt: "https://www.youtube.com/channel/UCYeoNeswO0zSNI81a9gbRKA" }, "versailles_ryon@hanmail.net", "031-8008-7815"]
       ] },
-      { group: "고양특례시의회 (제10대) — 도내 · 창릉 지역구 · 건설교통위원회", list: [
+      { group: "고양특례시의회 (제10대) — 도내 · 창릉 지역구 · 건설교통위원회", short: "고양시의회", list: [
         ["국민의힘 · 고양시의회", "도내동 지역구 · 건설교통부위원장", "황선경 건설교통부위원장", "나선거구(원신 · 흥도[도내] · 고양 · 관산동) · 517호", {}, "fair30@msn.com", "031-8075-3937"],
         ["더불어민주당 · 고양시의회", "건설교통위원회 위원장", "김학영 건설교통위원장", "고양시 철도교통과 행정사무감사 총괄 · 213호", {}, "khyoung9293@gmail.com", "031-8075-3938"],
         ["더불어민주당 · 고양시의회", "창릉동 지역구 · 건설교통위원", "송금희 고양시의원", "마선거구(효자 · 창릉 · 화전 · 대덕동) · 516호", { fb: "https://www.facebook.com/gumis2026", ig: "https://www.instagram.com/geumhee2026/", th: "https://www.threads.net/@geumhee2026" }, "gumis@hanmail.net", "031-8075-3936"],

@@ -63,7 +63,7 @@
   var NAVKEY = { bylaws: "association", consent: "agreement", calculator: "links", participate: "petition" }[page] || page;
   var myGroup = GROUPS.filter(function (g) { return g.items.some(function (x) { return x[2] === NAVKEY; }); })[0];
   var HEAD = {
-    login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의, 게시판, 투표에 참여할 수 있습니다."],
+    login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의와 민원 참여, 회원 전용 안내를 이용할 수 있습니다."],
     account: ["MY PAGE", "내 정보", "가입 상태와 위임동의 내역을 확인합니다."],
     consent: ["CONSENT", "위임동의서", "공급계약을 마친 계약자가 제출합니다."],
     privacy: ["PRIVACY", "개인정보처리방침", "협의회가 어떤 정보를 왜 받고, 언제 지우는지 안내합니다."],
@@ -319,126 +319,131 @@
       return '<a class="pt-card" href="petition.html#pt-' + esc(x.id) + '"><span class="tag hot">' + esc(x.tag || "민원 참여") + '</span><span class="pt-txt"><b>' + esc(x.title) + "</b><span>" + esc(x.short || "참여 방법과 접수처를 한 곳에 모았습니다.") + '</span></span><span class="pt-go">참여하기 →</span></a>';
     }).join("") + "</div></section>";
   }
-  /* ── 민원 페이지: 참여 도구(문구 자동 바꾸기 · AI 새로 쓰기 · 복사 · 연락처 · 게시판) ── */
+  /* ── 민원 페이지: 글 쓰기(AI) → 보내기 → 참여 체크 ── */
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-  function sentences(t) { return String(t).match(/[^.!?]+[.!?]+["'”’]?\s*/g) || [t]; }
-  // 같은 주제의 다른 버전 문장을 섞어 새 조합을 만듦 (앞 문장 + 다른 버전의 뒷부분)
-  function remix(list, cur) {
-    for (var k = 0; k < 8; k++) {
-      var a = pick(list), b = pick(list), out = a;
-      if (a !== b && Math.random() < 0.6) {
-        var sa = sentences(a), sb = sentences(b);
-        if (sa.length > 1 && sb.length > 1) out = (sa[0].trim() + " " + sb.slice(1).join("").trim()).trim();
-      }
-      if (out !== cur) return out;
-    }
-    return pick(list);
-  }
   function boardText(B) {
     var order = shuffle([0, 1, 2, 3]);
     return pick(B.intros) + "\n\n" + order.map(function (pi, i) { return (i + 1) + ". " + pick(B.paras[pi]); }).join("\n\n") + "\n\n" + pick(B.outros);
   }
-  function withPersona(kind, text, persona) {
-    if (!persona) return text;
-    if (kind === "board") { var i = text.indexOf("\n\n"); return i > 0 ? text.slice(0, i) + "\n\n" + persona + text.slice(i) : persona + "\n\n" + text; }
-    if (kind === "sns3") { var ss = sentences(text); return ss.length > 1 ? (ss[0].trim() + " " + persona + " " + ss.slice(1).join("").trim()).trim() : persona + " " + text; }
-    return text;
-  }
-  var SNS_ICON = { fb: "페이스북", ig: "인스타그램", th: "스레드", x: "X", yt: "유튜브" };
-  function kitHtml(x, K) {
-    var box = function (kind, label, hint) {
-      return '<div class="kit-box" data-kind="' + kind + '"><div class="kit-bh"><b>' + label + '</b><span class="muted small">' + hint + '</span><span class="kit-len num muted small"></span></div>' +
-        '<textarea class="kit-t" rows="' + (kind === "board" ? 14 : 4) + '" aria-label="' + esc(label) + '"></textarea>' +
-        '<div class="kit-act"><button type="button" class="btn sm kit-re">🔄 문장 바꾸기</button><button type="button" class="btn sm kit-ai">✨ AI로 새로 쓰기</button><button type="button" class="btn sm solid kit-cp">📋 복사</button></div></div>';
-    };
+  var PT_KINDS = [["sns1", "SNS 댓글", "페이스북 · 인스타 · 유튜브"], ["sns2", "짧은 댓글", "스레드 · X"], ["sns3", "의원 DM · 문자", "메시지 · 문자"], ["board", "민원 · 이메일 본문", "게시판 · 국민신문고 · 메일"], ["title", "민원 제목", "게시판 · 메일 제목"]];
+  var PT_TONES = [["정중하게", "정중하고 차분하게"], ["간결하게", "핵심만 짧고 간결하게"], ["간곡하게", "간절하지만 예의 바르게"]];
+  var PT_CHECKS = [["sns", "의원 · 기관 SNS에 댓글 남기기"], ["dm", "지역구 의원에게 DM · 문자 보내기"], ["board", "공식 민원 게시판에 접수하기"], ["mail", "의원 이메일로 보내기"]];
+  var SNS_ICON = { fb: "페이스북", ig: "인스타", th: "스레드", x: "X", yt: "유튜브" };
+  function ptExample(K, kind) { return kind === "board" ? boardText(K.board) : kind === "title" ? pick(K.titles) : pick(K[kind]); }
+  function ptDday(d) { if (!d) return ""; var x = Math.ceil((new Date(d + "T23:59:59+09:00") - new Date()) / 864e5); return x > 0 ? "D-" + x : x === 0 ? "D-DAY" : ""; }
+  function ptHtml(x, K) {
     var host = function (u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
-    var kb = arr(K.boards), seen = {}; kb.forEach(function (b) { seen[host(b.url)] = 1; });
-    var chans = kb.map(function (b) { return { org: b.org, what: b.what, url: b.url }; }).concat(arr(x.channels).filter(function (c) { return !c.url || !seen[host(c.url)]; }));
-    return '<div class="kit">' +
-      '<div class="kit-facts"><b>핵심 요지</b><ul>' + arr(K.facts).map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></div>" +
-      '<div class="kit-persona"><span class="muted small">내 상황 한 줄 넣기 (DM · 본문에 들어가 글이 사람마다 달라집니다)</span><div class="chips" id="kitPersona">' + arr(K.personas).map(function (p, i) {
-        return '<button type="button" class="chip" data-p="' + i + '" aria-pressed="' + (i === 0) + '">' + esc(p[1]) + "</button>"; }).join("") + "</div></div>" +
-      '<section class="kit-step"><h3><span>1</span> SNS 댓글 · 메시지 문구 <button type="button" class="btn sm" id="kitAll">🎲 전체 바꾸기</button></h3>' +
-        box("sns1", "댓글 A", "페이스북 · 인스타 · 유튜브") + box("sns2", "짧은 댓글 B", "스레드 · X") + box("sns3", "DM · 문자", "의원 메시지 · 문자") + "</section>" +
-      '<section class="kit-step"><h3><span>2</span> 의원 · 기관에 보내기</h3><p class="muted small">버튼을 눌러 공식 SNS에 댓글 · 메시지를 남기거나, 이메일 주소를 복사해 메일 받는 사람 칸에 붙여 넣으세요. ' + esc(K.asOf) + ' 기준 공개 정보입니다.</p>' +
-        '<p class="kit-act" style="margin:0 0 8px"><button type="button" class="btn sm" data-mails="all">✉️ 전체 이메일 한 번에 복사</button></p>' +
-        arr(K.contacts).map(function (g, gi) {
-          var mails = g.list.map(function (c) { return c[5]; }).filter(Boolean);
-          return '<details class="kit-grp"' + (gi === 0 ? " open" : "") + '><summary><b>' + esc(g.group) + '</b> <span class="muted small">' + g.list.length + "곳</span></summary>" +
-            (mails.length ? '<p class="kit-act" style="margin:6px 0"><button type="button" class="btn sm" data-mails="' + gi + '">✉️ 이 그룹 이메일 ' + mails.length + "개 복사</button></p>" : "") +
-            '<ul class="kit-ct">' + g.list.map(function (c) {
-              var L = c[4] || {};
-              return "<li><div><span class=\"muted small\">" + esc(c[0]) + " · " + esc(c[1]) + "</span><b>" + esc(c[2]) + '</b><span class="muted small">' + esc(c[3]) + "</span></div>" +
-                '<div class="kit-links">' + Object.keys(SNS_ICON).filter(function (k) { return L[k]; }).map(function (k) { return '<a class="chip" href="' + esc(safeUrl(L[k])) + '" target="_blank" rel="noopener">' + SNS_ICON[k] + "</a>"; }).join("") +
-                (c[5] ? '<button type="button" class="chip" data-copy="' + esc(c[5]) + '">✉️ ' + esc(c[5]) + "</button>" : "") +
-                (c[6] ? '<button type="button" class="chip" data-copy="' + esc(c[6]) + '">📞 ' + esc(c[6]) + "</button>" : "") + "</div></li>";
-            }).join("") + "</ul></details>";
-        }).join("") + "</section>" +
-      '<section class="kit-step"><h3><span>3</span> 공식 민원 게시판 · 담당 부서</h3><ul class="pt-ch">' + chans.map(function (c) {
-          return "<li><b>" + esc(c.org) + '</b><span class="muted small">' + esc(c.what || "") + (c.note ? " · " + esc(c.note) : "") + "</span>" +
-            '<span class="pt-act">' + (c.tel ? '<button type="button" class="btn sm" data-copy="' + esc(c.tel) + '">📞 ' + esc(c.tel) + "</button>" : "") + (c.url ? '<a class="btn sm" href="' + esc(safeUrl(c.url)) + '" target="_blank" rel="noopener">바로가기 ↗</a>' : "") + "</span></li>";
-        }).join("") + "</ul></section>" +
-      '<section class="kit-step"><h3><span>4</span> 게시판 · 이메일용 제목과 본문</h3>' +
-        '<div class="kit-titles"><div class="kit-bh"><b>추천 제목</b><button type="button" class="btn sm" id="kitTitleRe">🔄 제목 바꾸기</button></div><ol id="kitTitles"></ol></div>' +
-        box("board", "정식 민원 · 이메일 본문", "경기도의회 · 고양시의회 · 국민신문고 · 이메일") + "</section>" +
+    var seen = {}; arr(K.boards).forEach(function (b) { seen[host(b.url)] = 1; });
+    var depts = arr(x.channels).filter(function (c) { return c.tel || (c.url && !seen[host(c.url)]); });
+    var member = LIVE && API.isMember, dd = ptDday(x.deadline);
+    var chip = function (name, v, label, on) { return '<button type="button" class="chip" data-' + name + '="' + esc(v) + '" aria-pressed="' + (on ? "true" : "false") + '">' + esc(label) + "</button>"; };
+    return '<article class="pt2" id="pt-' + esc(x.id) + '">' +
+      '<section class="pt2-hero"><div class="pt2-top"><span class="tag hot">' + esc(x.tag || "민원 참여") + "</span>" + (dd ? '<span class="pt2-dd num">확정까지 ' + dd + "</span>" : "") + "</div>" +
+        "<h2>" + esc(x.title) + "</h2><p>" + esc(x.lead || "") + "</p>" +
+        '<ul class="pt2-stats">' + arr(x.stats).map(function (t) { return "<li><b class=\"num\">" + esc(t[0]) + "</b><span>" + esc(t[1]) + "</span></li>"; }).join("") + "</ul>" +
+        '<details class="pt2-why"><summary>우리가 요청하는 것</summary><ul>' + arr(K.facts).map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></details></section>" +
+      (x.privateKey ? '<div class="pt-private" data-key="' + esc(x.privateKey) + '">' + (member ? '<p class="muted small">회원 전용 안내를 불러오는 중…</p>'
+        : '<p class="small"><b>안건 정보 · 의원 연락처</b>는 외부 유출 금지라 승인 회원에게만 보입니다. ' + (LIVE && API.loggedIn ? "가입 승인 후 볼 수 있습니다." : '<a href="login.html">로그인 →</a>') + "</p>") + "</div>" : "") +
+      '<nav class="pt2-nav" aria-label="참여 순서"><a href="#ptWrite"><b>1</b>글 쓰기</a><a href="#ptSend"><b>2</b>보내기</a><a href="#ptCheck"><b>3</b>참여 체크</a></nav>' +
+      // 1. 글 쓰기
+      '<section class="panel pt2-sec" id="ptWrite"><h3><span class="pt2-no">1</span>보낼 글 만들기</h3>' +
+        '<div class="pt2-field"><span class="lbl">어디에 쓸 글인가요?</span><div class="chips pt2-kinds" id="ptKind">' + PT_KINDS.map(function (k, i) { return '<button type="button" class="chip" data-kind="' + k[0] + '" aria-pressed="' + (i === 0) + '"><b>' + esc(k[1]) + "</b><small>" + esc(k[2]) + "</small></button>"; }).join("") + "</div></div>" +
+        '<div class="pt2-field"><span class="lbl">내 상황 <small class="muted">선택 · 글에 한 줄 들어가 사람마다 다른 글이 됩니다</small></span><div class="chips" id="ptPersona">' + arr(K.personas).map(function (p, i) { return chip("p", i, p[1], i === 0); }).join("") + "</div></div>" +
+        '<div class="pt2-field"><span class="lbl">말투</span><div class="chips" id="ptTone">' + PT_TONES.map(function (t, i) { return chip("t", i, t[0], i === 0); }).join("") + "</div></div>" +
+        (member ? '<button type="button" class="btn solid wide pt2-ai" id="ptAi">✨ AI로 내 글 쓰기</button><p class="muted small pt2-left" id="ptLeft">버튼을 누를 때마다 새로운 문장을 씁니다. 1인 하루 20번.</p>'
+          : '<p class="notice-box small" style="margin:0">로그인한 <b>승인 회원</b>은 AI로 나만의 문장을 만들 수 있습니다. 지금은 예시 문구를 복사해 쓸 수 있어요. ' + (LIVE && !API.loggedIn ? '<a href="login.html">로그인 →</a>' : "") + "</p>") +
+        '<div class="pt2-out"><div class="pt2-oh"><b id="ptOutLabel">예시 문구</b><span class="muted small num" id="ptLen"></span></div>' +
+          '<textarea id="ptText" rows="6" aria-label="보낼 글"></textarea>' +
+          '<div class="pt2-act"><span class="muted small">고쳐 써도 됩니다. 보내기 전에 숫자 · 사실을 한 번 확인하세요.</span><button type="button" class="btn solid" id="ptCopy">📋 복사</button></div></div>' +
+      "</section>" +
+      // 2. 보내기
+      '<section class="panel pt2-sec" id="ptSend"><h3><span class="pt2-no">2</span>보내기</h3>' +
+        '<h4>공식 민원 게시판</h4><p class="muted small">정식 접수 번호가 남는 곳입니다. "민원 · 이메일 본문"과 "민원 제목"을 만들어 붙여 넣으세요.</p>' +
+        '<div class="pt2-boards">' + arr(K.boards).map(function (b) {
+          return '<a class="pt2-board" href="' + esc(safeUrl(b.url)) + '" target="_blank" rel="noopener"><b>' + esc(b.org) + "</b><span>" + esc(b.what) + '</span><i aria-hidden="true">↗</i></a>'; }).join("") + "</div>" +
+        (depts.length ? '<details class="pt2-dept"><summary>담당 부서 연락처</summary><ul class="pt2-list">' + depts.map(function (c) {
+          return "<li><div><b>" + esc(c.org) + '</b><span class="muted small">' + esc(c.what || "") + '</span></div><div class="pt2-icons">' +
+            (c.tel ? '<button type="button" class="ic" data-copy="' + esc(c.tel) + '" title="전화번호 복사">📞 <span class="num">' + esc(c.tel) + "</span></button>" : "") +
+            (c.url ? '<a class="ic" href="' + esc(safeUrl(c.url)) + '" target="_blank" rel="noopener">바로가기 ↗</a>' : "") + "</div></li>"; }).join("") + "</ul></details>" : "") +
+        '<h4>의원 · 기관 SNS와 이메일</h4><p class="muted small">"SNS 댓글"이나 "의원 DM"으로 만든 글을 남겨 주세요. ' + esc(K.asOf) + " 기준 공개 정보입니다.</p>" +
+        '<div class="chips" id="ptGrp">' + chip("g", "all", "전체", true) + arr(K.contacts).map(function (g, gi) { return chip("g", gi, g.short || g.group.split(" ")[0], false); }).join("") + "</div>" +
+        '<ul class="pt2-list" id="ptPeople">' + arr(K.contacts).map(function (g, gi) {
+          return g.list.map(function (c) {
+            var L = c[4] || {};
+            return '<li data-g="' + gi + '"><div><b>' + esc(c[2]) + '</b><span class="muted small">' + esc(c[1]) + " · " + esc(c[0]) + '</span></div><div class="pt2-icons">' +
+              Object.keys(SNS_ICON).filter(function (k) { return L[k]; }).map(function (k) { return '<a class="ic" href="' + esc(safeUrl(L[k])) + '" target="_blank" rel="noopener">' + SNS_ICON[k] + "</a>"; }).join("") +
+              (c[5] ? '<button type="button" class="ic" data-copy="' + esc(c[5]) + '" title="이메일 복사">✉️ 이메일</button>' : "") +
+              (c[6] ? '<button type="button" class="ic" data-copy="' + esc(c[6]) + '" title="전화번호 복사">📞</button>' : "") + "</div></li>";
+          }).join("");
+        }).join("") + "</ul>" +
+        '<button type="button" class="btn wide" id="ptMails">✉️ 보이는 의원 이메일 한 번에 복사</button>' +
+      "</section>" +
+      // 3. 참여 체크
+      '<section class="panel pt2-sec" id="ptCheck"><h3><span class="pt2-no">3</span>참여 체크</h3><p class="muted small">한 것을 체크해 두세요. 이 기기에만 저장됩니다.</p>' +
+        '<div class="meter" style="margin:0 0 10px"><div class="row"><span>나의 참여</span><b class="num" id="ptPct"></b></div><div class="bar-track signal"><i id="ptBar"></i></div></div>' +
+        PT_CHECKS.map(function (c) { return '<label class="check"><input type="checkbox" data-ck="' + c[0] + '"> ' + esc(c[1]) + "</label>"; }).join("") +
+        '<p class="muted small" id="ptDone" hidden>모두 마쳤습니다. 감사합니다! 주변 입주예정자에게도 이 페이지를 알려 주세요.</p>' +
+      "</section>" +
       '<p class="kit-note small">⚖️ ' + esc(K.notice) + "</p>" +
-      '<p class="muted small">문구 · 연락처: <a href="' + esc(safeUrl(K.source.url)) + '" target="_blank" rel="noopener">' + esc(K.source.label) + " ↗</a> (" + esc(K.source.by) + ", " + esc(K.asOf) + " 기준)을 옮겨 정리했습니다. 문장은 열 때마다, 버튼을 누를 때마다 바뀝니다.</p>" +
-      "</div>";
+      '<p class="muted small">민원 요지 · 예시 문구 · 연락처는 ' + esc(K.source.by) + '의 <a href="' + esc(safeUrl(K.source.url)) + '" target="_blank" rel="noopener">' + esc(K.source.label) + " ↗</a>(" + esc(K.asOf) + " 기준)을 바탕으로 정리했습니다.</p>" +
+      "</article>";
   }
-  function bindKit(root, K) {
-    var persona = "";
-    var gen = function (kind, cur) { return kind === "board" ? boardText(K.board) : remix(K[kind], cur); };
-    var boxes = root.querySelectorAll(".kit-box");
-    function setText(b, t) { var ta = b.querySelector(".kit-t"); ta.value = t; b.querySelector(".kit-len").textContent = n(t.length) + "자"; b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); }
-    function fresh(b) { var k = b.dataset.kind; b._base = gen(k, b._base); setText(b, withPersona(k, b._base, persona)); }
-    boxes.forEach(function (b) {
-      fresh(b);
-      b.querySelector(".kit-t").addEventListener("input", function () { b.querySelector(".kit-len").textContent = n(this.value.length) + "자"; });
-      b.querySelector(".kit-re").addEventListener("click", function () { fresh(b); });
-      b.querySelector(".kit-cp").addEventListener("click", function () { copyText(b.querySelector(".kit-t").value, this); });
-      b.querySelector(".kit-ai").addEventListener("click", async function () {
-        var btn = this, k = b.dataset.kind;
-        if (!(LIVE && API.isMember)) { fresh(b); toast("AI 새로 쓰기는 승인 회원만 쓸 수 있어 조합 문장으로 바꿨습니다."); return; }
-        busy(btn, true, "AI가 쓰는 중…");
-        try { var r = await API.petitionAi({ kind: k, persona: persona, base: b._base }); b._base = r.text; setText(b, r.text); toast("AI가 새 문장을 썼습니다. 사실과 다른 부분이 없는지 한 번 읽고 보내 주세요."); }
-        catch (e) { fresh(b); toast((e && e.message ? e.message + " · " : "") + "조합 문장으로 바꿨습니다."); }
-        busy(btn, false);
-      });
+  function bindPt(root, x, K) {
+    var kind = "sns1", persona = 0, tone = 0, last = {};
+    var T = el("ptText"), member = LIVE && API.isMember;
+    function fitT() { T.style.height = "auto"; T.style.height = Math.min(Math.max(T.scrollHeight + 4, 90), 640) + "px"; }
+    function setText(t, label) { T.value = t; fitT(); el("ptLen").textContent = n(t.length) + "자"; el("ptOutLabel").textContent = label; root.querySelector(".pt2-out").classList.remove("flash"); void T.offsetWidth; root.querySelector(".pt2-out").classList.add("flash"); }
+    function example() { last[kind] = last[kind] || ptExample(K, kind); setText(last[kind], "예시 문구 · " + PT_KINDS.filter(function (k) { return k[0] === kind; })[0][1]); }
+    function seg(id, attr, fn) { el(id).addEventListener("click", function (e) { var c = e.target.closest(".chip"); if (!c) return; el(id).querySelectorAll(".chip").forEach(function (b) { b.setAttribute("aria-pressed", b === c ? "true" : "false"); }); fn(c.getAttribute("data-" + attr)); }); }
+    seg("ptKind", "kind", function (v) { kind = v; example(); });
+    seg("ptPersona", "p", function (v) { persona = Number(v); });
+    seg("ptTone", "t", function (v) { tone = Number(v); });
+    T.addEventListener("input", function () { el("ptLen").textContent = n(T.value.length) + "자"; fitT(); });
+    el("ptCopy").addEventListener("click", function () { copyText(T.value, this); });
+    example();
+    if (member) el("ptAi").addEventListener("click", async function () {
+      var btn = this; busy(btn, true, "AI가 쓰는 중…");
+      try {
+        var r = await API.petitionAi({ kind: kind, persona: K.personas[persona][0], tone: PT_TONES[tone][1], base: T.value });
+        setText(r.text, "AI가 쓴 글 · " + PT_KINDS.filter(function (k) { return k[0] === kind; })[0][1]);
+        if (r.left != null) el("ptLeft").textContent = "오늘 남은 횟수 " + r.left + "번 · 누를 때마다 새로운 문장을 씁니다.";
+        btn.dataset.l = "✨ 다시 쓰기";
+      } catch (e) { toast((e && e.message) || "AI 응답을 받지 못했습니다"); }
+      busy(btn, false);
     });
-    function titles() { el("kitTitles").innerHTML = shuffle(K.titles).slice(0, 3).map(function (t) { return '<li><span>' + esc(t) + '</span><button type="button" class="btn sm" data-copy="' + esc(t) + '">📋 복사</button></li>'; }).join(""); }
-    titles();
-    el("kitTitleRe").addEventListener("click", titles);
-    el("kitAll").addEventListener("click", function () { boxes.forEach(function (b) { if (b.dataset.kind !== "board") fresh(b); }); toast("문구를 모두 새로 바꿨습니다."); });
-    el("kitPersona").addEventListener("click", function (e) {
-      var c = e.target.closest(".chip"); if (!c) return;
-      el("kitPersona").querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", x === c ? "true" : "false"); });
-      persona = K.personas[Number(c.dataset.p)][0];
-      boxes.forEach(function (b) { if (b.dataset.kind === "sns3" || b.dataset.kind === "board") setText(b, withPersona(b.dataset.kind, b._base, persona)); });
-    });
-    root.addEventListener("click", function (e) {
-      var m = e.target.closest("[data-mails]"); if (!m) return;
-      var gs = m.dataset.mails === "all" ? K.contacts : [K.contacts[Number(m.dataset.mails)]];
-      var list = []; gs.forEach(function (g) { g.list.forEach(function (c) { if (c[5] && list.indexOf(c[5]) < 0) list.push(c[5]); }); });
-      copyText(list.join(", "), m);
+    // 보내기: 그룹 필터 · 이메일 일괄 복사
+    var grp = "all";
+    seg("ptGrp", "g", function (v) { grp = v; el("ptPeople").querySelectorAll("li").forEach(function (li) { li.hidden = grp !== "all" && li.dataset.g !== grp; }); });
+    el("ptMails").addEventListener("click", function () {
+      var list = []; K.contacts.forEach(function (g, gi) { if (grp !== "all" && String(gi) !== grp) return; g.list.forEach(function (c) { if (c[5] && list.indexOf(c[5]) < 0) list.push(c[5]); }); });
+      copyText(list.join(", "), this);
     });
     bindCopy(root);
+    // 참여 체크 (이 기기에만)
+    var KEY = "s4-pt-" + x.id, st = {}; try { st = JSON.parse(store(KEY) || "{}") || {}; } catch (e) { st = {}; }
+    var boxes = root.querySelectorAll("[data-ck]");
+    function upd(save) {
+      var on = 0; boxes.forEach(function (b) { if (b.checked) on++; st[b.dataset.ck] = b.checked ? 1 : 0; });
+      el("ptPct").textContent = on + " / " + boxes.length; el("ptBar").style.width = (on / boxes.length * 100) + "%"; el("ptDone").hidden = on < boxes.length;
+      if (save) store(KEY, JSON.stringify(st));
+    }
+    boxes.forEach(function (b) { b.checked = !!st[b.dataset.ck]; b.addEventListener("change", function () { upd(true); }); });
+    upd(false);
   }
-  R.petition = function () {
-    var L = arr(S.petitions).filter(function (x) { return x.active; });
-    if (!L.length) { C.innerHTML = empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다."); return; }
-    var KIT = window.S4_PETITION_KIT || {};
-    C.innerHTML = '<div class="petition-page">' + L.map(function (x) {
-      var K = KIT[x.id];
-      if (!K) return petitionsHtml().replace('<section class="band petition-band"><div class="wrap">', "").replace(/<\/div><\/section>$/, "");
-      return '<article class="petition kit-wrap" id="pt-' + esc(x.id) + '"><div class="pt-head"><span class="tag hot">' + esc(x.tag || "민원 참여") + "</span><h2>" + esc(x.title) + "</h2><p>" + esc(x.lead || "") + "</p></div>" +
-        (x.privateKey ? '<div class="pt-private" data-key="' + esc(x.privateKey) + '">' + (LIVE && API.isMember ? '<p class="muted small">회원 전용 안내를 불러오는 중…</p>'
-          : '<p class="small"><b>안건 정보 · 의원 연락처</b>는 외부 유출 금지라 승인 회원에게만 보입니다. ' + (LIVE && API.loggedIn ? "가입 승인 후 볼 수 있습니다." : '<a href="login.html">로그인 →</a>') + "</p>") + "</div>" : "") +
-        kitHtml(x, K) + "</article>";
-    }).join("") + "</div>";
+  R.petition = async function () {
+    var L = arr(S.petitions).filter(function (x) { return x.active; }), KIT = window.S4_PETITION_KIT || {};
+    C.innerHTML = (L.length ? L.map(function (x) {
+      return KIT[x.id] ? ptHtml(x, KIT[x.id]) : petitionsHtml().replace('<section class="band petition-band"><div class="wrap">', "").replace(/<\/div><\/section>$/, "");
+    }).join("") : empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다.")) + '<div id="ptMore"></div>';
     bindPetitions();
-    L.forEach(function (x) { var K = KIT[x.id]; if (K) bindKit(el("pt-" + x.id), K); });
+    L.forEach(function (x) { if (KIT[x.id]) bindPt(el("pt-" + x.id), x, KIT[x.id]); });
     var id = location.hash.slice(1), t = id && document.getElementById(id); if (t) setTimeout(function () { t.scrollIntoView({ block: "start" }); }, 0);
+    // 운영진이 연 단체민원 · 투표가 있으면 아래에 함께 (메뉴에서 빠진 '민원 · 투표' 기능)
+    if (LIVE) try {
+      var cp = await API.campaigns(), pl = API.isMember ? await API.polls() : [];
+      if (arr(cp).length || arr(pl).length) { el("ptMore").className = "pt2-more"; await R.participate(el("ptMore")); }
+    } catch (e) {}
   };
   function linkify(t) {
     return esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
@@ -898,7 +903,7 @@
     if (!total) { C.innerHTML = empty("회칙을 준비하고 있습니다", ""); return; }
     var fixed = B.status === "확정";
     var status = fixed ? '<span class="bl-badge ok">시행 중</span><span>' + (B.enacted ? esc(B.enacted) + " 제정" : "") + "</span>"
-      : '<span class="bl-badge">제정(안)</span><span>창립총회 의결 전입니다. 의견은 게시판이나 카페에 남겨 주세요.</span>';
+      : '<span class="bl-badge">제정(안)</span><span>창립총회 의결 전입니다. 의견은 공식 카페에 남겨 주세요.</span>';
     function art(a) {
       return '<article class="bl-art" id="a' + a.n + '" data-q="' + esc(("제" + a.n + "조 " + a.t + " " + a.p + " " + arr(a.i).join(" ")).toLowerCase()) + '">' +
         '<h3><a class="bl-no" href="#a' + a.n + '">제' + a.n + "조</a> " + esc(a.t) + "</h3>" +
@@ -963,7 +968,7 @@
     var title, body, cta = "";
     if (!API.consentOpen) {
       title = "위임장은 공급계약 후 받습니다";
-      body = consentOpenLabel() + " 공급계약이 시작되면 위임동의서를 낼 수 있습니다. 위임한 세대는 투표 · 단체민원에 참여하고 세대별 현황을 볼 수 있습니다." + (API.isMember ? " 지금은 게시판을 이용할 수 있습니다." : "");
+      body = consentOpenLabel() + " 공급계약이 시작되면 위임동의서를 낼 수 있습니다. 위임한 세대는 투표 · 단체민원에 참여하고 세대별 현황을 볼 수 있습니다." + (API.isMember ? " 지금은 회원 전용 안내와 민원 참여를 이용할 수 있습니다." : "");
     } else {
       title = "위임장을 낸 세대만 참여할 수 있습니다";
       body = "위임동의서를 내면 투표 · 단체민원 참여와 세대별 현황 보기가 바로 열립니다." + (API.profile && API.profile.status === "pending" ? " 승인 대기 중에도 낼 수 있습니다." : "");
@@ -1099,7 +1104,8 @@
   };
 
   /* ── 단체민원 · 투표 ── */
-  R.participate = async function () {
+  R.participate = async function (root) {
+    var C = root || el("content");
     var CP = LIVE ? await API.campaigns() : arr(S.campaigns), PL = LIVE ? await API.polls() : arr(S.polls);
     var stCls = { "의견 모집": "tag hot", "접수 완료": "tag", "답변 완료": "tag off" };
     var pollGate = LIVE ? gate("member") : "";
@@ -1110,7 +1116,7 @@
           "<h3>" + esc(c.title) + '</h3><p class="muted">' + esc(c.description || c.desc) + "</p>" +
           '<div class="bar-track"><i style="width:' + q.toFixed(1) + '%"></i></div><div class="camp-foot"><span class="num">' + n(c.joined) + "세대 참여 · " + q.toFixed(0) + "%</span>" +
           (c.mine ? '<span class="tag">참여함</span>' : canJoin ? '<button type="button" class="btn join" data-id="' + c.id + '">참여하기</button>' : "") + "</div></article>";
-      }).join("") + "</div>" : empty("진행 중인 단체민원이 없습니다", "민원 제안은 게시판에 남겨주세요.")) +
+      }).join("") + "</div>" : empty("진행 중인 단체민원이 없습니다", "민원 제안은 공식 카페에 남겨 주세요.")) +
       (LIVE && !API.isDelegate && CP.some(function (c) { return c.status === "의견 모집"; }) ? (API.isMember ? delegateNote(false) : '<p class="muted small">참여는 위임장을 낸 세대만 할 수 있습니다. <a href="login.html">로그인</a></p>') : "") +
       '<p class="notice-box" id="pMsg" role="status" hidden></p></div>' +
       "<div>" + head("투표", '<span class="note">1세대 1표</span>') +
@@ -1125,6 +1131,7 @@
           }).join("") + "</div>";
       }).join("") + "</div>" : empty("진행 중인 투표가 없습니다", "운영진이 투표를 열면 이곳에 표시됩니다.")) + "</div>";
     if (!LIVE) return;
+    if (C._pBound) return; C._pBound = 1;
     C.addEventListener("click", async function (e) {
       var j = e.target.closest(".join"), v = e.target.closest(".vote");
       if (!j && !v) return;
@@ -1132,7 +1139,7 @@
       try {
         if (j) await API.joinCampaign(Number(j.dataset.id));
         else await API.vote(Number(v.dataset.poll), Number(v.dataset.idx));
-        await R.participate();
+        await R.participate(root);
       } catch (err) { busy(btn, false); say("pMsg", API.errorText(err), true); el("pMsg").scrollIntoView({ block: "center" }); }
     });
   };
@@ -1243,7 +1250,7 @@
     function split(t) { var d = Math.floor(t / 10); return [d, d, d, d, d, d, d, t - 7 * d]; }
     var saved = {}; try { saved = JSON.parse(store("s4-optcalc") || "{}") || {}; } catch (e) { saved = {}; }
     C.innerHTML = '<div class="oc">' +
-      '<div class="oc-main"><form class="panel oc-pick" id="ocForm" novalidate>' +
+      '<div class="oc-main"><h2 class="oc-h"><span class="oc-no">1</span>우리 집 고르기</h2><form class="panel oc-pick" id="ocForm" novalidate>' +
         '<div class="field"><span class="lbl">공급유형</span><div class="seg" role="radiogroup" aria-label="공급유형"><label><input type="radio" name="ocMode" value="basic" checked><span>기본형</span></label><label><input type="radio" name="ocMode" value="minus"><span>마이너스옵션</span></label></div></div>' +
         '<div class="field"><label for="ocType">세부평형</label><select id="ocType">' + FAMS.map(function (f) {
           return '<optgroup label="' + esc(f) + ' 계열">' + TYPES.filter(function (t) { return D.types[t][0] === f; }).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + "</option>"; }).join("") + "</optgroup>";
@@ -1252,23 +1259,25 @@
         '<div class="field"><label for="ocSpace">공간선택</label><select id="ocSpace"><option value="basic">침실2/3 분리</option><option value="A">A형 · 침실2+3 통합</option></select></div>' +
         '<p class="muted small oc-note">세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.</p>' +
       "</form>" +
-      '<section class="oc-media" id="ocMedia" aria-label="평면 · 공간 미리보기"></section>' +
-      '<div class="oc-opthead"><h2>선택품목</h2><span class="muted small" id="ocFamInfo"></span><button type="button" class="btn sm" id="ocReset">선택 초기화</button></div>' +
+      '<details class="panel oc-media-d" id="ocMediaD"' + (window.innerWidth > 760 ? " open" : "") + '><summary><b>평면도 · LH 공식 VR 보기</b><span class="muted small" id="ocMediaS"></span></summary><div class="oc-media" id="ocMedia"></div></details>' +
+      '<div class="oc-opthead"><h2 class="oc-h"><span class="oc-no">2</span>선택품목 고르기</h2><button type="button" class="btn sm" id="ocReset">모두 풀기</button><span class="muted small" id="ocFamInfo"></span></div>' +
       '<p class="oc-msg" id="ocMsg" role="status" aria-live="polite"></p>' +
       '<div id="ocOpts" class="oc-opts"></div></div>' +
       '<aside class="panel oc-sum" id="ocSum" aria-label="계산 결과"><span class="muted small">예상 총 분양비용</span><b class="oc-total num" id="ocTotal"></b>' +
-        '<table class="spec kv oc-kv"><tbody id="ocKv"></tbody></table><p class="small oc-chosen" id="ocChosen"></p>' +
+        '<div class="oc-split" aria-hidden="true"><i class="h" id="ocSpH"></i><i class="b" id="ocSpB"></i><i class="o" id="ocSpO"></i></div>' +
+        '<table class="spec kv oc-kv"><tbody id="ocKv"></tbody></table><p class="small oc-chosen" id="ocChosen"></p><ul class="oc-picked" id="ocPicked"></ul>' +
         '<p class="muted small" style="margin:8px 0 0">세금 · 등기비 · 대출이자는 빠진 금액입니다. 실제 금액은 LH 계약서로 확인하세요.</p></aside>' +
       "</div>" +
       '<div class="oc-bar" id="ocBar" aria-hidden="true"><span>예상 총액</span><b class="num" id="ocBarTotal"></b><a href="#ocSum">자세히</a></div>' +
       '<dialog class="oc-lb" id="ocLb" aria-label="사진 크게 보기"><button type="button" class="oc-lb-x" id="ocLbX" aria-label="닫기">×</button><img id="ocLbImg" alt=""><p id="ocLbCap"></p></dialog>' +
-      "<div>" + head("회차별 납부 예정액", '<span class="note">입주 시 잔여금액은 대출 적용 전</span>') + '<div class="tablebox"><table class="spec oc-pay"><thead><tr><th>회차 · 예정일</th><th class="r">주택</th><th class="r">발코니</th><th class="r">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
+      "<div>" + '<div class="oc-payh"><h2 class="oc-h"><span class="oc-no">3</span>회차별 납부 예정액</h2><button type="button" class="btn sm" id="ocPayFull" aria-pressed="false">항목별로 보기</button></div><p class="muted small" style="margin:-4px 0 10px">입주 시 잔여금액은 대출 적용 전 금액입니다.</p>' +
+        '<div class="tablebox"><table class="spec oc-pay" id="ocPayT"><thead><tr><th>회차 · 예정일</th><th class="r d">주택</th><th class="r d">발코니</th><th class="r d">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
       '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
         '<label class="check"><input type="checkbox" id="ocFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
         '<div class="tablebox"><table class="spec"><tbody id="ocTax"></tbody></table></div></div>' +
       '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">금액은 ' + esc(D.src) + "의 표를 옮긴 값입니다. 계약금과 중도금 1~6차는 각 항목 금액의 10%(천원 미만 버림), 입주 시 잔여금액은 나머지입니다. 마이너스옵션을 고르면 주택 · 발코니 금액이 마이너스옵션 가격으로 바뀌고 선택품목은 고를 수 없습니다.</p>" +
         '<p class="muted small">취득세 과세표준은 총 분양비용(주택 + 발코니 + 선택품목)입니다. 세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%이며 지방교육세는 취득세의 10%입니다. 취득세는 잔금을 내는 입주 시점(2030년 예정)의 법을 따르므로 실제 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p>' +
-        (D.credit ? '<p class="muted small">품목 사진 · 평면도와 화면 구성은 ' + esc(D.credit.by || "입주예정자") + '이 만든 <a href="' + esc(safeUrl(D.credit.url)) + '" target="_blank" rel="noopener">' + esc(D.credit.label) + " ↗</a>에서 가져왔고, 공간 미리보기 · VR은 LH 공식 사이버모델하우스입니다. 사진은 팸플릿 기준이라 실제와 다를 수 있습니다.</p>" : "") +
+        (D.credit ? '<p class="muted small">품목 사진 · 평면도는 ' + esc(D.credit.by || "입주예정자") + '이 정리한 <a href="' + esc(safeUrl(D.credit.url)) + '" target="_blank" rel="noopener">' + esc(D.credit.label) + " ↗</a>의 자료를, 공간 미리보기 · VR은 LH 공식 사이버모델하우스를 불러옵니다. 사진은 팸플릿 기준이라 실제와 다를 수 있습니다.</p>" : "") +
       "</div></div>";
     var TY = el("ocType"), FL = el("ocFloor"), SPC = el("ocSpace"), BOX = el("ocOpts");
     function mode() { var r = C.querySelector('input[name="ocMode"]:checked'); return r ? r.value : "basic"; }
@@ -1310,7 +1319,7 @@
       if (fl[keep]) FL.value = keep; else FL.value = Object.keys(fl)[Object.keys(fl).length - 1];
       var FK = D.types[TY.value][0];
       el("ocFamInfo").textContent = FK + " 계열 · " + F.opts.length + "개 품목 · 표준안내문 " + F.src;
-      if (el("ocMedia").dataset.f !== FK) { el("ocMedia").innerHTML = media(FK); el("ocMedia").dataset.f = FK; }
+      if (el("ocMedia").dataset.f !== FK) { el("ocMedia").innerHTML = media(FK); el("ocMedia").dataset.f = FK; el("ocMediaS").textContent = FK + " 평면도 · 방별 VR"; }
       BOX.innerHTML = CATS.map(function (c) {
         var L = F.opts.filter(function (o) { return o[1] === c; }); if (!L.length) return "";
         var done = {}, h = "";
@@ -1322,7 +1331,8 @@
             L.filter(function (x) { return x[4] === o[4]; }).map(row).join("") + "</div>";
         });
         var ph = M && M.keys[c] ? photoBtn(mu(M.photo, D.types[TY.value][0]).replace("{K}", M.keys[c]), D.types[TY.value][0] + " · " + c + " 선택품목 (팸플릿)") : "";
-        return '<fieldset class="oc-cat"><legend>' + esc(c) + "</legend>" + ph + h + "</fieldset>";
+        return '<details class="oc-acc" data-cat="' + esc(c) + '"' + (c === "침실" || window.innerWidth > 1000 ? " open" : "") + '><summary><b>' + esc(c) + '</b><span class="oc-acc-c muted small">' + L.length + '개 품목</span><span class="oc-acc-s num"></span></summary>' +
+          '<div class="oc-acc-b">' + ph + '<div class="oc-acc-l">' + h + "</div></div></details>";
       }).join("");
       enforce(); calc();
     }
@@ -1366,14 +1376,20 @@
         '<tr><th>발코니 확장</th><td class="r num">' + won(bal) + "</td></tr>" +
         "<tr><th>선택품목 <small>" + chosen.length + '개</small></th><td class="r num">' + won(optSum) + "</td></tr>" +
         '<tr class="total"><th>계약금 합계</th><td class="r num">' + won(H[0] + B[0] + O[0]) + "</td></tr>";
-      el("ocChosen").textContent = m === "minus" ? "마이너스옵션 · 선택품목 없음" : (SPC.value === "A" ? "공간옵션 A" : "침실2/3 분리") + (chosen.length ? " · " + chosen.map(function (o) { return o[2].replace(/^\S+\s/, ""); }).join(" · ") : " · 선택품목 없음");
+      el("ocChosen").textContent = m === "minus" ? "마이너스옵션 · 선택품목 없음" : (SPC.value === "A" ? "공간옵션 A · 침실2+3 통합" : "침실2/3 분리") + (chosen.length ? "" : " · 선택품목 없음");
       var acc = 0;
       el("ocPay").innerHTML = D.dates.map(function (d, i) {
         var lab = i === 0 ? "계약금" : i === 7 ? "입주 시 잔여금액" : "중도금 " + i + "차", sum = H[i] + B[i] + O[i]; acc += sum;
-        return "<tr><td>" + lab + '<br><span class="muted small num">' + esc(d) + '</span></td><td class="r num">' + n(H[i] * 1000) + '</td><td class="r num">' + n(B[i] * 1000) + '</td><td class="r num">' + n(O[i] * 1000) + '</td><td class="r num"><b>' + n(sum * 1000) + '</b></td><td class="r num">' + n(acc * 1000) + "</td></tr>";
-      }).join("") + '<tr class="total"><td>합계</td><td class="r num">' + n(house * 1000) + '</td><td class="r num">' + n(bal * 1000) + '</td><td class="r num">' + n(optSum * 1000) + '</td><td class="r num" colspan="2">' + won(total) + "</td></tr>";
+        return "<tr><td>" + lab + '<br><span class="muted small num">' + esc(d) + '</span></td><td class="r num d">' + n(H[i] * 1000) + '</td><td class="r num d">' + n(B[i] * 1000) + '</td><td class="r num d">' + n(O[i] * 1000) + '</td><td class="r num"><b>' + n(sum * 1000) + '</b></td><td class="r num">' + n(acc * 1000) + "</td></tr>";
+      }).join("") + '<tr class="total"><td>합계</td><td class="r num d">' + n(house * 1000) + '</td><td class="r num d">' + n(bal * 1000) + '</td><td class="r num d">' + n(optSum * 1000) + '</td><td class="r num" colspan="2">' + won(total) + "</td></tr>";
       tax(total * 1000);
-      store("s4-optcalc", JSON.stringify({ t: TY.value, f: FL.value, m: m, s: SPC.value }));
+      BOX.querySelectorAll(".oc-acc").forEach(function (d) {
+        var cs = chosen.filter(function (o) { return o[1] === d.dataset.cat; }), sum = cs.reduce(function (a, o) { return a + o[3]; }, 0);
+        d.querySelector(".oc-acc-s").textContent = cs.length ? cs.length + "개 · +" + won(sum) : ""; d.classList.toggle("has", cs.length > 0);
+      });
+      el("ocSpH").style.flexGrow = house; el("ocSpB").style.flexGrow = bal; el("ocSpO").style.flexGrow = optSum;
+      el("ocPicked").innerHTML = chosen.map(function (o) { return '<li><span>' + esc(o[2].replace(/^\S+\s/, "")) + '</span><b class="num">' + (o[3] ? won(o[3]) : "무상") + '</b><button type="button" class="linkbtn" data-un="' + esc(o[0]) + '" aria-label="' + esc(o[2]) + ' 빼기">빼기</button></li>'; }).join("");
+      store("s4-optcalc", JSON.stringify({ t: TY.value, f: FL.value, m: m, s: SPC.value, o: Object.keys(ids), g: D.types[TY.value][0] }));
     }
     el("ocForm").addEventListener("submit", function (e) { e.preventDefault(); });
     TY.addEventListener("change", function () { SPC.value = "basic"; build(); });
@@ -1386,6 +1402,8 @@
     BOX.addEventListener("change", function () { enforce(); calc(); });
     el("ocReset").addEventListener("click", function () { BOX.querySelectorAll("input[data-id]").forEach(function (x) { x.checked = false; }); SPC.value = "basic"; enforce(); calc(); el("ocMsg").textContent = "선택품목을 모두 풀었습니다."; });
     el("ocFirst").addEventListener("change", calc);
+    el("ocPicked").addEventListener("click", function (e) { var u = e.target.closest("[data-un]"); if (!u) return; var i = el("oc-" + u.dataset.un); if (i) { i.checked = false; if (i.type === "radio") { var nn = el("oc-none-" + opt(u.dataset.un)[4]); if (nn) nn.checked = true; } } enforce(); calc(); });
+    el("ocPayFull").addEventListener("click", function () { var on = el("ocPayT").classList.toggle("full"); this.setAttribute("aria-pressed", on); this.textContent = on ? "합계만 보기" : "항목별로 보기"; });
     // 사진: 못 불러오면 칸을 숨김, 누르면 크게
     C.addEventListener("error", function (e) { var b = e.target && e.target.closest && e.target.closest(".oc-ph"); if (b) b.hidden = true; }, true);
     var LB = el("ocLb");
@@ -1401,6 +1419,8 @@
     else if (saved.s === "A") SPC.value = "A";
     if (saved.f) { FL.innerHTML = '<option value="' + esc(saved.f) + '">' + esc(saved.f) + "</option>"; FL.value = saved.f; }
     build();
+    // 지난번 고른 품목 다시 (같은 계열일 때만)
+    if (saved.o && saved.g === D.types[TY.value][0] && saved.m !== "minus") { saved.o.forEach(function (id) { var i = el("oc-" + id); if (i) i.checked = true; }); enforce(); calc(); }
     if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { el("ocBar").classList.toggle("show", !es[0].isIntersecting); }).observe(el("ocSum"));
   };
 
@@ -1454,16 +1474,17 @@
   R.privacy = function () {
     var rows = [
       ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 계약서 사진, 가입 · 접속 기록", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지"],
-      ["위임동의서", "주택형 · 동 · 호수, 계약자 성명, 휴대전화번호, 카페 닉네임(선택), 서명, 동의 일시, 공동명의자 성명 · 서명(공동명의자 본인이 서명할 때만) (서면 접수 시 위임장 스캔본)", "계약자 확인, 과반수 동의 집계, 협의회 공지 · 의견수렴 · 투표", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
-      ["카페 등업", "위임동의서의 네이버 카페 닉네임(선택), 등업 처리 기록", "공식 카페 회원 등급 관리", "위임 철회 · 탈퇴 또는 협의회 해산 시까지"],
+      ["위임동의서", "주택형 · 동 · 호수, 계약자 성명, 휴대전화번호, 서명, 동의 일시, 공동명의자 성명 · 서명(공동명의자 본인이 서명할 때만) (서면 접수 시 위임장 스캔본)", "계약자 확인, 과반수 동의 집계, 협의회 공지 · 의견수렴 · 투표", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
       ["회비", "협의회 통장 거래내역(입금 일시 · 금액 · 입금자명), 세대별 납부 여부", "회비 납부 확인, 회계 공개(월별 합계만 공개, 입금자 이름은 비공개)", "협의회 해산 시 결산 · 인계 후 파기"],
-      ["게시판 · 투표 · 민원", "작성 글과 댓글, 세대별 투표 · 참여 여부", "커뮤니티 운영, 1세대 1표 집계", "삭제 시 또는 협의회 해산 시까지"]
+      ["투표 · 단체민원", "세대별 투표 · 참여 여부 (예전 게시판 글 · 댓글 포함)", "1세대 1표 집계, 참여 세대 수 공개", "삭제 시 또는 협의회 해산 시까지"],
+      ["민원 AI 글쓰기", "AI 이용 횟수 기록(회원 · 시각 · 글 종류). 쓴 문장은 저장하지 않음", "1인 하루 이용 횟수 제한", "30일 뒤 자동 삭제"]
     ];
     var LB = ["구분", "항목", "목적", "보유 기간"];
     C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec stack"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
       rows.map(function (r) { return "<tr>" + r.map(function (c, i) { return '<td data-label="' + LB[i] + '">' + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
       '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">회원 정보(동 · 호수, 성명, 연락처, 서명 등)는 LH · 시공사 · 관계기관 · 법무법인 등 외부에 제공하지 않습니다(회칙 제33조). 협의 · 민원에서 대표성을 보일 때는 동별 위임 세대 수만 알립니다.</p>' +
       head("처리 위탁 · 국외 이전") + '<ul class="muted plain-list"><li><b>Supabase Inc.</b> (미국, support@supabase.com) — 회원 정보 · 위임동의 · 게시글 · 계약서 사진 저장과 로그인 처리. 데이터는 서울(대한민국) 리전에 저장되며, 회원가입 · 이용 시 인터넷으로 전송됩니다. 보유 기간은 위 표와 같습니다.</li>' +
+      '<li><b>Google LLC</b> (미국, Gemini API) — 민원 페이지의 "AI로 글 쓰기"를 누를 때 고른 글 종류 · 상황 · 말투와 공개된 민원 요지만 보내 문장을 받습니다. 이름 · 동호수 등 회원 정보는 보내지 않습니다.</li>' +
       '<li><b>GitHub Inc.</b> (미국) — 홈페이지 호스팅과 LH 공고문 자동 읽기. 회원 개인정보는 다루지 않으며, 접속 기록(IP 등)이 남을 수 있습니다.</li></ul>' +
       '<p class="muted small">위 이전은 서비스 제공에 필요한 처리로, 원하지 않으면 회원가입을 하지 않거나 탈퇴하면 됩니다.</p></div>' +
       "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원과 운영진에게만 보입니다. 게시판 작성자는 승인된 회원에게만 "동-호"로 표시합니다.</p>' +
@@ -1488,22 +1509,35 @@
       '<label class="check" for="' + p + 'Del"><input type="checkbox" id="' + p + 'Del"> 위 구성 및 위임 내용에 동의합니다 (필수)</label>' +
       '<label class="check" for="' + p + 'Priv"><input type="checkbox" id="' + p + 'Priv"> 위 개인정보 수집 · 이용에 동의합니다 (필수)</label>' +
       '<div class="field"><label for="' + p + 'Sig">계약자 서명 <span class="muted small">손가락이나 마우스로 서명해 주세요 · 작성일은 제출 시각으로 자동 기록</span></label>' +
-      '<div class="sigpad"><canvas id="' + p + 'Sig" width="600" height="200" aria-label="계약자 서명 칸"></canvas><button type="button" class="linkbtn" id="' + p + 'SigClear">다시 쓰기</button></div></div>' +
-      '<div id="' + p + 'CoSigBox" hidden><div class="field"><label for="' + p + 'CoSig">공동명의자 서명</label><div class="sigpad"><canvas id="' + p + 'CoSig" width="600" height="200" aria-label="공동명의자 서명 칸"></canvas><button type="button" class="linkbtn" id="' + p + 'CoSigClear">다시 쓰기</button></div></div>' +
+      '<div class="sigpad"><canvas id="' + p + 'Sig" width="600" height="200" aria-label="계약자 서명 칸"></canvas><span class="sig-hint" aria-hidden="true">여기에 서명해 주세요</span><button type="button" class="linkbtn" id="' + p + 'SigClear">다시 쓰기</button></div></div>' +
+      '<div id="' + p + 'CoSigBox" hidden><div class="field"><label for="' + p + 'CoSig">공동명의자 서명</label><div class="sigpad"><canvas id="' + p + 'CoSig" width="600" height="200" aria-label="공동명의자 서명 칸"></canvas><span class="sig-hint" aria-hidden="true">여기에 서명해 주세요</span><button type="button" class="linkbtn" id="' + p + 'CoSigClear">다시 쓰기</button></div></div>' +
         '<label class="check" for="' + p + 'CoOk"><input type="checkbox" id="' + p + 'CoOk"> 공동명의자 본인이 위임 내용과 필수 개인정보 수집 · 이용을 직접 확인하고 동의합니다 (필수)</label></div>' +
       "</fieldset>";
   }
   var SIG = {};
   function sigPad(id) {
     var c = el(id), ctx = c.getContext("2d"), drawing = false, strokes = 0, last = null;
+    function pen() { var d = c.width / Math.max(c.getBoundingClientRect().width, 1); ctx.lineWidth = 3.2 * d; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#1a1a1a"; }
+    // 보이는 크기 × 화면 배율로 캔버스를 맞춤 (휴대폰에서 큰 서명 칸 · 또렷한 선). 이미 쓴 서명은 늘려서 유지
+    function fit() {
+      var r = c.getBoundingClientRect(); if (!r.width) return;
+      var d = Math.min(window.devicePixelRatio || 1, 2), W = Math.round(r.width * d), Hh = Math.round(r.height * d);
+      if (Math.abs(W - c.width) < 4 && Math.abs(Hh - c.height) < 4) return;
+      var keep = strokes ? c.toDataURL("image/png") : null;
+      c.width = W; c.height = Hh; pen();
+      if (keep) { var im = new Image(); im.onload = function () { ctx.drawImage(im, 0, 0, c.width, c.height); }; im.src = keep; }
+    }
     function pt(e) { var r = c.getBoundingClientRect(); return { x: (e.clientX - r.left) * c.width / r.width, y: (e.clientY - r.top) * c.height / r.height }; }
-    function clear() { ctx.clearRect(0, 0, c.width, c.height); strokes = 0; }
-    ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#1a1a1a";
-    c.addEventListener("pointerdown", function (e) { e.preventDefault(); drawing = true; last = pt(e); try { c.setPointerCapture(e.pointerId); } catch (er) {} });
-    c.addEventListener("pointermove", function (e) { if (!drawing) return; e.preventDefault(); var q = pt(e); ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(q.x, q.y); ctx.stroke(); last = q; strokes++; });
+    function clear() { ctx.clearRect(0, 0, c.width, c.height); strokes = 0; c.parentNode.classList.remove("signed"); }
+    fit(); pen();
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(c); else window.addEventListener("resize", fit);
+    c.addEventListener("pointerdown", function (e) { e.preventDefault(); fit(); drawing = true; last = pt(e); ctx.beginPath(); ctx.arc(last.x, last.y, ctx.lineWidth / 2, 0, 7); ctx.fillStyle = "#1a1a1a"; ctx.fill(); try { c.setPointerCapture(e.pointerId); } catch (er) {} });
+    c.addEventListener("pointermove", function (e) { if (!drawing) return; e.preventDefault(); var q = pt(e); ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(q.x, q.y); ctx.stroke(); last = q; strokes++; if (strokes === 8) c.parentNode.classList.add("signed"); });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) { c.addEventListener(t, function () { drawing = false; }); });
     el(id + "Clear").addEventListener("click", clear);
-    return { empty: function () { return strokes < 8; }, data: function () { return strokes < 8 ? null : c.toDataURL("image/png"); } };
+    // 저장은 가로 900px 이하로 줄여서 (서버 한도 300KB)
+    function out() { var W = Math.min(c.width, 900), o = document.createElement("canvas"); o.width = W; o.height = Math.round(c.height * W / c.width); o.getContext("2d").drawImage(c, 0, 0, o.width, o.height); return o.toDataURL("image/png"); }
+    return { empty: function () { return strokes < 8; }, data: function () { return strokes < 8 ? null : out(); } };
   }
   function bindConsent(p) {
     SIG[p] = sigPad(p + "Sig"); SIG[p + "Co"] = sigPad(p + "CoSig");
@@ -1579,7 +1613,7 @@
           '<div class="field"><label for="sPw2">비밀번호 확인</label><input id="sPw2" type="password" autocomplete="new-password" required></div></div>') +
       fileField + privacy +
       '<button class="btn solid wide" type="submit">' + (needsProfile ? "가입 마무리" : "가입 신청") + '</button><p class="notice-box" id="sMsg" role="alert" hidden></p>' +
-      '<p class="muted small" style="margin:12px 0 0">운영진이 사진으로 세대를 확인해 승인하면 게시판을 이용할 수 있습니다. 위임동의서는 공급계약(' + esc(consentOpenLabel()) + '~) 후 따로 제출하며, 위임 세대는 투표 · 단체민원에 참여합니다. 한 세대에는 한 계정만 만들 수 있습니다.</p></form></div>');
+      '<p class="muted small" style="margin:12px 0 0">운영진이 사진으로 세대를 확인해 승인하면 회원 전용 안내와 민원 참여를 이용할 수 있습니다. 위임동의서는 공급계약(' + esc(consentOpenLabel()) + '~) 후 따로 제출합니다. 한 세대에는 한 계정만 만들 수 있습니다.</p></form></div>');
     bindUnitPicker("l");
     if (!needsProfile && !closed) bindUnitPicker("s");
     function setTab(t) {
@@ -1628,7 +1662,7 @@
       '<div class="two acct-grid"><div class="acct-col">' + head("내 계정") + '<div class="panel"><div class="acct-head"><b>' + esc(unitLabel(p.unit_id)) + '</b><span class="' + badge[0] + '">' + badge[1] + "</span>" + (API.isAdmin ? '<span class="tag">운영진</span>' : "") + "</div>" +
       '<table class="spec kv"><tr><th>아이디</th><td class="num">' + esc(p.unit_id) + "</td></tr><tr><th>가입 신청</th><td>" + fmtDate(p.created_at) + "</td></tr>" +
       (p.reviewed_at ? "<tr><th>" + (p.status === "approved" ? "승인일" : "처리일") + "</th><td>" + fmtDate(p.reviewed_at) + "</td></tr>" : "") + "</table>" +
-      (p.status === "pending" ? '<p class="notice-box">운영진이 올려주신 사진으로 세대를 확인하고 있습니다. 승인되면 게시판을 이용할 수 있습니다.</p>' : "") +
+      (p.status === "pending" ? '<p class="notice-box">운영진이 올려주신 사진으로 세대를 확인하고 있습니다. 승인되면 회원 전용 안내와 민원 참여를 이용할 수 있습니다.</p>' : "") +
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
       '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' + PWFORM + "</div>" +
 
