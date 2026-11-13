@@ -63,26 +63,26 @@
   var NAVKEY = { bylaws: "association", consent: "agreement", participate: "petition", documents: "info", faq: "info" }[page] || page;
   var myGroup = GROUPS.filter(function (g) { return g.items.some(function (x) { return x[2] === NAVKEY; }); })[0];
   var HEAD = {
-    login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의와 민원 참여, 회원 전용 안내를 이용할 수 있습니다."],
+    login: ["MEMBERS", "로그인 · 회원가입", "계약자 확인을 마친 회원만 위임동의 · 민원 등 회원 기능을 이용할 수 있습니다."],
     account: ["MY PAGE", "내 정보", "가입 상태와 위임동의 내역을 확인합니다."],
     consent: ["CONSENT", "위임동의서", "공급계약을 마친 계약자가 제출합니다."],
     privacy: ["PRIVACY", "개인정보처리방침", "협의회가 어떤 정보를 왜 받고, 언제 지우는지 안내합니다."],
-    admin: ["ADMIN", "운영진", "가입 승인부터 위임동의 · 회비 · 투표 · 민원 · 자료 수집까지 관리합니다."],
+    admin: ["ADMIN", "운영진", "가입 승인 · 위임동의 · 회비 · 민원 · 자료 관리"],
     notice: ["NOTICE", "공지사항", "협의회와 LH의 안내입니다."],
     schedule: ["SCHEDULE", "주요 일정", "청약부터 입주까지의 흐름입니다."],
-    news: ["MEDIA", "언론보도", "S-4블록 · 창릉신도시 · 교통(고양은평선 · GTX 창릉역) 관련 기사입니다."],
-    floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
+    news: ["MEDIA", "언론보도", "S-4블록 · 창릉신도시 · 교통 관련 기사"],
+    floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형 공급 정보와 단지 개요"],
     progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
-    bylaws: ["BYLAWS", "회칙", "협의회가 어떻게 운영되는지 회원 모두가 함께 정한 약속입니다."],
-    accounting: ["ACCOUNTING", "회계", "회비 안내와 매월 수입 · 지출을 공개합니다. 입예협 명의 통장으로만 관리합니다(회칙 제25조 · 제27조)."],
-    association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH와 관계 기관에 전달하는 자발적 모임입니다."],
+    bylaws: ["BYLAWS", "회칙", "협의회 운영의 기본 약속입니다."],
+    accounting: ["ACCOUNTING", "회계", "회비 안내와 매월 수입 · 지출 공개"],
+    association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH · 관계 기관에 전달합니다."],
     agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수별 위임동의 현황입니다."],
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
-    links: ["LINKS", "바로가기", "LH · 청약 · 세금 · 시청 등 자주 쓰는 기관 사이트와 문의처입니다."],
-    calculator: ["MY HOME", "내 아파트", "가입한 동 · 호수 기준으로 우리 집 평형과 층이 정해집니다. 선택품목을 고르면 총 분양비용과 회차별 납부액, 예상 취득세를 계산합니다."],
-    cafe: ["COMMUNITY", "카페 · 오픈채팅", "입주예정자끼리 이야기를 나누는 곳입니다. 공식 카페는 누구나, 오픈채팅은 위임동의 세대가 들어올 수 있습니다."],
-    info: ["INFORMATION", "정보", "공고문 원문 · 협의회 정리 자료와 자주 묻는 질문입니다."],
-    petition: ["PETITION", "민원 참여", "입주예정자가 함께 내는 민원입니다. 참여 방법과 접수처를 확인하세요."],
+    links: ["LINKS", "바로가기", "자주 쓰는 기관 사이트와 문의처"],
+    calculator: ["MY HOME", "내 아파트", "우리 집 기준 분양비용 · 납부 일정 · 대출 이자 · 취득세"],
+    cafe: ["COMMUNITY", "카페 · 오픈채팅", "공식 카페는 누구나, 오픈채팅은 위임동의 세대만"],
+    info: ["INFORMATION", "정보", "공고문 · 정리 자료 · 자주 묻는 질문"],
+    petition: ["PETITION", "민원 참여", "함께 내는 민원과 참여 방법"],
     documents: ["ARCHIVE", "자료실", "공고문 원문과 협의회가 정리한 자료입니다."],
     faq: ["FAQ", "자주 묻는 질문", "협의회, 계약, 대출, 입주에 관한 질문입니다."]
   };
@@ -237,7 +237,7 @@
   function timeline(list) {
     if (!list.length) return empty("등록된 일정이 없습니다", "");
     return '<ol class="tl">' + list.map(function (x) {
-      return '<li class="' + esc(x.state || "") + '"><span class="when">' + esc(x.when) + '</span><span class="dot"></span><span class="what"><b>' + esc(x.title) + ("") + "</b>" + (x.desc ? "<span>" + (x.auto && x.src ? '<a href="' + esc(safeUrl(x.src)) + '" target="_blank" rel="noopener">' + esc(x.desc) + "</a>" : esc(x.desc)) + "</span>" : "") + "</span></li>";
+      return '<li class="' + esc(x.state || "") + '"><span class="when">' + esc(x.when) + '</span><span class="dot"></span><span class="what"><b>' + esc(x.title) + ("") + "</b>" + (x.desc || (x.auto && x.src) ? "<span>" + esc(x.desc || "") + (x.auto && x.src ? (x.desc ? " · " : "") + '<a href="' + esc(safeUrl(x.src)) + '" target="_blank" rel="noopener">LH 공고 ↗</a>' : "") + "</span>" : "") + "</span></li>";
     }).join("") + "</ol>";
   }
   function memberLine(a, m) { return m != null ? '<small class="members">가입 ' + n(m) + "세대 · 위임 전 " + n(Math.max(0, m - a)) + "세대</small>" : ""; }
@@ -379,7 +379,8 @@
               (c[6] ? '<button type="button" class="ic" data-copy="' + esc(c[6]) + '" title="전화번호 복사">📞</button>' : "") + "</div></li>";
           }).join("");
         }).join("") + "</ul>" +
-        '<button type="button" class="btn wide" id="ptMails">✉️ 보이는 의원 이메일 한 번에 복사</button>' +
+        '<button type="button" class="linkbtn pt2-pplmore" id="ptPplMore" hidden></button>' +
+        '<button type="button" class="btn wide" id="ptMails">✉️ 의원 이메일 한 번에 복사</button>' +
       "</section>" +
       // 3. 참여 체크
       '<section class="panel pt2-sec" id="ptCheck"><h3><span class="pt2-no">3</span>참여 체크</h3><p class="muted small">한 것을 체크해 두세요. 이 기기에만 저장됩니다.</p>' +
@@ -416,8 +417,15 @@
       clearInterval(tick); busy(btn, false); btn.classList.remove("busy");
     });
     // 보내기: 그룹 필터 · 이메일 일괄 복사
-    var grp = "all";
-    seg("ptGrp", "g", function (v) { grp = v; el("ptPeople").querySelectorAll("li").forEach(function (li) { li.hidden = grp !== "all" && li.dataset.g !== grp; }); });
+    var grp = "all", open = false, MORE = 6;   // 전체 보기에서는 6명까지 접어 둠
+    function vis() {
+      var lis = el("ptPeople").querySelectorAll("li"), k = 0, tot = 0;
+      lis.forEach(function (li) { var on = grp === "all" || li.dataset.g === grp; if (on) tot++; li.hidden = !on || (grp === "all" && !open && k++ >= MORE); });
+      var mb = el("ptPplMore"); mb.hidden = grp !== "all" || tot <= MORE; mb.textContent = open ? "접기 ↑" : "전체 " + tot + "명 보기 ↓";
+    }
+    seg("ptGrp", "g", function (v) { grp = v; vis(); });
+    el("ptPplMore").addEventListener("click", function () { open = !open; vis(); });
+    vis();
     el("ptMails").addEventListener("click", function () {
       var list = []; K.contacts.forEach(function (g, gi) { if (grp !== "all" && String(gi) !== grp) return; g.list.forEach(function (c) { if (c[5] && list.indexOf(c[5]) < 0) list.push(c[5]); }); });
       copyText(list.join(", "), this);
@@ -592,7 +600,7 @@
     var by = {}, L = (await lhItems()).filter(function (x) { return x.extra && x.extra.s4 && x.parsed && arr(x.parsed.events).length; });
     // 오래된 공고 → 최신 정정공고 순으로 덮어써서, 최신 공고의 날짜가 남게 함
     L.sort(function (a, b) { return String(a.published_at || "") < String(b.published_at || "") ? -1 : 1; });
-    L.forEach(function (x) { arr(x.parsed.events).forEach(function (e) { by[canon(e.label)] = { when: whenOf(e), title: e.label, desc: "LH 공고문 · " + (e.file || x.title), state: stateOf(e), start: e.start, auto: true, src: x.url }; }); });
+    L.forEach(function (x) { arr(x.parsed.events).forEach(function (e) { by[canon(e.label)] = { when: whenOf(e), title: e.label, desc: "", state: stateOf(e), start: e.start, auto: true, src: x.url }; }); });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
   }
   async function mergedSchedule() {
@@ -603,6 +611,7 @@
       if (/[–~-]/.test(String(e.when).slice(5))) return true;
       return !arr(S.schedule).some(function (s) { return canon(s.title) === canon(e.title) && /^20\d{2}.*[–~]/.test(s.when); });
     });
+    auto.forEach(function (e) { var m = arr(S.schedule).filter(function (s) { return canon(s.title) === canon(e.title) && s.desc; })[0]; if (m) e.desc = m.desc; });   // 협의회 설명이 있으면 같이
     var keys = auto.map(function (e) { return canon(e.title); });
     var rest = arr(S.schedule).filter(function (s) { var c = canon(s.title); return !keys.some(function (k) { return c === k || c.indexOf(k) === 0; }); });
     var autoStarts = auto.map(function (e) { return e.start; });
@@ -993,7 +1002,8 @@
   function say(id, msg, bad) { var m = el(id); if (!m) return; m.hidden = !msg; m.textContent = msg || ""; m.classList.toggle("bad", !!bad); if (msg && id === "admMsg" && m.scrollIntoView) { var r = m.getBoundingClientRect(); if (r.top < 0 || r.bottom > window.innerHeight) m.scrollIntoView({ behavior: "smooth", block: "center" }); } }
   function fmtDate(s) { if (!s) return ""; var d = new Date(s); return d.getFullYear() + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + ("0" + d.getDate()).slice(-2); }
   function fmtTime(s) { var d = new Date(s); return fmtDate(s) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
-  function unitLabel(id) { var u = UNIT[id]; return u ? u.dong + "동 " + u.ho + "호 (" + u.type + ")" : id; }
+  function subType(u) { var t = u.type + ((S.typeSuffix || {})[u.dong] || ""); return S.optCalc && S.optCalc.types && S.optCalc.types[t] ? t : u.type; }
+  function unitLabel(id) { var u = UNIT[id]; return u ? u.dong + "동 " + u.ho + "호 (" + subType(u) + ")" : id; }
   function unitPicker(prefix, current) {
     var dongs = arr(S.layout).map(function (d) { return d.dong; });
     return '<div class="two" style="gap:12px"><div class="field"><label for="' + prefix + 'Dong">동</label><select id="' + prefix + 'Dong" required><option value="">동 선택</option>' +
@@ -1044,8 +1054,8 @@
 
     C.innerHTML =
       '<div class="ag-summary" id="agSum"></div>' + agreeSteps() +
-      (LIVE && !canSee ? '<div class="notice-box">동별 집계는 누구나 볼 수 있습니다. 세대별 현황은 위임장을 낸 세대에게만 보입니다. ' + (API.loggedIn ? '<a href="consent.html">위임동의서 →</a>' : '<a href="login.html">로그인</a>') + "</div>" : "") +
-      (LIVE && API.isMember ? '<div class="notice-box' + (API.hasAgreement ? " good" : "") + '">' + (API.hasAgreement ? "우리 세대(" + esc(unitLabel(myUnit)) + ")는 위임동의를 마쳤습니다." : '우리 세대(' + esc(unitLabel(myUnit)) + ')는 아직 위임동의 전입니다. ' + (API.consentOpen ? '<a href="consent.html">위임동의서 제출 →</a>' : esc(consentOpenLabel()) + " 공급계약 후 제출할 수 있습니다.")) + "</div>" : "") +
+      (LIVE && !canSee && !API.isMember ? '<div class="notice-box">동별 집계는 누구나 볼 수 있습니다. 세대별 현황은 위임장을 낸 세대에게만 보입니다. ' + (API.loggedIn ? '<a href="consent.html">위임동의서 →</a>' : '<a href="login.html">로그인</a>') + "</div>" : "") +
+      (LIVE && API.isMember ? '<div class="notice-box' + (API.hasAgreement ? " good" : "") + '">' + (API.hasAgreement ? esc(unitLabel(myUnit)) + "는 위임동의를 마쳤습니다." : esc(unitLabel(myUnit)) + "는 아직 위임동의 전입니다. 위임하면 세대별 현황도 열립니다. " + (API.consentOpen ? '<a href="consent.html">위임동의서 제출 →</a>' : esc(consentOpenLabel()) + " 공급계약 후 제출할 수 있습니다.")) + "</div>" : "") +
       (canSee ? '<div class="toolbar">' + chips("agTypes", TYPES, "타입") +
         '<form class="find" id="agFind" role="search"><label for="agQ" class="small muted">세대 찾기</label><input id="agQ" placeholder="예: 403-1803" autocomplete="off"><button class="btn" type="submit">찾기</button></form></div>' +
         '<div class="legend small"><span><i class="sw on"></i>위임동의 완료</span>' + (LIVE ? '<span><i class="sw mem"></i>가입 · 위임 전</span>' : "") + '<span><i class="sw off"></i>미가입</span><span><i class="sw none"></i>필로티 · 비주거</span>' + (myUnit ? '<span><i class="sw mine"></i>우리 세대</span>' : "") + "</div>" : "") +
@@ -1263,7 +1273,7 @@
         }).join("") + "</select></div>" +
         '<div class="field"><label for="ocFloor">층</label><select id="ocFloor"></select></div>' +
         '<div class="field"><label for="ocSpace">공간선택</label><select id="ocSpace"><option value="basic">침실2/3 분리</option><option value="A">A형 · 침실2+3 통합</option></select></div>' +
-        '<p class="muted small oc-note">' + (ME && !FREE ? (ME.sub ? "세부 주택형은 LH 분양 팸플릿의 동·호배치도로 정해집니다(고층동 H · 저층동 L · 그 밖은 기본형). 계약서의 주택형과 다르면 운영진에게 알려 주세요." : "같은 계열에도 세부평형(L · H 등)에 따라 분양가가 조금 다릅니다. 계약서나 동호배치표의 주택형을 확인해 골라 주세요. 선택품목은 같습니다.") : "세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.") + "</p>" +
+        (FREE ? '<p class="muted small oc-note">세부평형(L · H)과 층은 계약서의 동 · 호로 확인하세요. 같은 계열은 선택품목이 같습니다.</p>' : "") +
       "</form>" +
       '<details class="panel oc-media-d" id="ocMediaD"' + (window.innerWidth > 760 ? " open" : "") + '><summary><b>평면도 · LH 공식 VR 보기</b><span class="muted small" id="ocMediaS"></span></summary><div class="oc-media" id="ocMedia"></div></details>' +
       '<div class="oc-opthead"><h2 class="oc-h"><span class="oc-no">2</span>선택품목 고르기</h2><button type="button" class="btn sm" id="ocReset">모두 풀기</button><span class="muted small" id="ocFamInfo"></span></div>' +
@@ -1280,23 +1290,23 @@
       "<div>" + '<div class="oc-payh"><h2 class="oc-h"><span class="oc-no">3</span>회차별 납부 예정액</h2><button type="button" class="btn sm" id="ocPayFull" aria-pressed="false">항목별로 보기</button></div><p class="muted small" style="margin:-4px 0 10px">입주 시 잔여금액은 대출 적용 전 금액입니다.</p>' +
         '<div class="tablebox"><table class="spec oc-pay" id="ocPayT"><thead><tr><th>회차 · 예정일</th><th class="r d">주택</th><th class="r d">발코니</th><th class="r d">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
       '<div class="oc-loan"><div class="oc-payh"><h2 class="oc-h"><span class="oc-no">4</span>중도금 대출 · 매월 이자 준비금</h2></div>' +
-        '<p class="muted small" style="margin:-4px 0 10px">중도금(1~6차)을 집단대출로 내면 입주 때 잔금과 함께 갚을 때까지 대출 이자를 매달 냅니다. 금리 · 대출 한도 · 이자 납부 방식은 LH와 은행의 협약이 확정되면 안내되니, 지금은 예상 금리로 매달 준비할 돈을 미리 가늠해 보세요.</p>' +
+        '<p class="muted small" style="margin:-4px 0 10px">중도금을 집단대출로 내면 입주 때까지 매달 이자를 냅니다. 금리 · 조건은 은행 협약 후 확정됩니다.</p>' +
         '<form class="panel oc-loanf" id="ocLoanF" novalidate>' +
           '<div class="field"><label for="ocRate">예상 금리 <span class="muted small">연 %</span></label><input id="ocRate" type="number" inputmode="decimal" min="0" max="20" step="0.05" value="4.5"></div>' +
-          '<div class="field oc-loan-k"><span class="lbl">대출로 낼 회차 <span class="muted small">빼면 그 회차는 현금으로 냄</span></span><div class="oc-chips">' +
+          '<div class="field oc-loan-k"><span class="lbl">대출로 낼 회차 <span class="muted small">빼면 현금 납부</span></span><div class="oc-chips">' +
             D.dates.slice(1, 7).map(function (d, i) { return '<label><input type="checkbox" id="ocLn' + (i + 1) + '" checked><span>' + (i + 1) + "차 <small>" + esc(d.slice(2)) + "</small></span></label>"; }).join("") + "</div></div>" +
           '<label class="check"><input type="checkbox" id="ocLnAll"> 발코니 · 선택품목 중도금도 대출로 (보통은 현금 납부)</label>' +
-          '<div class="field oc-loan-k"><span class="lbl">일부 상환 <span class="muted small">여유 자금이 생길 때마다 여러 번 나눠 갚는 경우</span></span><div id="ocPres" class="oc-pres"></div><button type="button" class="btn sm" id="ocPreAdd">+ 상환 추가</button></div>' +
+          '<div class="field oc-loan-k"><span class="lbl">일부 상환 <span class="muted small">여러 번 가능</span></span><div id="ocPres" class="oc-pres"></div><button type="button" class="btn sm" id="ocPreAdd">+ 상환 추가</button></div>' +
                   "</form>" +
         '<div class="oc-loan-sum" id="ocLoanSum"></div>' +
         '<div class="tablebox"><table class="spec oc-loan-t"><thead><tr><th>기간</th><th class="r">대출 잔액</th><th class="r">매월 이자</th><th class="r">개월</th><th class="r d">기간 이자</th></tr></thead><tbody id="ocLoanT"></tbody></table></div>' +
-        '<p class="muted small">월 이자 = 그달 대출 잔액 × 금리 ÷ 12로 어림한 값입니다. 실제로는 은행의 일 단위 계산 · 납입일 · 금리 변동에 따라 다르고, 입주(' + esc(S.moveInText || "2030년 3월") + ') 때 남은 대출은 잔금과 함께 갚거나 잔금대출로 바꿉니다. 중도금 대출은 협약 은행 · 개인 신용 · 정부 대출 규제에 따라 한도가 줄거나 안 될 수도 있습니다.</p></div>' +
+        '<p class="muted small">월 이자 = 대출 잔액 × 금리 ÷ 12 (어림값). 입주 때 남은 대출은 잔금과 함께 갚거나 잔금대출로 바꿉니다. 은행 · 규제에 따라 한도가 줄 수 있습니다.</p></div>' +
       '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
         '<label class="check"><input type="checkbox" id="ocFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
         '<div class="tablebox"><table class="spec"><tbody id="ocTax"></tbody></table></div></div>' +
-      '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">금액은 ' + esc(D.src) + "의 표를 옮긴 값입니다. 계약금과 중도금 1~6차는 각 항목 금액의 10%(천원 미만 버림), 입주 시 잔여금액은 나머지입니다. 마이너스옵션을 고르면 주택 · 발코니 금액이 마이너스옵션 가격으로 바뀌고 선택품목은 고를 수 없습니다.</p>" +
-        '<p class="muted small">취득세 과세표준은 총 분양비용(주택 + 발코니 + 선택품목)입니다. 세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%이며 지방교육세는 취득세의 10%입니다. 취득세는 잔금을 내는 입주 시점(2030년 예정)의 법을 따르므로 실제 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p>' +
-        (D.credit ? '<p class="muted small">품목 사진 · 평면도는 ' + esc(D.credit.by || "입주예정자") + '이 정리한 <a href="' + esc(safeUrl(D.credit.url)) + '" target="_blank" rel="noopener">' + esc(D.credit.label) + " ↗</a>의 자료를, 공간 미리보기 · VR은 LH 공식 사이버모델하우스를 불러옵니다. 사진은 팸플릿 기준이라 실제와 다를 수 있습니다.</p>" : "") +
+      '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">금액은 ' + esc(D.src) + "의 표 기준. 계약금 · 중도금은 각 10%(천원 미만 버림), 잔금은 나머지입니다.</p>" +
+        '<p class="muted small">취득세는 총 분양비용 기준 현행 세율(6억 이하 1% · 9억 초과 3% · 그 사이 누진, 지방교육세 10%)로 계산했습니다. 입주 시점의 법이 적용되니 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p>' +
+        (D.credit ? '<p class="muted small">품목 사진은 LH 분양 팸플릿, 평면도는 ' + esc(D.credit.by || "입주예정자") + '의 <a href="' + esc(safeUrl(D.credit.url)) + '" target="_blank" rel="noopener">' + esc(D.credit.label) + " ↗</a>, VR은 LH 사이버모델하우스 자료입니다. 실제 시공과 다를 수 있습니다.</p>" : "") +
       "</div></div>";
     var TY = el("ocType"), FL = el("ocFloor"), SPC = el("ocSpace"), BOX = el("ocOpts");
     function mode() { var r = C.querySelector('input[name="ocMode"]:checked'); return r ? r.value : "basic"; }
@@ -1344,7 +1354,7 @@
     function build() {
       var F = fam(), fl = D.types[TY.value][1], keep = FL.value;
       FL.innerHTML = Object.keys(fl).map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + "</option>"; }).join("");
-      if (ME && !FREE) { FL.value = ME.key; FL.disabled = true; }
+      if (ME && !FREE) { FL.value = ME.key; FL.disabled = true; FL.closest(".field").hidden = true; TY.closest(".field").hidden = TY.options.length < 2; }
       else if (ME && fl[ME.key] && !keep) FL.value = ME.key;
       else if (fl[keep]) FL.value = keep; else FL.value = Object.keys(fl)[Object.keys(fl).length - 1];
       var FK = D.types[TY.value][0];
@@ -1494,7 +1504,7 @@
       var st = el("ocSaveSt"), b = el("ocSave"); if (!st || !SV_READY) return;
       var same = SAVED && sameSnap(SAVED, snap());
       b.disabled = !!same; b.textContent = SAVED ? (same ? "저장됨" : "변경 내용 저장") : "내 선택 저장";
-      st.textContent = SAVED ? (same ? hm(SAVED_AT) + " 저장 · 다른 기기에서 로그인해도 그대로 보입니다" : "저장 안 된 변경이 있습니다 (" + hm(SAVED_AT) + " 저장본과 다름)") : "저장하면 다른 기기에서 로그인해도 이 선택이 그대로 보입니다.";
+      st.textContent = SAVED ? (same ? hm(SAVED_AT) + " 저장됨" : "저장 안 된 변경이 있습니다") : "저장하면 다른 기기에서도 불러옵니다.";
     }
     el("ocForm").addEventListener("submit", function (e) { e.preventDefault(); });
     TY.addEventListener("change", function () { SPC.value = "basic"; build(); });
