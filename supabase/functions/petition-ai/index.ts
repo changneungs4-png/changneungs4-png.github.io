@@ -40,33 +40,64 @@ export function buildPrompt(kind, persona, base, tone) {
 }
 
 // Google Gemini (AI Studio 무료 등급 가능)
-// 모델 이름이 바뀌거나(404) 무료 한도가 찼을 때(429) 다음 모델로 넘어감. 무료 한도는 모델마다 따로 셈
-export const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.0-flash"];
+// 모델 이름은 Google이 자주 바꾸고, 새 키에는 예전 모델(2.5 등)을 막기도 함 → 이 키로 쓸 수 있는 모델 목록을 물어서 고름
+export const GEMINI_FALLBACK = ["gemini-flash-lite-latest", "gemini-flash-latest"];
+let MODEL_CACHE = null, MODEL_AT = 0;
+export function rankModels(names) {
+  const ok = names.filter((n) => /flash/.test(n) && !/image|tts|audio|live|embed|vision|thinking-exp|computer|robotics/.test(n));
+  // 새 버전 우선(버전 × 10), 같은 버전이면 빠른 lite, 정식 > preview. latest 별칭은 버전을 모르니 중간쯤
+  const ver = (n) => /latest/.test(n) ? 2.5 : Number((n.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+  const score = (n) => (/lite/.test(n) ? 0 : 3) + (/preview|exp/.test(n) ? 4 : 0) - ver(n) * 10;
+  return ok.sort((x, y) => score(x) - score(y));
+}
+export function resetModelCache() { MODEL_CACHE = null; }
+async function geminiModels(env, fetcher) {
+  if (MODEL_CACHE && Date.now() - MODEL_AT < 6 * 3600e3) return MODEL_CACHE;
+  let names = [];
+  try {
+    const r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": env.GEMINI_API_KEY }, signal: AbortSignal.timeout(8000) });
+    if (r.ok) names = ((await r.json()).models || []).filter((m) => (m.supportedGenerationMethods || []).includes("generateContent")).map((m) => String(m.name).replace(/^models\//, ""));
+    else console.error("gemini list", r.status, (await r.text()).slice(0, 160));
+  } catch (e) { console.error("gemini list", String(e)); }
+  const ranked = rankModels(names);
+  MODEL_CACHE = [...new Set([env.PETITION_AI_MODEL, ...ranked, ...GEMINI_FALLBACK].filter(Boolean))]; MODEL_AT = Date.now();
+  return MODEL_CACHE;
+}
+// 생각(thinking)을 줄여 빨리 답하게. Gemini 3 계열은 thinkingLevel, 2.x는 thinkingBudget
+function thinking(model) { return /gemini-[3-9]/.test(model) || /latest/.test(model) ? { thinkingLevel: "low" } : { thinkingBudget: 0 }; }
 async function gemini(p, env, fetcher) {
-  const list = [...new Set([env.PETITION_AI_MODEL, ...GEMINI_MODELS].filter(Boolean))];
+  const list = await geminiModels(env, fetcher), t0 = Date.now(), DEAD = Number(env.AI_DEADLINE_MS) || 75000;
   let last = "";
-  for (const model of list) {
-    const r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
-      method: "POST", signal: AbortSignal.timeout(40000),
-      headers: { "x-goog-api-key": env.GEMINI_API_KEY, "content-type": "application/json" },
-      // 생각(thinking) 토큰도 출력 한도에 포함되므로 넉넉히
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: p.system }] }, contents: [{ role: "user", parts: [{ text: p.user }] }],
-        generationConfig: { temperature: 1, maxOutputTokens: 8192 } }),
-    });
-    const raw = await r.text();
-    if (!r.ok) {
-      last = "HTTP " + r.status + " " + raw.slice(0, 160);
+  for (const model of list.slice(0, 5)) {
+    if (Date.now() - t0 > DEAD) break;
+    for (const useThink of [true, false]) {
+      const cfg = { temperature: 1, maxOutputTokens: 4096 }; if (useThink) cfg.thinkingConfig = thinking(model);
+      let r;
+      try {
+        r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
+          method: "POST", signal: AbortSignal.timeout(Math.max(200, Math.min(Number(env.AI_CALL_MS) || 30000, DEAD - (Date.now() - t0)))),
+          headers: { "x-goog-api-key": env.GEMINI_API_KEY, "content-type": "application/json" },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: p.system }] }, contents: [{ role: "user", parts: [{ text: p.user }] }], generationConfig: cfg }),
+        });
+      } catch (e) { last = model + " 시간 초과"; console.error("gemini", model, String(e)); break; }   // 느린 모델은 건너뜀
+      const raw = await r.text();
+      if (!r.ok) {
+        last = "HTTP " + r.status + " " + raw.slice(0, 160);
+        console.error("gemini", model, last);
+        if (r.status === 400 && useThink && /think/i.test(raw)) continue;           // 생각 설정을 모르는 모델 → 설정 없이 다시
+        if (r.status === 404 || r.status === 429 || r.status >= 500) break;         // 다음 모델로
+        throw new Error(last);                                                      // 키 오류 등은 바로 알림
+      }
+      let out = {}; try { out = JSON.parse(raw); } catch { /* */ }
+      const c = (out.candidates || [])[0] || {};
+      const text = ((c.content || {}).parts || []).filter((x) => x.text && !x.thought).map((x) => x.text).join("");
+      if (text.trim()) return text;
+      last = "빈 응답 (" + (c.finishReason || (out.promptFeedback || {}).blockReason || "이유 없음") + ")";
       console.error("gemini", model, last);
-      if (r.status === 404 || r.status === 429 || r.status >= 500) continue;   // 다음 모델로
-      throw new Error(last);                                                     // 키 오류(400 · 403) 등은 바로 알림
+      break;
     }
-    let out = {}; try { out = JSON.parse(raw); } catch { /* */ }
-    const c = (out.candidates || [])[0] || {};
-    const text = ((c.content || {}).parts || []).filter((x) => x.text && !x.thought).map((x) => x.text).join("");
-    if (text.trim()) return text;
-    last = "빈 응답 (" + (c.finishReason || (out.promptFeedback || {}).blockReason || "이유 없음") + ")";
-    console.error("gemini", model, last);
   }
+  if (/404/.test(last)) resetModelCache();
   throw new Error(last || "Gemini 응답 없음");
 }
 // Anthropic Claude (유료)
@@ -111,6 +142,7 @@ export async function handle(req, env, fetcher = fetch) {
     return json({ error: /429|RESOURCE_EXHAUSTED/.test(m) ? "무료 AI 사용량이 잠시 찼습니다. 1~2분 뒤 다시 눌러 주세요"
       : /API_KEY_INVALID|API key not valid/i.test(m) ? "AI 키가 올바르지 않습니다. 운영진에게 알려 주세요 (GEMINI_API_KEY 확인)"
       : /location is not supported/i.test(m) ? "이 서버 위치에서는 Gemini 무료 API를 쓸 수 없습니다"
+      : /시간 초과/.test(m) ? "AI가 너무 오래 걸려 멈췄습니다. 잠시 뒤 다시 눌러 주세요"
       : "AI 응답 오류 (" + m.slice(0, 90) + ")" }, 502);
   }
   text = text.trim().replace(/^["“]|["”]$/g, "");

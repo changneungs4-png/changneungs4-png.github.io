@@ -405,14 +405,15 @@
     el("ptCopy").addEventListener("click", function () { copyText(T.value, this); });
     example();
     if (member) el("ptAi").addEventListener("click", async function () {
-      var btn = this; btn.classList.add("busy"); busy(btn, true, "Gemini가 쓰는 중…");
+      var btn = this, t0 = Date.now(); btn.classList.add("busy"); busy(btn, true, "Gemini가 쓰는 중…");
+      var tick = setInterval(function () { var sec = Math.round((Date.now() - t0) / 1000); btn.textContent = "Gemini가 쓰는 중… " + sec + "초" + (sec >= 15 ? " (조금만 기다려 주세요)" : ""); }, 1000);
       try {
         var r = await API.petitionAi({ kind: kind, persona: K.personas[persona][0], tone: PT_TONES[tone][1], base: T.value });
         setText(r.text, "Gemini가 쓴 글 · " + PT_KINDS.filter(function (k) { return k[0] === kind; })[0][1]);
         if (r.left != null) el("ptLeft").textContent = "오늘 남은 횟수 " + r.left + "번 · 누를 때마다 새로운 문장을 씁니다 · 보내기 전에 사실을 한 번 확인해 주세요";
         btn.dataset.l = "✦ Gemini로 다시 쓰기";
       } catch (e) { toast((e && e.message) || "AI 응답을 받지 못했습니다"); }
-      busy(btn, false); btn.classList.remove("busy");
+      clearInterval(tick); busy(btn, false); btn.classList.remove("busy");
     });
     // 보내기: 그룹 필터 · 이메일 일괄 복사
     var grp = "all";

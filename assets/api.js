@@ -136,7 +136,10 @@
     // 민원 문구 AI 새로 쓰기 (승인 회원 · 하루 횟수 제한은 서버에서)
     petitionAi: async function (o) {
       need();
-      var r = await fetch(CFG.supabaseUrl + "/functions/v1/petition-ai", { method: "POST", headers: { authorization: "Bearer " + st.session.access_token, apikey: CFG.supabaseAnonKey, "content-type": "application/json" }, body: JSON.stringify(o) });
+      var ac = window.AbortController ? new AbortController() : null, tm = ac && setTimeout(function () { ac.abort(); }, 100000), r;
+      try { r = await fetch(CFG.supabaseUrl + "/functions/v1/petition-ai", { method: "POST", signal: ac ? ac.signal : undefined, headers: { authorization: "Bearer " + st.session.access_token, apikey: CFG.supabaseAnonKey, "content-type": "application/json" }, body: JSON.stringify(o) }); }
+      catch (e) { throw new Error(e && e.name === "AbortError" ? "AI 응답이 너무 늦어 멈췄습니다. 잠시 뒤 다시 눌러 주세요" : "AI에 연결하지 못했습니다"); }
+      finally { if (tm) clearTimeout(tm); }
       var j = {}; try { j = await r.json(); } catch (e) {}
       if (!r.ok || !j.text) throw new Error(j.error || (r.status === 404 ? "AI 기능이 아직 설치되지 않았습니다" : "AI 응답을 받지 못했습니다 (HTTP " + r.status + ")"));
       return j;
