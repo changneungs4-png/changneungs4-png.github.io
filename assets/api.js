@@ -298,9 +298,10 @@
         need();
         var r = await fetch(CFG.supabaseUrl + "/functions/v1/collect-news", { method: "POST", headers: { authorization: "Bearer " + st.session.access_token, apikey: CFG.supabaseAnonKey, "content-type": "application/json" }, body: "{}" });
         var j = {}; try { j = await r.json(); } catch (e) {}
-        if (!r.ok) throw new Error(j.error || "수집기를 호출하지 못했습니다. Edge Function 배포 상태를 확인하세요. (HTTP " + r.status + ")");
+        if (!r.ok) throw new Error(j.error || (r.status === 546 ? "수집기가 실행 시간 제한(150초)에 걸려 중단됐습니다. 새 수집기(collect-news)로 다시 배포했는지 확인하세요. (HTTP 546)" : "수집기를 호출하지 못했습니다. Edge Function 배포 상태를 확인하세요. (HTTP " + r.status + ")"));
         return j;
       },
+      collectRuns: async function () { need(); var r = await sb.rpc("collect_runs_recent", { p_limit: 10 }); return r.error ? null : (r.data || []); },
       orphans: async function () { need(); return must(await sb.rpc("admin_orphan_accounts")); },
       deleteAccount: async function (p) {
         need();

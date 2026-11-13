@@ -205,43 +205,55 @@ export function tablesFrom(json) {
 // LH 목록 API는 YYYYMMDD 형식만 받습니다(점 구분은 0건).
 function ymd(d) { return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
 
+// 여러 요청을 n개씩 동시에 (Edge Function은 150초를 넘으면 강제 종료되므로 하나씩 기다리지 않음)
+export async function pool(list, n, fn) {
+  const out = []; let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, list.length) }, async () => { while (i < list.length) { const k = i++; out[k] = await fn(list[k], k); } }));
+  return out;
+}
+
 export async function collect(env, fetcher = fetch) {
-  const items = [], errors = [];
+  const items = [], errors = [], t0 = Date.now(), BUDGET = Number(env.BUDGET_MS) || 100000;
+  const late = () => Date.now() - t0 > BUDGET;   // 남은 시간이 없으면 남은 검색은 건너뛰고 찾은 것만 저장
+  const fx = (u, o = {}) => fetcher(u, { ...o, signal: AbortSignal.timeout(Number(env.FETCH_MS) || 15000) });
+  let skipped = 0;
   // 구글 뉴스는 기간마다 돌려주는 기사가 달라서(긴 기간엔 최근 기사가 빠지기도 함) 7일 · 30일 · 120일을 모두 봄
-  for (const { topic, q, loose } of NEWS_QUERIES) {
-    let fails = 0, last = "";
-    for (const w of ["when:7d", "when:30d", "when:120d"]) {
-      try {
-        const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " " + w);
-        const r = await fetcher(u, { headers: { "user-agent": "changneung-s4-news-bot" } });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        items.push(...parseRss(await r.text(), topic, !!loose));
-      } catch (e) { fails++; last = e.message; }
-    }
-    if (fails === 3) errors.push("뉴스(" + q + "): " + last);
-  }
+  const jobs = [];
+  for (const nq of NEWS_QUERIES) for (const w of ["when:7d", "when:30d", "when:120d"]) jobs.push({ ...nq, w });
+  const fails = {};
+  await pool(jobs, 8, async ({ topic, q, loose, w }) => {
+    if (late()) { skipped++; return; }
+    try {
+      const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " " + w);
+      const r = await fx(u, { headers: { "user-agent": "changneung-s4-news-bot" } });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      items.push(...parseRss(await r.text(), topic, !!loose));
+    } catch (e) { (fails[q] = fails[q] || []).push(e.message); }
+  });
+  for (const [q, f] of Object.entries(fails)) if (f.length === 3) errors.push("뉴스(" + q + "): " + f[2]);
   const daum = [];
   if (env.KAKAO_REST_API_KEY) {
-    for (const { topic, q } of KAKAO_QUERIES) {
+    await pool(KAKAO_QUERIES, 5, async ({ topic, q }) => {
       const stat = { q, raw: 0, news: 0, kept: 0 };
+      daum.push(stat);
+      if (late()) { skipped++; return; }
       try {
         for (let page = 1; page <= 3; page++) {      // 최신순 150건까지
-          const r = await fetcher("https://dapi.kakao.com/v2/search/web?sort=recency&size=50&page=" + page + "&query=" + encodeURIComponent(q), { headers: { authorization: "KakaoAK " + env.KAKAO_REST_API_KEY } });
+          const r = await fx("https://dapi.kakao.com/v2/search/web?sort=recency&size=50&page=" + page + "&query=" + encodeURIComponent(q), { headers: { authorization: "KakaoAK " + env.KAKAO_REST_API_KEY } });
           if (!r.ok) throw new Error("HTTP " + r.status + " " + (await r.text()).slice(0, 120));
           const j = await r.json(), got = parseKakao(j, topic, Date.now(), stat);
           stat.kept += got.length; items.push(...got);
           if (!j.meta || j.meta.is_end) break;
         }
       } catch (e) { errors.push("다음 검색(" + q + "): " + e.message); }
-      daum.push(stat);
-    }
+    });
   }
   if (env.LH_API_KEY) {
     try {
       const now = new Date(), from = new Date(now.getTime() - 2 * 365 * 864e5), to = now;
       const u = "https://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1?serviceKey=" + encodeURIComponent(env.LH_API_KEY) +
         "&PG_SZ=100&PAGE=1&PAN_NM=" + encodeURIComponent("창릉") + "&PAN_ST_DT=" + ymd(from) + "&PAN_ED_DT=" + ymd(to);
-      const r = await fetcher(u);
+      const r = await fx(u);
       const body = await r.text();
       if (!r.ok) throw new Error("HTTP " + r.status + " " + body.slice(0, 200));
       let json; try { json = JSON.parse(body); } catch { throw new Error("JSON 아님: " + body.slice(0, 200)); }
@@ -259,22 +271,23 @@ export async function collect(env, fetcher = fetch) {
   // LH 공고: 상세(일정 · 단지 · 첨부) + 공급정보(주택형별 세대수) 붙이기. 매번 최신 내용으로 갱신
   let detailed = 0;
   const lhItems = uniq.filter((x) => x.kind === "lh").slice(0, 20);
-  for (const it of lhItems) {
+  await pool(lhItems, 4, async (it) => {
     const ids = it.extra.ids || {};
-    if (!ids.PAN_ID || !ids.SPL_INF_TP_CD || !ids.CCR_CNNT_SYS_DS_CD || !ids.UPP_AIS_TP_CD) continue;
+    if (late()) { skipped++; return; }
+    if (!ids.PAN_ID || !ids.SPL_INF_TP_CD || !ids.CCR_CNNT_SYS_DS_CD || !ids.UPP_AIS_TP_CD) return;
     const qs = "serviceKey=" + encodeURIComponent(env.LH_API_KEY) + "&PAN_ID=" + encodeURIComponent(ids.PAN_ID) + "&SPL_INF_TP_CD=" + encodeURIComponent(ids.SPL_INF_TP_CD) +
       "&CCR_CNNT_SYS_DS_CD=" + encodeURIComponent(ids.CCR_CNNT_SYS_DS_CD) + "&UPP_AIS_TP_CD=" + encodeURIComponent(ids.UPP_AIS_TP_CD) + (ids.AIS_TP_CD ? "&AIS_TP_CD=" + encodeURIComponent(ids.AIS_TP_CD) : "");
     const tables = [], attachments = [];
     for (const [name, path] of [["상세", "lhLeaseNoticeDtlInfo1/getLeaseNoticeDtlInfo1"], ["공급정보", "lhLeaseNoticeSplInfo1/getLeaseNoticeSplInfo1"]]) {
       try {
-        const r = await fetcher("https://apis.data.go.kr/B552555/" + path + "?" + qs);
+        const r = await fx("https://apis.data.go.kr/B552555/" + path + "?" + qs);
         if (!r.ok) throw new Error("HTTP " + r.status);
         const t = tablesFrom(await r.json());
         tables.push(...t.tables); attachments.push(...t.attachments);
       } catch (e) { errors.push("LH " + name + "(" + it.title.slice(0, 20) + "): " + e.message); }
     }
     if (tables.length || attachments.length) { it.extra.tables = tables; it.extra.attachments = attachments; it.extra.detail_at = new Date().toISOString(); detailed++; }
-  }
+  });
 
   const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" };
   let inserted = 0;
@@ -283,14 +296,17 @@ export async function collect(env, fetcher = fetch) {
     const r = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?on_conflict=url", { method: "POST", headers: { ...H, prefer: "resolution=ignore-duplicates,return=representation" }, body: JSON.stringify(news) });
     if (!r.ok) errors.push("저장(기사): HTTP " + r.status + " " + (await r.text()).slice(0, 200)); else inserted += (await r.json()).length;
     // 이미 저장된 기사도 이번 분류(S-4 · 교통 · 창릉)로 주제를 맞춤
+    const parts = [];
     for (const t of ["S-4", "교통", "창릉"]) {
       const urls = news.filter((x) => x.topic === t).map((x) => x.url);
-      for (let i = 0; i < urls.length; i += 8) {
-        const part = urls.slice(i, i + 8).map((u) => '"' + u.replace(/"/g, '\\"') + '"').join(",");
-        const u = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?kind=eq.news&topic=neq." + encodeURIComponent(t) + "&url=in.(" + encodeURIComponent(part) + ")", { method: "PATCH", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ topic: t }) });
-        if (!u.ok) errors.push("주제 갱신: HTTP " + u.status);
-      }
+      for (let i = 0; i < urls.length; i += 8) parts.push([t, urls.slice(i, i + 8)]);
     }
+    await pool(parts, 6, async ([t, list]) => {
+      if (Date.now() - t0 > BUDGET + 25000) return;   // 저장은 끝났으니 주제 맞춤은 다음 수집 때 이어서
+      const part = list.map((u) => '"' + u.replace(/"/g, '\\"') + '"').join(",");
+      const u = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?kind=eq.news&topic=neq." + encodeURIComponent(t) + "&url=in.(" + encodeURIComponent(part) + ")", { method: "PATCH", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ topic: t }) });
+      if (!u.ok) errors.push("주제 갱신: HTTP " + u.status);
+    });
   }
   if (lh.length) {     // LH 공고: 상태 · 마감 · 일정이 바뀌므로 갱신 (숨김 여부는 건드리지 않음)
     const before = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?select=url&kind=eq.lh", { headers: H });
@@ -298,7 +314,8 @@ export async function collect(env, fetcher = fetch) {
     const r = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?on_conflict=url", { method: "POST", headers: { ...H, prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(lh) });
     if (!r.ok) errors.push("저장(LH): HTTP " + r.status + " " + (await r.text()).slice(0, 200)); else inserted += lh.filter((x) => !had.has(x.url)).length;
   }
-  return { found: uniq.length, inserted, detailed, errors, daum };
+  if (skipped) errors.push("시간 제한으로 검색 " + skipped + "건을 건너뜀(다음 수집 때 다시 찾음)");
+  return { found: uniq.length, inserted, detailed, errors, daum, skipped, ms: Date.now() - t0 };
 }
 
 // 호출 권한: pg_cron(비밀 헤더) 또는 로그인한 운영진
@@ -330,8 +347,22 @@ export async function handle(req, env, fetcher = fetch) {
     const names = [...t.matchAll(/"PAN_NM":"([^"]*)".{0,400}?"PAN_NT_ST_DT":"([^"]*)"/g)].map((m) => m[2] + " " + m[1]);
     return new Response(JSON.stringify({ status: r.status, count: names.length, names: names.slice(0, 40), head: t.slice(0, 600) }), { headers: { ...CORS, "content-type": "application/json" } });
   }
-  const res = await collect(env, fetcher);
-  return new Response(JSON.stringify(res), { headers: { ...CORS, "content-type": "application/json" } });
+  // 실행 기록(collect_runs): 시작할 때 한 줄 남기고 끝나면 결과를 채움. 강제 종료되면 '끝남' 칸이 빈 채로 남아 실패로 보임
+  const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" };
+  let runId = null;
+  try {
+    const r = await fetcher(env.SUPABASE_URL + "/rest/v1/collect_runs", { method: "POST", headers: { ...H, prefer: "return=representation" }, body: JSON.stringify({ source: req.headers.get("x-cron-secret") ? "cron" : "manual" }) });
+    if (r.ok) runId = (await r.json())[0]?.id ?? null;
+  } catch { /* 기록 표가 없어도 수집은 계속 */ }
+  let res;
+  try { res = await collect(env, fetcher); }
+  catch (e) { res = { found: 0, inserted: 0, errors: ["수집 중 오류: " + e.message], fatal: true }; }
+  if (runId != null) {
+    const ok = !res.fatal && !res.errors.some((x) => /^저장/.test(x)) && res.found > 0;
+    await fetcher(env.SUPABASE_URL + "/rest/v1/collect_runs?id=eq." + runId, { method: "PATCH", headers: { ...H, prefer: "return=minimal" },
+      body: JSON.stringify({ finished_at: new Date().toISOString(), ok, found: res.found, inserted: res.inserted, errors: res.errors.slice(0, 20).map((x) => String(x).slice(0, 300)) }) }).catch(() => {});
+  }
+  return new Response(JSON.stringify(res), { status: res.fatal ? 500 : 200, headers: { ...CORS, "content-type": "application/json" } });
 }
 
 // Deno(Supabase Edge Runtime)에서만 서버 시작

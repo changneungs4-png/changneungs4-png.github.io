@@ -1,4 +1,4 @@
-# 새 가입 신청을 협의회 메일로 알립니다 (30분마다).
+# 새 가입 신청 · 위임 철회 · 아침 소식 수집 실패를 협의회 메일로 알립니다 (30분마다).
 # 저장소 Settings → Secrets and variables → Actions 에 넣어주세요.
 #   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (공고문 읽기와 같은 값)
 #   GMAIL_APP_PASSWORD  협의회 Gmail의 "앱 비밀번호" 16자리 (2단계 인증을 켠 뒤 발급)

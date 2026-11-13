@@ -979,3 +979,11 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
   .oc-bar a{color:var(--on-pine);font-weight:700;text-decoration:underline}
 }
 @media (max-width:520px){ .oc-pick{grid-template-columns:minmax(0,1fr)} }
+.collect-st{border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:10px;padding:12px 16px;margin-bottom:14px;background:var(--surface);display:grid;gap:8px}
+.collect-st.ok{border-left-color:var(--pine)}
+.collect-st.ok b{color:var(--pine)}
+.collect-st.bad{border-left-color:var(--signal);background:var(--signal-soft)}
+.collect-st.bad b{color:var(--signal)}
+.collect-st summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.collect-st .tablebox{margin-top:8px}
+.collect-st>*{min-width:0}

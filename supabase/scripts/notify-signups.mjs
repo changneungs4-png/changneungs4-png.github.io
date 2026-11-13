@@ -39,13 +39,43 @@ export async function notifyWithdrawals(env, fetcher, H, get, send) {
   return { withdrawals: self.length, sent: self.length };
 }
 
+// 오늘 아침(07:13) 소식 자동 수집이 실패 · 중단 · 미실행이면 하루 한 번 메일로 알림 (07:40 이후 확인)
+export function kstNow(now = new Date()) { const k = new Date(now.getTime() + 9 * 3600e3).toISOString(); return { day: k.slice(0, 10), hm: k.slice(11, 16) }; }
+export async function checkCollect(env, fetcher, H, get, send, now = new Date()) {
+  const { day, hm } = kstNow(now);
+  if (hm < "07:40") return { collect: "확인 전" };
+  const since = new Date(day + "T00:00:00+09:00").toISOString();
+  let runs;
+  try { runs = await get("collect_runs?select=id,source,ok,started_at,finished_at,errors,alerted_at&started_at=gte." + encodeURIComponent(since) + "&order=started_at.desc&limit=20"); }
+  catch (e) { if (/HTTP 4\d\d/.test(e.message)) return { collect: "수집 기록 DB 설정 전" }; throw e; }
+  if (runs.some((r) => r.ok)) return { collect: "정상" };                      // 자동이든 수동이든 오늘 한 번 성공했으면 알리지 않음
+  const cron = runs.find((r) => r.source === "cron");
+  const running = cron && !cron.finished_at && now - new Date(cron.started_at) < 180e3;
+  if (running) return { collect: "진행 중" };
+  // 같은 날 두 번 보내지 않음 (alerted_at). 실행 기록이 없으면 '미실행' 기록을 남겨 운영진 화면에도 보이게 함
+  if (cron && cron.alerted_at) return { collect: "이미 알림" };
+  const why = !cron ? "오늘 07:13 자동 수집이 실행되지 않았습니다(예약 실행 기록 없음)."
+    : !cron.finished_at ? "자동 수집이 실행 시간 제한(150초)으로 중단됐습니다."
+    : "자동 수집이 실패했습니다: " + (cron.errors || []).slice(0, 3).join(" / ");
+  const site = env.SITE_URL || "https://changneungs4-png.github.io";
+  const mail = { subject: "[창릉 S-4 입예협] 오늘 아침 소식 자동 수집 확인 필요", text: why + "\n\n운영진 페이지 > 자동 수집에서 \"지금 수집\"을 누르면 바로 다시 가져옵니다.\n" + site + "/admin.html#news\n\n— 이 메일은 자동으로 보냈습니다." };
+  if (!send) return { collect: "실패", sent: 0, skipped: "메일 설정 없음", preview: why };
+  await send(mail);
+  const w = cron
+    ? await fetcher(env.SUPABASE_URL + "/rest/v1/collect_runs?id=eq." + cron.id, { method: "PATCH", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ alerted_at: now.toISOString() }) })
+    : await fetcher(env.SUPABASE_URL + "/rest/v1/collect_runs", { method: "POST", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ source: "cron", started_at: now.toISOString(), finished_at: now.toISOString(), ok: false, found: 0, inserted: 0, errors: ["예약 실행 기록 없음"], alerted_at: now.toISOString() }) });
+  if (!w.ok) throw new Error("수집 알림 기록 실패 HTTP " + w.status);
+  return { collect: "실패", sent: 1 };
+}
+
 export async function run(env, fetcher = fetch, send) {
   const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" };
   const get = async (path) => { const r = await fetcher(env.SUPABASE_URL + "/rest/v1/" + path, { headers: H }); if (!r.ok) throw new Error(path.split("?")[0] + " HTTP " + r.status + " " + (await r.text()).slice(0, 200)); return r.json(); };
   const cleaned = await cleanup(env, fetcher, H, get).catch((e) => "정리 실패: " + e.message);
   const wd = await notifyWithdrawals(env, fetcher, H, get, send).catch((e) => ({ error: e.message }));
+  const col = await checkCollect(env, fetcher, H, get, send).catch((e) => ({ collect: "확인 실패: " + e.message }));
   const res = await signups(env, fetcher, H, get, send);
-  return { ...res, cleaned, withdraw: wd };
+  return { ...res, cleaned, withdraw: wd, ...col };
 }
 
 async function signups(env, fetcher, H, get, send) {

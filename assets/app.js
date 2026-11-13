@@ -1897,7 +1897,20 @@
     var B = el("adminBody");
     function err(e) { say("admMsg", API.errorText(e), true); }
     function csv(rows) { return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\n"); }
+    // 오늘 아침 자동 수집 결과 (collect_runs). 07:13 예약 · 150초 제한
+    function collectStatus(runs) {
+      if (!runs) return { lv: "none", text: "실행 기록을 보려면 SQL Editor에서 수집 기록 설정(2026-11-13b)을 실행하세요." };
+      var kd = function (t) { return new Date(new Date(t).getTime() + 9 * 3600e3).toISOString().slice(0, 10); };
+      var now = new Date(), today = kd(now), hm = new Date(now.getTime() + 9 * 3600e3).toISOString().slice(11, 16);
+      var c = runs.filter(function (r) { return r.source === "cron" && kd(r.started_at) === today; })[0];
+      if (!c) return hm >= "07:20" ? { lv: "bad", text: "오늘 아침 자동 수집 기록이 없습니다. 예약 실행이 되지 않았을 수 있습니다. \"지금 수집\"으로 가져오세요." } : { lv: "none", text: "오늘 자동 수집은 07:13에 실행됩니다." };
+      var at = fmtTime(c.started_at);
+      if (!c.finished_at) return (now - new Date(c.started_at)) > 180e3 ? { lv: "bad", text: "오늘 아침 자동 수집(" + at + ")이 시간 제한으로 중단됐습니다. \"지금 수집\"으로 다시 가져오세요." } : { lv: "none", text: "자동 수집 진행 중 (" + at + " 시작)" };
+      if (!c.ok) return { lv: "bad", text: "오늘 아침 자동 수집(" + at + ")이 실패했습니다: " + arr(c.errors).slice(0, 2).join(" / ") };
+      return { lv: "ok", text: "오늘 아침 자동 수집 완료 (" + at + ") · 찾은 소식 " + n(c.found || 0) + "건 · 새로 올린 소식 " + n(c.inserted || 0) + "건" + (arr(c.errors).length ? " · 일부 검색 실패 " + arr(c.errors).length + "건" : "") };
+    }
     async function counts() {
+      try { var cs = collectStatus(await API.admin.collectRuns()); el("cnt-news").textContent = cs.lv === "bad" ? " !" : ""; } catch (e) {}
       try { var pd = await API.admin.profiles("pending"); el("cnt-pending").textContent = pd.length ? " " + pd.length : ""; } catch (e) {}
       try { var wd = await API.admin.withdrawals(); el("cnt-agreements").textContent = wd.length ? " " + wd.length : ""; } catch (e) {}
       try {   // 카페: 등업 대기(닉네임 있는 승인 회원 중 미처리 · 닉네임 바뀜) + 내려야 함
@@ -2078,8 +2091,15 @@
           B.querySelectorAll(".delpoll").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deletePoll(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
         }
         if (cur === "news") {
-          var NW = await API.admin.newsAll();
-          B.innerHTML = '<div class="toolbar"><span class="muted small">매일 07:13에 자동 수집합니다. 엉뚱한 기사는 숨기면 사이트에서 빠집니다.</span><button type="button" class="btn solid" id="collectNow">지금 수집</button></div>' +
+          var NW = await API.admin.newsAll(), RUNS = await API.admin.collectRuns().catch(function () { return null; }), CS = collectStatus(RUNS);
+          el("cnt-news").textContent = CS.lv === "bad" ? " !" : "";
+          var runRow = function (r) {
+            var st = r.finished_at ? (r.ok ? "완료" : "실패") : ((Date.now() - new Date(r.started_at)) > 180e3 ? "중단" : "진행 중");
+            return '<tr><td class="num">' + fmtTime(r.started_at) + "</td><td>" + (r.source === "cron" ? "자동" : "수동") + '</td><td><span class="tag' + (st === "완료" ? "" : " hot") + '">' + st + '</span></td><td class="num r">' + (r.finished_at ? n(r.found || 0) + " / " + n(r.inserted || 0) : "-") + '</td><td class="muted small">' + esc(arr(r.errors).join(" / ").slice(0, 160)) + "</td></tr>";
+          };
+          B.innerHTML = '<div class="collect-st ' + CS.lv + '" role="status"><b>' + (CS.lv === "ok" ? "✓ " : CS.lv === "bad" ? "⚠ " : "") + esc(CS.text) + "</b>" +
+            (RUNS && RUNS.length ? '<details><summary>최근 실행 기록</summary><div class="tablebox"><table class="spec"><thead><tr><th>시각</th><th>방식</th><th>결과</th><th class="r">찾음 / 새로</th><th>메모</th></tr></thead><tbody>' + RUNS.map(runRow).join("") + "</tbody></table></div></details>" : "") +
+            "</div>" + '<div class="toolbar"><span class="muted small">매일 07:13에 자동 수집합니다. 실패하면 협의회 메일로 알림이 갑니다. 엉뚱한 기사는 숨기면 사이트에서 빠집니다.</span><button type="button" class="btn solid" id="collectNow">지금 수집</button></div>' +
             (NW.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th>제목</th><th>출처</th><th>날짜</th><th></th></tr></thead><tbody>' + NW.map(function (x) {
               return '<tr class="' + (x.hidden ? "muted" : "") + '"><td><span class="tag' + (x.kind === "lh" ? " hot" : "") + '">' + (x.kind === "lh" ? "LH" : esc(x.topic)) + '</span></td><td><a href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a>" + (x.hidden ? " (숨김)" : "") + "</td><td>" + esc(x.source) + '</td><td class="num">' + (x.published_at ? fmtDate(x.published_at) : "") + '</td><td><button type="button" class="linkbtn togglenews" data-id="' + x.id + '" data-h="' + (x.hidden ? "0" : "1") + '">' + (x.hidden ? "다시 보이기" : "숨기기") + "</button></td></tr>";
             }).join("") + "</tbody></table></div>" : empty("아직 수집된 소식이 없습니다", "\"지금 수집\"을 눌러 바로 가져올 수 있습니다."));
