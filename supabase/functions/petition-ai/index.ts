@@ -64,14 +64,16 @@ async function geminiModels(env, fetcher) {
   return MODEL_CACHE;
 }
 // 생각(thinking)을 줄여 빨리 답하게. Gemini 3 계열은 thinkingLevel, 2.x는 thinkingBudget
-function thinking(model) { return /gemini-[3-9]/.test(model) || /latest/.test(model) ? { thinkingLevel: "low" } : { thinkingBudget: 0 }; }
+// 짧은 민원 문구라 깊은 생각이 필요 없음: 가장 낮은 단계(minimal)로, 모르는 모델이면 설정 없이 다시
+function thinking(model) { return /gemini-[3-9]/.test(model) || /latest/.test(model) ? { thinkingLevel: "minimal" } : { thinkingBudget: 0 }; }
 async function gemini(p, env, fetcher) {
   const list = await geminiModels(env, fetcher), t0 = Date.now(), DEAD = Number(env.AI_DEADLINE_MS) || 75000;
   let last = "";
   for (const model of list.slice(0, 5)) {
     if (Date.now() - t0 > DEAD) break;
     for (const useThink of [true, false]) {
-      const cfg = { temperature: 1, maxOutputTokens: 4096 }; if (useThink) cfg.thinkingConfig = thinking(model);
+      const cfg = { temperature: 1, maxOutputTokens: p.max_tokens * 2 }; if (useThink) cfg.thinkingConfig = thinking(model);
+      const t1 = Date.now();
       let r;
       try {
         r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
@@ -84,14 +86,14 @@ async function gemini(p, env, fetcher) {
       if (!r.ok) {
         last = "HTTP " + r.status + " " + raw.slice(0, 160);
         console.error("gemini", model, last);
-        if (r.status === 400 && useThink && /think/i.test(raw)) continue;           // 생각 설정을 모르는 모델 → 설정 없이 다시
+        if (r.status === 400 && useThink && /think|level/i.test(raw)) continue;           // 생각 설정을 모르는 모델 → 설정 없이 다시
         if (r.status === 404 || r.status === 429 || r.status >= 500) break;         // 다음 모델로
         throw new Error(last);                                                      // 키 오류 등은 바로 알림
       }
       let out = {}; try { out = JSON.parse(raw); } catch { /* */ }
       const c = (out.candidates || [])[0] || {};
       const text = ((c.content || {}).parts || []).filter((x) => x.text && !x.thought).map((x) => x.text).join("");
-      if (text.trim()) return text;
+      if (text.trim()) { const u = out.usageMetadata || {}; console.log("gemini ok", model, (Date.now() - t1) + "ms", "생각 " + (u.thoughtsTokenCount || 0), "출력 " + (u.candidatesTokenCount || 0), useThink ? "" : "(생각 설정 없이)"); return text; }
       last = "빈 응답 (" + (c.finishReason || (out.promptFeedback || {}).blockReason || "이유 없음") + ")";
       console.error("gemini", model, last);
       break;
