@@ -1,12 +1,12 @@
 // 민원 문구 AI 새로 쓰기 (Supabase Edge Function)
-// 승인 회원만, 한 사람당 하루 PETITION_AI_DAILY(기본 20)번까지. 사실(숫자 · 요구사항)은 바꾸지 않고 표현만 새로 씁니다.
+// 승인 회원만, 한 사람당 하루 PETITION_AI_DAILY(기본 5)번까지. 사실(숫자 · 요구사항)은 바꾸지 않고 표현만 새로 씁니다.
 //
 // 환경 변수 (Supabase 대시보드 → Edge Functions → Secrets)
 //   GEMINI_API_KEY    : Google AI Studio 키 (무료 등급으로 사용 가능 · 있으면 이것을 먼저 씀)
 //   ANTHROPIC_API_KEY : Claude API 키 (유료 · Gemini 키가 없을 때)
 //   둘 다 없으면 501을 돌려주고, 화면은 조합 문장으로 대신함
 //   PETITION_AI_MODEL : 선택 · 기본 Gemini는 gemini-flash-latest, Claude는 claude-haiku-5-5
-//   PETITION_AI_DAILY : 선택 · 1인 하루 횟수 (기본 20)
+//   PETITION_AI_DAILY : 선택 · 1인 하루 횟수 (기본 5)
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY : 자동
 
 const FACTS = [
@@ -50,7 +50,7 @@ export function rankModels(names) {
   const score = (n) => (/lite/.test(n) ? 0 : 3) + (/preview|exp/.test(n) ? 4 : 0) - ver(n) * 10;
   return ok.sort((x, y) => score(x) - score(y));
 }
-export function resetModelCache() { MODEL_CACHE = null; }
+export function resetModelCache() { MODEL_CACHE = null; GOOD = null; }
 async function geminiModels(env, fetcher) {
   if (MODEL_CACHE && Date.now() - MODEL_AT < 6 * 3600e3) return MODEL_CACHE;
   let names = [];
@@ -64,20 +64,22 @@ async function geminiModels(env, fetcher) {
   return MODEL_CACHE;
 }
 // 생각(thinking)을 줄여 빨리 답하게. Gemini 3 계열은 thinkingLevel, 2.x는 thinkingBudget
-// 짧은 민원 문구라 깊은 생각이 필요 없음: 가장 낮은 단계(minimal)로, 모르는 모델이면 설정 없이 다시
-function thinking(model) { return /gemini-[3-9]/.test(model) || /latest/.test(model) ? { thinkingLevel: "minimal" } : { thinkingBudget: 0 }; }
+// 짧은 민원 문구라 깊은 생각이 필요 없음. 모델마다 받는 단계가 달라 낮은 단계부터 차례로 (생각 설정을 아예 빼면 기본값이 높아 느려짐)
+function thinkSteps(model) { return /gemini-[3-9]/.test(model) || /latest/.test(model) ? [{ thinkingLevel: "minimal" }, { thinkingLevel: "low" }, null] : [{ thinkingBudget: 0 }, null]; }
+let GOOD = null;   // 마지막으로 잘 된 모델을 먼저 (같은 서버가 살아 있는 동안)
 async function gemini(p, env, fetcher) {
-  const list = await geminiModels(env, fetcher), t0 = Date.now(), DEAD = Number(env.AI_DEADLINE_MS) || 75000;
+  const all = await geminiModels(env, fetcher), list = GOOD && all.includes(GOOD) ? [GOOD, ...all.filter((m) => m !== GOOD)] : all;
+  const t0 = Date.now(), DEAD = Number(env.AI_DEADLINE_MS) || 60000;
   let last = "";
-  for (const model of list.slice(0, 5)) {
+  for (const model of list.slice(0, 6)) {
     if (Date.now() - t0 > DEAD) break;
-    for (const useThink of [true, false]) {
-      const cfg = { temperature: 1, maxOutputTokens: p.max_tokens * 2 }; if (useThink) cfg.thinkingConfig = thinking(model);
+    for (const th of thinkSteps(model)) {
+      const cfg = { temperature: 1, maxOutputTokens: p.max_tokens * 2 }; if (th) cfg.thinkingConfig = th;
       const t1 = Date.now();
       let r;
       try {
         r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
-          method: "POST", signal: AbortSignal.timeout(Math.max(200, Math.min(Number(env.AI_CALL_MS) || 30000, DEAD - (Date.now() - t0)))),
+          method: "POST", signal: AbortSignal.timeout(Math.max(200, Math.min(Number(env.AI_CALL_MS) || 20000, DEAD - (Date.now() - t0)))),
           headers: { "x-goog-api-key": env.GEMINI_API_KEY, "content-type": "application/json" },
           body: JSON.stringify({ systemInstruction: { parts: [{ text: p.system }] }, contents: [{ role: "user", parts: [{ text: p.user }] }], generationConfig: cfg }),
         });
@@ -85,15 +87,15 @@ async function gemini(p, env, fetcher) {
       const raw = await r.text();
       if (!r.ok) {
         last = "HTTP " + r.status + " " + raw.slice(0, 160);
-        console.error("gemini", model, last);
-        if (r.status === 400 && useThink && /think|level/i.test(raw)) continue;           // 생각 설정을 모르는 모델 → 설정 없이 다시
-        if (r.status === 404 || r.status === 429 || r.status >= 500) break;         // 다음 모델로
+        console.error("gemini", model, JSON.stringify(th), last);
+        if (r.status === 400 && th && /think|level|budget/i.test(raw)) continue;    // 이 모델이 받는 생각 단계로 다시
+        if (r.status === 404 || r.status === 429 || r.status >= 500) break;         // 다음 모델로 (503: 사용자 몰림)
         throw new Error(last);                                                      // 키 오류 등은 바로 알림
       }
       let out = {}; try { out = JSON.parse(raw); } catch { /* */ }
       const c = (out.candidates || [])[0] || {};
       const text = ((c.content || {}).parts || []).filter((x) => x.text && !x.thought).map((x) => x.text).join("");
-      if (text.trim()) { const u = out.usageMetadata || {}; console.log("gemini ok", model, (Date.now() - t1) + "ms", "생각 " + (u.thoughtsTokenCount || 0), "출력 " + (u.candidatesTokenCount || 0), useThink ? "" : "(생각 설정 없이)"); return text; }
+      if (text.trim()) { GOOD = model; const u = out.usageMetadata || {}; console.log("gemini ok", model, JSON.stringify(th), (Date.now() - t1) + "ms", "생각 " + (u.thoughtsTokenCount || 0), "출력 " + (u.candidatesTokenCount || 0)); return text; }
       last = "빈 응답 (" + (c.finishReason || (out.promptFeedback || {}).blockReason || "이유 없음") + ")";
       console.error("gemini", model, last);
       break;
@@ -131,7 +133,7 @@ export async function handle(req, env, fetcher = fetch) {
   if (!env.GEMINI_API_KEY && !env.ANTHROPIC_API_KEY) return json({ error: "AI 키가 아직 설정되지 않았습니다" }, 501);
   // 하루 횟수 제한
   const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" };
-  const since = new Date(Date.now() - 864e5).toISOString(), LIMIT = Number(env.PETITION_AI_DAILY) || 20;
+  const since = new Date(Date.now() - 864e5).toISOString(), LIMIT = Number(env.PETITION_AI_DAILY) || 5;
   const cnt = await fetcher(env.SUPABASE_URL + "/rest/v1/petition_ai_log?select=id&user_id=eq." + uid + "&at=gte." + encodeURIComponent(since), { headers: { ...H, prefer: "count=exact", range: "0-0" } });
   const used = Number((cnt.headers.get("content-range") || "*/0").split("/")[1]) || 0;
   if (used >= LIMIT) return json({ error: "오늘은 AI 새로 쓰기를 " + LIMIT + "번 모두 썼습니다" }, 429);
@@ -145,6 +147,7 @@ export async function handle(req, env, fetcher = fetch) {
       : /API_KEY_INVALID|API key not valid/i.test(m) ? "AI 키가 올바르지 않습니다. 운영진에게 알려 주세요 (GEMINI_API_KEY 확인)"
       : /location is not supported/i.test(m) ? "이 서버 위치에서는 Gemini 무료 API를 쓸 수 없습니다"
       : /시간 초과/.test(m) ? "AI가 너무 오래 걸려 멈췄습니다. 잠시 뒤 다시 눌러 주세요"
+      : /503|high demand|UNAVAILABLE/i.test(m) ? "지금 Gemini 사용자가 많아 답을 받지 못했습니다. 1~2분 뒤 다시 눌러 주세요 (횟수는 줄지 않았습니다)"
       : "AI 응답 오류 (" + m.slice(0, 90) + ")" }, 502);
   }
   text = text.trim().replace(/^["“]|["”]$/g, "");

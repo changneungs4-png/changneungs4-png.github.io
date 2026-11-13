@@ -353,7 +353,7 @@
         '<div class="pt2-field"><span class="lbl">내 상황 <small class="muted">선택 · 글에 한 줄 들어가 사람마다 다른 글이 됩니다</small></span><div class="chips" id="ptPersona">' + arr(K.personas).map(function (p, i) { return chip("p", i, p[1], i === 0); }).join("") + "</div></div>" +
         '<div class="pt2-field"><span class="lbl">말투</span><div class="chips" id="ptTone">' + PT_TONES.map(function (t, i) { return chip("t", i, t[0], i === 0); }).join("") + "</div></div>" +
         '<div class="ai-card' + (member ? "" : " off") + '"><div class="ai-head"><span class="ai-mark" aria-hidden="true">✦</span><div><b>AI 글쓰기</b><small>Google Gemini가 고른 조건에 맞춰 새 문장을 씁니다</small></div><span class="ai-by">Google Gemini</span></div>' +
-          (member ? '<button type="button" class="ai-btn" id="ptAi"><span aria-hidden="true">✦</span> Gemini로 내 글 쓰기</button><p class="ai-note" id="ptLeft">누를 때마다 새로운 문장을 씁니다 · 1인 하루 20번 · 보내기 전에 사실을 한 번 확인해 주세요</p>'
+          (member ? '<button type="button" class="ai-btn" id="ptAi"><span aria-hidden="true">✦</span> Gemini로 내 글 쓰기</button><p class="ai-note" id="ptLeft">누를 때마다 새로운 문장을 씁니다 · 1인 하루 5번 · 보내기 전에 사실을 한 번 확인해 주세요</p>'
             : '<p class="ai-note">승인 회원이 되면 Gemini로 나만의 문장을 만들 수 있습니다. 지금은 아래 예시 문구를 복사해 쓸 수 있어요.</p>') + "</div>" +
         '<div class="pt2-out"><div class="pt2-oh"><b id="ptOutLabel">예시 문구</b><span class="muted small num" id="ptLen"></span></div>' +
           '<textarea id="ptText" rows="6" aria-label="보낼 글"></textarea>' +
@@ -1461,7 +1461,7 @@
       ["위임동의서", "주택형 · 동 · 호수, 계약자 성명, 휴대전화번호, 서명, 동의 일시, 공동명의자 성명 · 서명(공동명의자 본인이 서명할 때만) (서면 접수 시 위임장 스캔본)", "계약자 확인, 과반수 동의 집계, 협의회 공지 · 의견수렴 · 투표", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
       ["회비", "협의회 통장 거래내역(입금 일시 · 금액 · 입금자명), 세대별 납부 여부", "회비 납부 확인, 회계 공개(월별 합계만 공개, 입금자 이름은 비공개)", "협의회 해산 시 결산 · 인계 후 파기"],
       ["투표 · 단체민원", "세대별 투표 · 참여 여부 (예전 게시판 글 · 댓글 포함)", "1세대 1표 집계, 참여 세대 수 공개", "삭제 시 또는 협의회 해산 시까지"],
-      ["민원 AI 글쓰기", "AI 이용 횟수 기록(회원 · 시각 · 글 종류). 쓴 문장은 저장하지 않음", "1인 하루 이용 횟수 제한", "30일 뒤 자동 삭제"]
+      ["민원 AI 글쓰기", "AI 이용 횟수 기록(회원 · 시각 · 글 종류). 쓴 문장은 저장하지 않음", "1인 하루 이용 횟수 제한(5번)", "30일 뒤 자동 삭제"]
     ];
     var LB = ["구분", "항목", "목적", "보유 기간"];
     C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec stack"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
