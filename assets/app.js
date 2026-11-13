@@ -57,7 +57,7 @@
   var GROUPS = [
     { name: "소식", items: [["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
     { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["calculator.html", "내 아파트", "calculator", "우리 집 옵션 · 납부 계산"]] },
-    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회칙 · 회계"], ["agreement.html", "위임동의", "agreement", "현황판 · 동의서 제출"], ["petition.html", "민원", "petition", "함께 내는 민원 참여"]] },
+    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회칙"], ["agreement.html", "위임동의", "agreement", "현황판 · 동의서 제출"], ["petition.html", "민원", "petition", "함께 내는 민원 참여"], ["accounting.html", "회계", "accounting", "회비 · 수입 · 지출 공개"]] },
     { name: "커뮤니티", items: [["cafe.html", "카페 · 오픈채팅", "cafe", "가입 · 입장 안내"], ["info.html", "정보", "info", "자료 · 자주 묻는 질문"], ["links.html", "바로가기", "links", "LH · 기관 · 문의처"]] }
   ];
   var NAVKEY = { bylaws: "association", consent: "agreement", participate: "petition", documents: "info", faq: "info" }[page] || page;
@@ -74,6 +74,7 @@
     floorplan: ["FLOOR PLAN", "단지 · 평면", "7개 주택형의 공급 정보와 단지 개요입니다. 평면도 원본은 모집공고 첨부를 확인하세요."],
     progress: ["CONSTRUCTION", "공사현황", "공정률과 현장 방문 기록입니다."],
     bylaws: ["BYLAWS", "회칙", "협의회가 어떻게 운영되는지 회원 모두가 함께 정한 약속입니다."],
+    accounting: ["ACCOUNTING", "회계", "회비 안내와 매월 수입 · 지출을 공개합니다. 입예협 명의 통장으로만 관리합니다(회칙 제26조 · 제28조)."],
     association: ["ASSOCIATION", "협의회 소개", "입주예정자의 의견을 모아 LH와 관계 기관에 전달하는 자발적 모임입니다."],
     agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수별 위임동의 현황입니다."],
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
@@ -193,6 +194,7 @@
       admin: Cc(120, 90, 26) + P("M120 30 V48 M120 132 V150 M60 90 H78 M162 90 H180 M78 48 L91 61 M149 119 L162 132 M78 132 L91 119 M149 61 L162 48"),
       petition: R(60, 80, 120, 80, 6) + P("M60 104 H180") + R(100, 20, 44, 66, 3) + P("M110 44 L118 52 L134 34") + P("M96 92 H148"),
       cafe: R(24, 30, 120, 70, 14) + P("M50 100 L44 124 L72 100") + R(100, 84, 120, 64, 14) + P("M190 148 L198 168 L172 148") + P("M46 56 H120 M46 74 H100 M122 108 H196 M122 124 H176"),
+      accounting: R(40, 40, 160, 110, 8) + P("M40 70 H200 M70 100 H120 M70 120 H150") + Cc(170, 110, 14),
       info: P("M30 50 H90 L104 64 H210 V150 H30 Z") + P("M30 76 H210") + Cc(170, 112, 18) + P("M164 106 Q164 98 170 98 Q178 98 178 105 Q178 110 170 114 V118"),
       links_: ""
     };
@@ -350,8 +352,9 @@
         '<div class="pt2-field"><span class="lbl">어디에 쓸 글인가요?</span><div class="chips pt2-kinds" id="ptKind">' + PT_KINDS.map(function (k, i) { return '<button type="button" class="chip" data-kind="' + k[0] + '" aria-pressed="' + (i === 0) + '"><b>' + esc(k[1]) + "</b><small>" + esc(k[2]) + "</small></button>"; }).join("") + "</div></div>" +
         '<div class="pt2-field"><span class="lbl">내 상황 <small class="muted">선택 · 글에 한 줄 들어가 사람마다 다른 글이 됩니다</small></span><div class="chips" id="ptPersona">' + arr(K.personas).map(function (p, i) { return chip("p", i, p[1], i === 0); }).join("") + "</div></div>" +
         '<div class="pt2-field"><span class="lbl">말투</span><div class="chips" id="ptTone">' + PT_TONES.map(function (t, i) { return chip("t", i, t[0], i === 0); }).join("") + "</div></div>" +
-        (member ? '<button type="button" class="btn solid wide pt2-ai" id="ptAi">✨ AI로 내 글 쓰기</button><p class="muted small pt2-left" id="ptLeft">버튼을 누를 때마다 새로운 문장을 씁니다. 1인 하루 20번.</p>'
-          : '<p class="notice-box small" style="margin:0">로그인한 <b>승인 회원</b>은 AI로 나만의 문장을 만들 수 있습니다. 지금은 예시 문구를 복사해 쓸 수 있어요. ' + (LIVE && !API.loggedIn ? '<a href="login.html">로그인 →</a>' : "") + "</p>") +
+        '<div class="ai-card' + (member ? "" : " off") + '"><div class="ai-head"><span class="ai-mark" aria-hidden="true">✦</span><div><b>AI 글쓰기</b><small>Google Gemini가 고른 조건에 맞춰 새 문장을 씁니다</small></div><span class="ai-by">Google Gemini</span></div>' +
+          (member ? '<button type="button" class="ai-btn" id="ptAi"><span aria-hidden="true">✦</span> Gemini로 내 글 쓰기</button><p class="ai-note" id="ptLeft">누를 때마다 새로운 문장을 씁니다 · 1인 하루 20번 · 보내기 전에 사실을 한 번 확인해 주세요</p>'
+            : '<p class="ai-note">승인 회원이 되면 Gemini로 나만의 문장을 만들 수 있습니다. 지금은 아래 예시 문구를 복사해 쓸 수 있어요.</p>') + "</div>" +
         '<div class="pt2-out"><div class="pt2-oh"><b id="ptOutLabel">예시 문구</b><span class="muted small num" id="ptLen"></span></div>' +
           '<textarea id="ptText" rows="6" aria-label="보낼 글"></textarea>' +
           '<div class="pt2-act"><span class="muted small">고쳐 써도 됩니다. 보내기 전에 숫자 · 사실을 한 번 확인하세요.</span><button type="button" class="btn solid" id="ptCopy">📋 복사</button></div></div>' +
@@ -402,14 +405,14 @@
     el("ptCopy").addEventListener("click", function () { copyText(T.value, this); });
     example();
     if (member) el("ptAi").addEventListener("click", async function () {
-      var btn = this; busy(btn, true, "AI가 쓰는 중…");
+      var btn = this; btn.classList.add("busy"); busy(btn, true, "Gemini가 쓰는 중…");
       try {
         var r = await API.petitionAi({ kind: kind, persona: K.personas[persona][0], tone: PT_TONES[tone][1], base: T.value });
-        setText(r.text, "AI가 쓴 글 · " + PT_KINDS.filter(function (k) { return k[0] === kind; })[0][1]);
-        if (r.left != null) el("ptLeft").textContent = "오늘 남은 횟수 " + r.left + "번 · 누를 때마다 새로운 문장을 씁니다.";
-        btn.dataset.l = "✨ 다시 쓰기";
+        setText(r.text, "Gemini가 쓴 글 · " + PT_KINDS.filter(function (k) { return k[0] === kind; })[0][1]);
+        if (r.left != null) el("ptLeft").textContent = "오늘 남은 횟수 " + r.left + "번 · 누를 때마다 새로운 문장을 씁니다 · 보내기 전에 사실을 한 번 확인해 주세요";
+        btn.dataset.l = "✦ Gemini로 다시 쓰기";
       } catch (e) { toast((e && e.message) || "AI 응답을 받지 못했습니다"); }
-      busy(btn, false);
+      busy(btn, false); btn.classList.remove("busy");
     });
     // 보내기: 그룹 필터 · 이메일 일괄 복사
     var grp = "all";
@@ -787,13 +790,31 @@
         '<span class="link-line"></span><div class="lvl">' + role({ role: "동대표", name: "각 동 1명 · 동 회원이 선출" }) + "</div></div>" +
         '<p class="muted small org-note"><b class="fg">운영위원회</b> = 회장 · 부회장 · 총무(운영진) + 동대표. 입예협의 유일한 의결기구이며, 감사는 참석해 의견을 말하지만 의결권은 없습니다(회칙 제17조). 전체회의는 매년 1회 이상 열어 보고와 의견을 듣습니다.</p></div>' : "") +
       "<div>" + head("회칙", more("bylaws.html", "전문 보기")) + bylawsKeys() + "</div>" +
-      '<div id="asMoney">' + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
+      '<a class="panel as-acc-link" href="accounting.html"><b>회계</b><span class="muted">회비 안내 · 월별 수입과 지출 · 회계 원칙을 따로 모았습니다.</span><span class="more">회계 보기 →</span></a>';
+  };
+
+  /* ── 회계 (회칙 제5장) ── */
+  R.accounting = function () {
+    var ac = S.accounting || { rows: [] }, rows = arr(ac.rows), tin = 0, tout = 0;
+    rows.forEach(function (r) { tin += r.in || 0; tout += r.out || 0; });
+    var RULES = [["재원", "회비와 후원금 등. 업체의 대가성 후원 · 리베이트는 받지 않습니다.", 24], ["회비", "금액과 납부 방법은 운영위원회가 정해 카페에 공지합니다. 납부는 자율이며, 낸 회원은 우수회원이 됩니다.", 25],
+      ["통장", "고유번호증으로 만든 입예협 명의 통장으로만 관리합니다. 개인 계좌로 받지 않습니다. 총무가 관리하고 감사는 언제든 열람합니다.", 26], ["지출", "예산 범위 안에서 쓰고, 1회 30만 원 이상은 운영위원회 의결을 거칩니다. 모든 지출에 영수증 등 증빙을 갖춥니다.", 27],
+      ["공개 · 감사", "총무가 매월 수입 · 지출을 공개하고, 감사가 마지막 분기에 회계를 감사해 결과를 보고합니다.", 28], ["회계 연도", "매년 1월 1일부터 12월 31일까지입니다.", 29]];
+    C.innerHTML = (LIVE && API.isMember ? '<div id="acMine"></div>' : "") +
+      '<div id="acMoney">' + head("회계 공개", ac.asOf ? '<span class="note">' + esc(ac.asOf) + " 기준</span>" : "") +
       (rows.length ? '<div class="tablebox"><table class="spec"><thead><tr><th>날짜</th><th>항목</th><th class="r">수입</th><th class="r">지출</th><th>비고</th></tr></thead><tbody>' +
         rows.map(function (r) { return '<tr><td class="num">' + esc(r.date) + "</td><td>" + esc(r.item) + '</td><td class="r num">' + n(r.in) + '</td><td class="r num">' + n(r.out) + "</td><td>" + esc(r.by) + "</td></tr>"; }).join("") +
         '<tr class="total"><td colspan="2">합계</td><td class="r num">' + n(tin) + '</td><td class="r num">' + n(tout) + "</td><td></td></tr></tbody></table></div>"
-        : empty("수입 · 지출 내역이 없습니다", "협의회는 현재 회비를 걷지 않습니다.")) +
-      (ac.note ? '<p class="muted small">' + esc(ac.note) + "</p>" : "") + "</div>";
-    if (LIVE) API.duesPublic().then(function (d) { if (d) el("asMoney").innerHTML = duesPublicHtml(d, ac.note); }).catch(function () {});
+        : empty("수입 · 지출 내역이 없습니다", "회비가 정해지면 이곳에 매월 공개합니다.")) +
+      (ac.note ? '<p class="muted small">' + esc(ac.note) + "</p>" : "") + "</div>" +
+      "<div>" + head("회계 원칙", more("bylaws.html#ch5", "회칙 제5장")) + '<ul class="ac-rules">' + RULES.map(function (r) {
+        return '<li><span class="ac-n">제' + r[2] + "조</span><b>" + esc(r[0]) + "</b><span>" + esc(r[1]) + "</span></li>"; }).join("") + "</ul></div>";
+    if (!LIVE) return;
+    API.duesPublic().then(function (d) { if (d) el("acMoney").innerHTML = duesPublicHtml(d, ac.note); }).catch(function () {});
+    if (API.isMember) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
+      var card = duesCardHtml(r[0], r[1]), h = card || duesAdminHint(r[1]); if (!h) return;
+      el("acMine").innerHTML = h; bindCopy(el("acMine"));
+    }).catch(function () {});
   };
 
   /* ── 회비 ── */
@@ -874,7 +895,7 @@
       if (spend.length) h += '<h3 class="small" style="margin:12px 0 4px">주요 지출</h3><ul class="list">' + spend.slice(0, 20).map(function (s) { return '<li><span class="t">' + esc(s.note) + '</span><span class="d num">' + fmtDate(s.at) + " · " + won(s.amount) + "</span></li>"; }).join("") + "</ul>";
     } else if (!d.account) h += empty("수입 · 지출 내역이 없습니다", "협의회는 현재 회비를 걷지 않습니다.");
     h += '<p class="muted small">' + (d.account ? "수입 · 지출은 매월 공개합니다(회칙 제28조)." : esc(note || "")) + " 입금자 이름은 공개하지 않습니다.</p>";
-    setTimeout(function () { var r = el("asMoney"); if (r) bindCopy(r); }, 0);
+    setTimeout(function () { var r = el("acMoney"); if (r) bindCopy(r); }, 0);
     return h;
   }
 
@@ -1641,7 +1662,7 @@
     el("logout").addEventListener("click", async function () { await API.signOut(); location.href = "index.html"; });
     if (el("accDues")) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
       var card = duesCardHtml(r[0], r[1]), h = card || duesAdminHint(r[1]); if (!h) return;
-      el("accDues").innerHTML = head("회비") + h + (card ? '<p class="muted small">총무가 은행 거래내역을 올리면 반영됩니다. 입금하고 며칠이 지나도 그대로면 게시판이나 메일로 알려 주세요.</p>' : "");
+      el("accDues").innerHTML = head("회비") + h + (card ? '<p class="muted small">총무가 은행 거래내역을 올리면 반영됩니다. 입금하고 며칠이 지나도 그대로면 카페 쪽지나 협의회 메일로 알려 주세요.</p>' : "");
       bindCopy(el("accDues"));
     }).catch(function () {});
     if (el("accWi") && ag) el("accWi").addEventListener("click", function () { showPrint(wiDoc(ag), "내 위임장"); });

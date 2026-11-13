@@ -1162,3 +1162,28 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 .sec-h{font-size:22px;margin:18px 0 12px;scroll-margin-top:90px}
 @media (max-width:760px){ .cm-grid{grid-template-columns:minmax(0,1fr)} .oc-me{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .oc-me>div:first-child{grid-column:1/-1} .cm-card{padding:18px 16px} }
 .org-note{margin:10px 0 0;text-align:center;line-height:1.6}
+
+/* AI 글쓰기 카드 (Google Gemini) */
+.ai-card{position:relative;border-radius:14px;padding:14px 16px;display:grid;gap:10px;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(120deg,#4285f4,#9b72cb 55%,#d96570) border-box;border:2px solid transparent}
+.ai-card.off{opacity:.92}
+.ai-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ai-head>div{display:grid;gap:1px;flex:1;min-width:180px}
+.ai-head b{font-size:16px}
+.ai-head small{font-size:12.5px;color:var(--muted)}
+.ai-mark{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;color:#fff;font-size:20px;background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570)}
+.ai-by{font-size:11.5px;font-weight:700;letter-spacing:.02em;padding:3px 10px;border-radius:999px;color:#fff;background:linear-gradient(90deg,#4285f4,#9b72cb,#d96570);white-space:nowrap}
+.ai-btn{font:inherit;font-size:16px;font-weight:700;color:#fff;border:0;border-radius:12px;padding:13px 16px;cursor:pointer;background:linear-gradient(100deg,#3b78e7,#8e63c4 55%,#cf5a68);box-shadow:0 6px 18px rgba(110,90,200,.25);display:flex;justify-content:center;align-items:center;gap:8px}
+.ai-btn:hover{filter:brightness(1.06)}
+.ai-btn:disabled{cursor:wait;opacity:.85}
+.ai-btn.busy{background-size:200% 100%;animation:aishine 1.2s linear infinite}
+@keyframes aishine{from{background-position:0 0}to{background-position:-200% 0}}
+.ai-note{margin:0;font-size:12.5px;color:var(--muted);text-align:center;line-height:1.5}
+.ac-rules{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ac-rules li{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px 14px;display:grid;gap:3px;align-content:start}
+.ac-rules b{font-size:15px}
+.ac-rules span:last-child{font-size:13.5px;color:var(--muted);line-height:1.55}
+.ac-n{font-family:var(--f-num);font-size:12px;color:var(--pine)}
+.as-acc-link{display:grid;gap:4px;text-decoration:none;color:var(--fg)}
+.as-acc-link b{font-family:var(--f-display);font-size:20px}
+.as-acc-link .more{color:var(--pine);font-weight:600}
+@media (max-width:760px){ .ac-rules{grid-template-columns:minmax(0,1fr)} }

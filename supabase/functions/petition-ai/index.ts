@@ -40,17 +40,34 @@ export function buildPrompt(kind, persona, base, tone) {
 }
 
 // Google Gemini (AI Studio 무료 등급 가능)
+// 모델 이름이 바뀌거나(404) 무료 한도가 찼을 때(429) 다음 모델로 넘어감. 무료 한도는 모델마다 따로 셈
+export const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.0-flash"];
 async function gemini(p, env, fetcher) {
-  const model = env.PETITION_AI_MODEL || "gemini-flash-latest";
-  const r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
-    method: "POST", signal: AbortSignal.timeout(45000),
-    headers: { "x-goog-api-key": env.GEMINI_API_KEY, "content-type": "application/json" },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: p.system }] }, contents: [{ role: "user", parts: [{ text: p.user }] }],
-      generationConfig: { temperature: 1, maxOutputTokens: p.max_tokens * 4 } }),
-  });
-  if (!r.ok) throw new Error("HTTP " + r.status + " " + (await r.text()).slice(0, 80));
-  const out = await r.json();
-  return ((out.candidates || [])[0]?.content?.parts || []).filter((x) => x.text && !x.thought).map((x) => x.text).join("");
+  const list = [...new Set([env.PETITION_AI_MODEL, ...GEMINI_MODELS].filter(Boolean))];
+  let last = "";
+  for (const model of list) {
+    const r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
+      method: "POST", signal: AbortSignal.timeout(40000),
+      headers: { "x-goog-api-key": env.GEMINI_API_KEY, "content-type": "application/json" },
+      // 생각(thinking) 토큰도 출력 한도에 포함되므로 넉넉히
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: p.system }] }, contents: [{ role: "user", parts: [{ text: p.user }] }],
+        generationConfig: { temperature: 1, maxOutputTokens: 8192 } }),
+    });
+    const raw = await r.text();
+    if (!r.ok) {
+      last = "HTTP " + r.status + " " + raw.slice(0, 160);
+      console.error("gemini", model, last);
+      if (r.status === 404 || r.status === 429 || r.status >= 500) continue;   // 다음 모델로
+      throw new Error(last);                                                     // 키 오류(400 · 403) 등은 바로 알림
+    }
+    let out = {}; try { out = JSON.parse(raw); } catch { /* */ }
+    const c = (out.candidates || [])[0] || {};
+    const text = ((c.content || {}).parts || []).filter((x) => x.text && !x.thought).map((x) => x.text).join("");
+    if (text.trim()) return text;
+    last = "빈 응답 (" + (c.finishReason || (out.promptFeedback || {}).blockReason || "이유 없음") + ")";
+    console.error("gemini", model, last);
+  }
+  throw new Error(last || "Gemini 응답 없음");
 }
 // Anthropic Claude (유료)
 async function claude(p, env, fetcher) {
@@ -90,7 +107,11 @@ export async function handle(req, env, fetcher = fetch) {
   try { text = await (env.GEMINI_API_KEY ? gemini : claude)(p, env, fetcher); }
   catch (e) {
     const m = String(e.message || e);
-    return json({ error: /429|RESOURCE_EXHAUSTED/.test(m) ? "무료 AI 사용량이 잠시 찼습니다. 1~2분 뒤 다시 눌러 주세요" : "AI 응답 오류 (" + m.slice(0, 60) + ")" }, 502);
+    console.error("[petition-ai] fail", m);
+    return json({ error: /429|RESOURCE_EXHAUSTED/.test(m) ? "무료 AI 사용량이 잠시 찼습니다. 1~2분 뒤 다시 눌러 주세요"
+      : /API_KEY_INVALID|API key not valid/i.test(m) ? "AI 키가 올바르지 않습니다. 운영진에게 알려 주세요 (GEMINI_API_KEY 확인)"
+      : /location is not supported/i.test(m) ? "이 서버 위치에서는 Gemini 무료 API를 쓸 수 없습니다"
+      : "AI 응답 오류 (" + m.slice(0, 90) + ")" }, 502);
   }
   text = text.trim().replace(/^["“]|["”]$/g, "");
   if (!text) return json({ error: "AI가 빈 응답을 보냈습니다" }, 502);
