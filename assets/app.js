@@ -56,12 +56,11 @@
   /* ── 메뉴 ── */
   var GROUPS = [
     { name: "소식", items: [["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
-    { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["gallery.html", "사진관", "gallery", "현장과 주변 모습"]] },
-    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회칙 · 회계"], ["agreement.html", "위임동의", "agreement", "현황판 · 동의서 제출"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
-    { name: "커뮤니티", items: [["board.html", "자유게시판", "board", "입주예정자 이야기"], ["links.html", "카페 · 바로가기", "links", "가입 · 인증 안내"]] },
-    { name: "입주 준비", items: [["calculator.html", "납부 · 취득세 계산기", "calculator", "회차별 금액"], ["checklist.html", "사전점검", "checklist", "공간별 체크리스트"], ["documents.html", "자료실", "documents", "공고문 · 정리 자료"], ["faq.html", "자주 묻는 질문", "faq", "FAQ"]] }
+    { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"]] },
+    { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회칙 · 회계"], ["agreement.html", "위임동의", "agreement", "현황판 · 동의서 제출"], ["petition.html", "민원", "petition", "함께 내는 민원 참여"]] },
+    { name: "커뮤니티", items: [["links.html", "카페 · 바로가기", "links", "카페 · 옵션 계산기 · 기관"]] }
   ];
-  var NAVKEY = { bylaws: "association", consent: "agreement" }[page] || page;
+  var NAVKEY = { bylaws: "association", consent: "agreement", calculator: "links", participate: "petition" }[page] || page;
   var myGroup = GROUPS.filter(function (g) { return g.items.some(function (x) { return x[2] === NAVKEY; }); })[0];
   var HEAD = {
     login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의, 게시판, 투표에 참여할 수 있습니다."],
@@ -81,7 +80,8 @@
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
     board: ["COMMUNITY", "자유게시판", "입주예정자끼리 정보와 이야기를 나눕니다."],
     links: ["LINKS", "카페 · 바로가기", "공식 카페와 자주 쓰는 기관 사이트입니다."],
-    calculator: ["CALCULATOR", "분양대금 · 취득세 계산기", "분양가와 옵션 금액을 넣으면 회차별 납부액과 예상 취득세를 계산합니다."],
+    calculator: ["OPTION CALCULATOR", "평형별 옵션 계산기", "세부평형 · 층 · 선택품목을 고르면 총 분양비용과 회차별 납부액, 예상 취득세를 계산합니다."],
+    petition: ["PETITION", "민원 참여", "입주예정자가 함께 내는 민원입니다. 참여 방법과 접수처를 확인하세요."],
     checklist: ["PRE-INSPECTION", "사전점검 체크리스트", "사전점검 날 공간별로 확인할 항목입니다. 체크한 내용은 이 기기에만 저장됩니다."],
     documents: ["ARCHIVE", "자료실", "공고문 원문과 협의회가 정리한 자료입니다."],
     faq: ["FAQ", "자주 묻는 질문", "협의회, 계약, 대출, 입주에 관한 질문입니다."]
@@ -195,6 +195,7 @@
       account: Cc(120, 66, 28) + P("M64 160 Q64 108 120 108 Q176 108 176 160"),
       privacy: P("M120 22 L186 46 V92 Q186 140 120 164 Q54 140 54 92 V46 Z") + P("M96 92 L114 110 L148 74"),
       admin: Cc(120, 90, 26) + P("M120 30 V48 M120 132 V150 M60 90 H78 M162 90 H180 M78 48 L91 61 M149 119 L162 132 M78 132 L91 119 M149 61 L162 48"),
+      petition: R(60, 80, 120, 80, 6) + P("M60 104 H180") + R(100, 20, 44, 66, 3) + P("M110 44 L118 52 L134 34") + P("M96 92 H148"),
       links_: ""
     };
   })();
@@ -271,7 +272,7 @@
   }
   function tile(x) {
     var inner = "<b>" + esc(x.title) + "</b><span>" + esc(x.desc) + (x.url ? "" : " · 개설 후 연결") + "</span>";
-    if (x.url && x.url.charAt(0) === "#") return '<a class="tile" href="' + esc(x.url) + '">' + inner + "</a>";   // 같은 페이지 안
+    if (x.url && (x.url.charAt(0) === "#" || /^[a-z]+\.html(#.*)?$/.test(x.url))) return '<a class="tile" href="' + esc(x.url) + '">' + inner + "</a>";   // 같은 페이지 안
     return x.url ? '<a class="tile" href="' + esc(safeUrl(x.url)) + '" target="_blank" rel="noopener">' + inner + "</a>" : '<div class="tile pending">' + inner + "</div>";
   }
   function newsRows(list) {
@@ -310,6 +311,20 @@
         "</article>";
     }).join("") + "</div></section>";
   }
+  function petitionShortcut() {
+    var L = arr(S.petitions).filter(function (x) { return x.active; });
+    if (!L.length) return "";
+    return '<section class="band petition-band pt-short"><div class="wrap">' + L.map(function (x) {
+      var g = x.guide || {};
+      return '<a class="pt-card" href="petition.html#pt-' + esc(x.id) + '"><span class="tag hot">' + esc(x.tag || "민원 참여") + '</span><span class="pt-txt"><b>' + esc(x.title) + "</b><span>" + esc(x.short || "참여 방법과 접수처를 한 곳에 모았습니다.") + '</span></span><span class="pt-go">참여하기 →</span></a>';
+    }).join("") + "</div></section>";
+  }
+  R.petition = function () {
+    var h = petitionsHtml();
+    C.innerHTML = h ? h.replace('<section class="band petition-band"><div class="wrap">', '<div class="petition-page">').replace(/<\/div><\/section>$/, "</div>") : empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다.");
+    bindPetitions();
+    var id = location.hash.slice(1), t = id && document.getElementById(id); if (t) setTimeout(function () { t.scrollIntoView({ block: "start" }); }, 0);
+  };
   function linkify(t) {
     return esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
       .replace(/(01[016789]-?\d{3,4}-?\d{4}|0\d{1,2}-\d{3,4}-\d{4})/g, function (m) { return '<a href="tel:' + m.replace(/-/g, "") + '">' + m + "</a>"; });
@@ -335,7 +350,7 @@
       '<path class="r3" d="M0 148 Q220 112 440 140 Q640 164 840 136 Q1020 114 1200 136 V170 H0Z"/>' +
       '<path class="w" d="M-10 160 Q60 152 130 160 T270 160 T410 160 T550 160 T690 160 T830 160 T970 160 T1110 160 T1250 160"/></svg>';
     var upcoming = (await mergedSchedule()).filter(function (x) { return x.state !== "done"; }).slice(0, 4);
-    main.innerHTML = petitionsHtml() +
+    main.innerHTML = petitionShortcut() +
       '<section class="hero"><div class="wrap hero-grid"><div>' +
       '<div class="eyebrow">고양창릉 공공주택지구 · LH 공공분양</div>' +
       "<h1>창릉 S-4<small>입주예정자협의회</small></h1>" +
@@ -349,7 +364,6 @@
       '<section class="band"><div class="wrap two"><div>' + head("공지사항", more("notice.html")) + noticeRows(arr(S.notices).slice(0, 5)) + "</div>" +
       "<div>" + head("다가오는 일정", more("schedule.html", "전체 일정")) + timeline(upcoming) + "</div></div></section>" +
       '<div id="homeNews"></div>';
-    bindPetitions();
     if (LIVE && API.isMember) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
       var m = r[0], d = r[1]; if (!m || (m.paid > 0 && m.paid >= (m.due || 1))) return;
       var h = duesCardHtml(m, d, true) || duesAdminHint(d); if (!h) return;
@@ -1092,72 +1106,144 @@
   };
 
   R.calculator = function () {
-    var TY = arr(S.types), hasOpt = S.options && typeof S.options === "object";
-    C.innerHTML = '<div class="two"><form class="panel" id="cForm" novalidate>' +
-      '<div class="field"><label for="cPrice">분양가</label><input id="cPrice" class="big num" inputmode="numeric" autocomplete="off"></div>' +
-      '<div class="chips" role="group" aria-label="타입별 최고 분양가 불러오기" id="cChips" style="margin:-4px 0 16px">' + TY.map(function (t, i) { return '<button type="button" class="chip" data-p="' + t.maxPrice + '" data-area="' + esc(t.area) + '" aria-pressed="' + (i === 0) + '">' + esc(t.type) + "</button>"; }).join("") + "</div>" +
-      (hasOpt ? '<fieldset class="ck opts"><legend>유상옵션 선택</legend><div id="cOptList"></div></fieldset>' : "") +
-      '<div class="field"><label for="cOpt">유상옵션 합계</label><input id="cOpt" class="big num" inputmode="numeric" value="0" autocomplete="off"></div>' +
-      '<div class="field"><label for="cBal">발코니 확장비용 <span class="muted small">모집공고 발코니 확장금액 표 · 분양가와 별도</span></label><input id="cBal" class="big num" inputmode="numeric" value="0" autocomplete="off"></div>' +
-      '<label class="check"><input type="checkbox" id="cFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
-      '<p class="muted small" style="margin:12px 0 0">타입 버튼은 모집공고의 타입별 최고가를 불러옵니다. 실제 금액은 계약서의 동·층별 분양가로 입력하세요.</p></form>' +
-      "<div>" + head("회차별 납부액") + '<div class="tablebox"><table class="spec"><thead><tr><th>구분</th><th class="r">비율</th><th class="r">금액</th><th class="r">누적</th></tr></thead><tbody id="cPay"></tbody></table></div></div></div>' +
-      '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') + '<div class="tablebox"><table class="spec"><tbody id="cTax"></tbody></table></div></div>' +
-      '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">과세표준은 분양가, 유상옵션, 발코니 확장비용을 합한 금액입니다. 취득세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%로 계산했습니다. 지방교육세는 취득세의 10%이며, 전용 85㎡ 이하는 농어촌특별세가 없습니다.</p>' +
-      '<p class="muted small">취득세는 잔금을 내는 입주 시점(2030년 예정)의 법으로 매겨집니다. 생애최초 감면은 현행법상 2028년 12월 31일까지 취득분에 적용되므로, 입주 때 연장되었는지 확인이 필요합니다. 2026년 정부 개편안(40세 미만 한도 300만원 등)은 아직 확정 전입니다.</p>' +
-      '<p class="muted small">세율과 감면 요건은 바뀔 수 있으니 실제 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p></div></div>';
-    var P = el("cPrice"), O = el("cOpt"), BL = el("cBal"), F = el("cFirst");
-    function val(i) { return Number(String(i.value).replace(/[^0-9]/g, "")) || 0; }
-    function fmtIn(i) { var d = i.value.replace(/[^0-9]/g, "").slice(0, 12); i.value = d ? n(Number(d)) : ""; }
-    function render() {
-      var p = val(P), o = val(O), bl = val(BL), base = p + o + bl;
-      var rows = [["계약금", 0.1]]; for (var i = 1; i <= 6; i++) rows.push(["중도금 " + i + "회", 0.1]); rows.push(["잔금", 0.3]);
-      var acc = 0;
-      el("cPay").innerHTML = rows.map(function (r, i) { var a = p * r[1] + (i === 0 ? bl * 0.1 : 0); acc += a; return "<tr><td>" + r[0] + (i === 0 && bl ? '<br><span class="muted small">발코니 10% 포함</span>' : "") + '</td><td class="r num">' + Math.round(r[1] * 100) + '%</td><td class="r num">' + eok(a) + '</td><td class="r num">' + eok(acc) + "</td></tr>"; }).join("") +
-        (bl ? '<tr><td>발코니 확장 나머지<br><span class="muted small">중도금 · 잔금 때 나눠 냄</span></td><td class="r num">-</td><td class="r num">' + eok(bl * 0.9) + '</td><td class="r num">' + eok(acc += bl * 0.9) + "</td></tr>" : "") +
-        (o ? '<tr><td>유상옵션</td><td class="r num">-</td><td class="r num">' + eok(o) + '</td><td class="r num">' + eok(acc += o) + "</td></tr>" : "") +
-        '<tr class="total"><td colspan="2">합계</td><td class="r num" colspan="2">' + eok(base) + "</td></tr>";
+    var D = S.optCalc;
+    if (!D) { C.innerHTML = empty("계산기 자료가 없습니다", ""); return; }
+    var CATS = ["침실", "주방", "주방 및 복도", "알파룸", "주방가전", "현관", "거실", "욕실", "바닥재", "조명", "시스템에어컨"];
+    var GN = { kitchen: "주방마감", fridge: "냉장고장", pantry: "팬트리", induction: "인덕션", dress: "드레스룸", floor: "바닥재", light: "조명", air: "시스템에어컨" };
+    var TYPES = Object.keys(D.types), FAMS = Object.keys(D.families);
+    function won(v) { return n(Math.round(v * 1000)) + "원"; }
+    function split(t) { var d = Math.floor(t / 10); return [d, d, d, d, d, d, d, t - 7 * d]; }
+    var saved = {}; try { saved = JSON.parse(store("s4-optcalc") || "{}") || {}; } catch (e) { saved = {}; }
+    C.innerHTML = '<div class="oc">' +
+      '<div class="oc-main"><form class="panel oc-pick" id="ocForm" novalidate>' +
+        '<div class="field"><span class="lbl">공급유형</span><div class="seg" role="radiogroup" aria-label="공급유형"><label><input type="radio" name="ocMode" value="basic" checked><span>기본형</span></label><label><input type="radio" name="ocMode" value="minus"><span>마이너스옵션</span></label></div></div>' +
+        '<div class="field"><label for="ocType">세부평형</label><select id="ocType">' + FAMS.map(function (f) {
+          return '<optgroup label="' + esc(f) + ' 계열">' + TYPES.filter(function (t) { return D.types[t][0] === f; }).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + "</option>"; }).join("") + "</optgroup>";
+        }).join("") + "</select></div>" +
+        '<div class="field"><label for="ocFloor">층</label><select id="ocFloor"></select></div>' +
+        '<div class="field"><label for="ocSpace">공간선택</label><select id="ocSpace"><option value="basic">침실2/3 분리</option><option value="A">A형 · 침실2+3 통합</option></select></div>' +
+        '<p class="muted small oc-note">세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.</p>' +
+      "</form>" +
+      '<div class="oc-opthead"><h2>선택품목</h2><span class="muted small" id="ocFamInfo"></span><button type="button" class="btn sm" id="ocReset">선택 초기화</button></div>' +
+      '<p class="oc-msg" id="ocMsg" role="status" aria-live="polite"></p>' +
+      '<div id="ocOpts" class="oc-opts"></div></div>' +
+      '<aside class="panel oc-sum" id="ocSum" aria-label="계산 결과"><span class="muted small">예상 총 분양비용</span><b class="oc-total num" id="ocTotal"></b>' +
+        '<table class="spec kv oc-kv"><tbody id="ocKv"></tbody></table><p class="small oc-chosen" id="ocChosen"></p>' +
+        '<p class="muted small" style="margin:8px 0 0">세금 · 등기비 · 대출이자는 빠진 금액입니다. 실제 금액은 LH 계약서로 확인하세요.</p></aside>' +
+      "</div>" +
+      '<div class="oc-bar" id="ocBar" aria-hidden="true"><span>예상 총액</span><b class="num" id="ocBarTotal"></b><a href="#ocSum">자세히</a></div>' +
+      "<div>" + head("회차별 납부 예정액", '<span class="note">입주 시 잔여금액은 대출 적용 전</span>') + '<div class="tablebox"><table class="spec oc-pay"><thead><tr><th>회차 · 예정일</th><th class="r">주택</th><th class="r">발코니</th><th class="r">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
+      '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
+        '<label class="check"><input type="checkbox" id="ocFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
+        '<div class="tablebox"><table class="spec"><tbody id="ocTax"></tbody></table></div></div>' +
+      '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">금액은 ' + esc(D.src) + "의 표를 옮긴 값입니다. 계약금과 중도금 1~6차는 각 항목 금액의 10%(천원 미만 버림), 입주 시 잔여금액은 나머지입니다. 마이너스옵션을 고르면 주택 · 발코니 금액이 마이너스옵션 가격으로 바뀌고 선택품목은 고를 수 없습니다.</p>" +
+        '<p class="muted small">취득세 과세표준은 총 분양비용(주택 + 발코니 + 선택품목)입니다. 세율은 6억 이하 1%, 6억 초과 9억 이하 (금액×2/3억 − 3)%, 9억 초과 3%이며 지방교육세는 취득세의 10%입니다. 취득세는 잔금을 내는 입주 시점(2030년 예정)의 법을 따르므로 실제 신고 전 <a href="https://www.wetax.go.kr" target="_blank" rel="noopener">위택스</a>나 세무 전문가에게 확인하세요.</p>' +
+        (D.credit ? '<p class="muted small">화면 구성은 입주예정자가 만든 <a href="' + esc(safeUrl(D.credit.url)) + '" target="_blank" rel="noopener">' + esc(D.credit.label) + " ↗</a>을 참고했습니다. 팸플릿 사진과 공식 VR은 그곳에서 볼 수 있습니다.</p>" : "") +
+      "</div></div>";
+    var TY = el("ocType"), FL = el("ocFloor"), SPC = el("ocSpace"), BOX = el("ocOpts");
+    function mode() { var r = C.querySelector('input[name="ocMode"]:checked'); return r ? r.value : "basic"; }
+    function fam() { return D.families[D.types[TY.value][0]]; }
+    function opt(id) { return fam().opts.filter(function (o) { return o[0] === id; })[0]; }
+    function rule(o) { return o[6] || {}; }
+    function picked() { var m = {}; BOX.querySelectorAll("input[data-id]:checked:not(:disabled)").forEach(function (x) { m[x.dataset.id] = 1; }); return m; }
+    function reason(o, ids) {
+      if (mode() === "minus") return "마이너스옵션은 선택품목을 고를 수 없습니다";
+      if (o[5] === "basic" && SPC.value === "A") return "침실2/3 분리형에서만 선택";
+      if (o[5] === "A" && SPC.value === "basic") return "공간옵션 A에서만 선택";
+      var r = rule(o);
+      if (r.req && !r.req.every(function (x) { return ids[x]; })) return (opt(r.req[0]) || [0, 0, "연동 품목"])[2].replace(/^\S+\s/, "") + " 먼저 선택";
+      if (r.block && r.block.some(function (x) { return ids[x]; })) return "선택한 드레스룸 · 팬트리 · 알파룸과 함께 고를 수 없음";
+      return "";
+    }
+    function row(o, g) {
+      var id = "oc-" + o[0], typ = o[4] ? "radio" : "checkbox";
+      return '<label class="oc-row" for="' + id + '"><input type="' + typ + '" id="' + id + '" data-id="' + esc(o[0]) + '"' + (o[4] ? ' name="ocg-' + esc(o[4]) + '"' : "") + '><span class="oc-l"><span>' + esc(o[2]) + '</span><small class="oc-why"></small></span><span class="oc-p num">' + (o[3] ? "+" + won(o[3]) : "무상") + "</span></label>";
+    }
+    function build() {
+      var F = fam(), fl = D.types[TY.value][1], keep = FL.value;
+      FL.innerHTML = Object.keys(fl).map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + "</option>"; }).join("");
+      if (fl[keep]) FL.value = keep; else FL.value = Object.keys(fl)[Object.keys(fl).length - 1];
+      el("ocFamInfo").textContent = D.types[TY.value][0] + " 계열 · " + F.opts.length + "개 품목 · 표준안내문 " + F.src;
+      BOX.innerHTML = CATS.map(function (c) {
+        var L = F.opts.filter(function (o) { return o[1] === c; }); if (!L.length) return "";
+        var done = {}, h = "";
+        L.forEach(function (o) {
+          if (!o[4]) { h += row(o); return; }
+          if (done[o[4]]) return; done[o[4]] = 1;
+          h += '<div class="oc-grp" role="radiogroup" aria-label="' + esc(GN[o[4]] || o[4]) + '"><span class="oc-gl">' + esc(GN[o[4]] || o[4]) + ' · 하나만</span>' +
+            '<label class="oc-row none" for="oc-none-' + esc(o[4]) + '"><input type="radio" id="oc-none-' + esc(o[4]) + '" name="ocg-' + esc(o[4]) + '" data-none="' + esc(o[4]) + '" checked><span class="oc-l"><span>선택 안 함 (기본 사양)</span></span><span class="oc-p num">0원</span></label>' +
+            L.filter(function (x) { return x[4] === o[4]; }).map(row).join("") + "</div>";
+        });
+        return '<fieldset class="oc-cat"><legend>' + esc(c) + "</legend>" + h + "</fieldset>";
+      }).join("");
+      enforce(); calc();
+    }
+    function enforce() {
+      var F = fam(), off = [], changed;
+      do {
+        changed = false; var ids = picked();
+        F.opts.forEach(function (o) { var i = el("oc-" + o[0]); if (i && i.checked && reason(o, ids)) { i.checked = false; off.push(o[2]); changed = true; } });
+      } while (changed);
+      var ids2 = picked();
+      F.opts.forEach(function (o) {
+        var i = el("oc-" + o[0]); if (!i) return; var r = reason(o, ids2);
+        i.disabled = !!r; i.closest(".oc-row").classList.toggle("off", !!r); i.closest(".oc-row").querySelector(".oc-why").textContent = r && mode() !== "minus" ? r : "";
+      });
+      BOX.querySelectorAll("input[data-none]").forEach(function (x) {
+        x.disabled = mode() === "minus";
+        var g = x.dataset.none; if (!F.opts.some(function (o) { return o[4] === g && ids2[o[0]]; })) x.checked = true;
+      });
+      BOX.classList.toggle("minus", mode() === "minus");
+      el("ocMsg").textContent = off.length ? "조건이 바뀌어 선택을 풀었습니다: " + off.join(" · ") : "";
+    }
+    function tax(base) {
       var rate = base <= 6e8 ? 0.01 : base <= 9e8 ? (base / 1e8 * 2 / 3 - 3) / 100 : 0.03;
-      var tax = base * rate, relief = F.checked ? Math.min(tax, 2e6) : 0, edu = tax * 0.1;
-      el("cTax").innerHTML =
-        '<tr><th>과세표준</th><td class="r num">' + eok(base) + "</td></tr>" +
-        '<tr><th>취득세율</th><td class="r num">' + (base ? (rate * 100).toFixed(2) : "0.00") + "%</td></tr>" +
-        '<tr><th>취득세</th><td class="r num">' + n(Math.round(tax)) + "원</td></tr>" +
+      var t = base * rate, relief = el("ocFirst").checked ? Math.min(t, 2e6) : 0, edu = t * 0.1;
+      el("ocTax").innerHTML = '<tr><th>과세표준</th><td class="r num">' + n(base) + "원</td></tr>" +
+        '<tr><th>취득세율</th><td class="r num">' + (rate * 100).toFixed(2) + "%</td></tr>" +
+        '<tr><th>취득세</th><td class="r num">' + n(Math.round(t)) + "원</td></tr>" +
         (relief ? '<tr><th>생애최초 감면</th><td class="r num">−' + n(Math.round(relief)) + "원</td></tr>" : "") +
         '<tr><th>지방교육세</th><td class="r num">' + n(Math.round(edu)) + "원</td></tr>" +
-        '<tr class="total"><td>합계 (예상)</td><td class="r num">' + n(Math.round(tax - relief + edu)) + "원</td></tr>";
+        '<tr class="total"><td>합계 (예상)</td><td class="r num">' + n(Math.round(t - relief + edu)) + "원</td></tr>";
     }
-    function optList(area) {
-      if (!hasOpt) return;
-      var L = arr(S.options[area]);
-      el("cOptList").innerHTML = L.length ? L.map(function (o, i) {
-        return '<div class="optrow"><label class="check" for="op' + i + '"><input type="checkbox" id="op' + i + '"> ' + esc(o[0]) + '</label><input class="num optamt" id="opa' + i + '" inputmode="numeric" aria-label="' + esc(o[0]) + ' 금액" value="' + n(o[1]) + '"></div>';
-      }).join("") : '<p class="muted small">이 면적의 옵션 정보가 없습니다.</p>';
-      sumOpts();
+    function calc() {
+      var T = D.types[TY.value], F = fam(), m = mode(), ids = picked();
+      var house = T[1][FL.value] - (m === "minus" ? T[2] : 0), bal = F.bal[m === "minus" ? 1 : 0];
+      var chosen = m === "minus" ? [] : F.opts.filter(function (o) { return ids[o[0]]; });
+      var optSum = chosen.reduce(function (a, o) { return a + o[3]; }, 0), total = house + bal + optSum;
+      var H = split(house), B = split(bal), O = [0, 0, 0, 0, 0, 0, 0, 0];
+      chosen.forEach(function (o) { split(o[3]).forEach(function (v, i) { O[i] += v; }); });
+      el("ocTotal").textContent = won(total); el("ocBarTotal").textContent = eok(total * 1000);
+      el("ocKv").innerHTML = "<tr><th>주택 분양가 <small>" + esc(TY.value) + " · " + esc(FL.value) + (m === "minus" ? " · 마이너스" : "") + '</small></th><td class="r num">' + won(house) + "</td></tr>" +
+        '<tr><th>발코니 확장</th><td class="r num">' + won(bal) + "</td></tr>" +
+        "<tr><th>선택품목 <small>" + chosen.length + '개</small></th><td class="r num">' + won(optSum) + "</td></tr>" +
+        '<tr class="total"><th>계약금 합계</th><td class="r num">' + won(H[0] + B[0] + O[0]) + "</td></tr>";
+      el("ocChosen").textContent = m === "minus" ? "마이너스옵션 · 선택품목 없음" : (SPC.value === "A" ? "공간옵션 A" : "침실2/3 분리") + (chosen.length ? " · " + chosen.map(function (o) { return o[2].replace(/^\S+\s/, ""); }).join(" · ") : " · 선택품목 없음");
+      var acc = 0;
+      el("ocPay").innerHTML = D.dates.map(function (d, i) {
+        var lab = i === 0 ? "계약금" : i === 7 ? "입주 시 잔여금액" : "중도금 " + i + "차", sum = H[i] + B[i] + O[i]; acc += sum;
+        return "<tr><td>" + lab + '<br><span class="muted small num">' + esc(d) + '</span></td><td class="r num">' + n(H[i] * 1000) + '</td><td class="r num">' + n(B[i] * 1000) + '</td><td class="r num">' + n(O[i] * 1000) + '</td><td class="r num"><b>' + n(sum * 1000) + '</b></td><td class="r num">' + n(acc * 1000) + "</td></tr>";
+      }).join("") + '<tr class="total"><td>합계</td><td class="r num">' + n(house * 1000) + '</td><td class="r num">' + n(bal * 1000) + '</td><td class="r num">' + n(optSum * 1000) + '</td><td class="r num" colspan="2">' + won(total) + "</td></tr>";
+      tax(total * 1000);
+      store("s4-optcalc", JSON.stringify({ t: TY.value, f: FL.value, m: m, s: SPC.value }));
     }
-    function sumOpts() {
-      if (!hasOpt) return;
-      var s = 0;
-      el("cOptList").querySelectorAll(".optrow").forEach(function (r) { if (r.querySelector("input[type=checkbox]").checked) s += val(r.querySelector(".optamt")); });
-      O.value = n(s); render();
-    }
-    if (hasOpt) {
-      el("cOptList").addEventListener("input", function (e) { if (e.target.classList.contains("optamt")) fmtIn(e.target); sumOpts(); });
-      el("cOptList").addEventListener("change", sumOpts);
-    }
-    el("cForm").addEventListener("submit", function (e) { e.preventDefault(); });
-    P.addEventListener("input", function () { fmtIn(P); el("cChips").querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", "false"); }); render(); });
-    O.addEventListener("input", function () { fmtIn(O); render(); });
-    BL.addEventListener("input", function () { fmtIn(BL); render(); });
-    F.addEventListener("change", render);
-    el("cChips").addEventListener("click", function (e) {
-      var b = e.target.closest(".chip"); if (!b) return;
-      el("cChips").querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", c === b ? "true" : "false"); });
-      P.value = n(Number(b.dataset.p)); optList(b.dataset.area); render();
-    });
-    P.value = TY.length ? n(TY[0].maxPrice) : "";
-    optList(TY.length ? TY[0].area : "");
-    render();
+    el("ocForm").addEventListener("submit", function (e) { e.preventDefault(); });
+    TY.addEventListener("change", function () { SPC.value = "basic"; build(); });
+    FL.addEventListener("change", calc);
+    SPC.addEventListener("change", function () { enforce(); calc(); });
+    C.querySelectorAll('input[name="ocMode"]').forEach(function (r) { r.addEventListener("change", function () {
+      if (mode() === "minus") { BOX.querySelectorAll("input[data-id]").forEach(function (x) { x.checked = false; }); SPC.value = "basic"; }
+      SPC.disabled = mode() === "minus"; enforce(); calc();
+    }); });
+    BOX.addEventListener("change", function () { enforce(); calc(); });
+    el("ocReset").addEventListener("click", function () { BOX.querySelectorAll("input[data-id]").forEach(function (x) { x.checked = false; }); SPC.value = "basic"; enforce(); calc(); el("ocMsg").textContent = "선택품목을 모두 풀었습니다."; });
+    el("ocFirst").addEventListener("change", calc);
+    if (saved.t && D.types[saved.t]) TY.value = saved.t;
+    if (saved.m === "minus") { C.querySelector('input[name="ocMode"][value="minus"]').checked = true; SPC.disabled = true; }
+    else if (saved.s === "A") SPC.value = "A";
+    if (saved.f) { FL.innerHTML = '<option value="' + esc(saved.f) + '">' + esc(saved.f) + "</option>"; FL.value = saved.f; }
+    build();
+    if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { el("ocBar").classList.toggle("show", !es[0].isIntersecting); }).observe(el("ocSum"));
   };
 
   R.checklist = function () {
