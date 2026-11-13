@@ -55,7 +55,7 @@
 
   /* ── 메뉴 ── */
   var GROUPS = [
-    { name: "소식", items: [["notice.html", "공지사항", "notice", "협의회 · LH 안내"], ["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
+    { name: "소식", items: [["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
     { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["gallery.html", "사진관", "gallery", "현장과 주변 모습"]] },
     { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회칙 · 회계"], ["agreement.html", "위임동의", "agreement", "현황판 · 동의서 제출"], ["participate.html", "민원 · 투표", "participate", "함께 내는 목소리"]] },
     { name: "커뮤니티", items: [["board.html", "자유게시판", "board", "입주예정자 이야기"], ["links.html", "카페 · 바로가기", "links", "가입 · 인증 안내"]] },
@@ -98,7 +98,7 @@
         g.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "<small>" + x[3] + "</small></a>"; }).join("") + "</div></div>";
     }).join("") + "</nav>" +
     (!LIVE ? '<a class="acct" id="acctLink" href="login.html">로그인</a>' : "") +
-    (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isDelegate ? "" : API.profile.status === "pending" ? " · 승인 대기" : API.profile.status === "rejected" ? " · 반려" : " · 위임 전") : "가입 마무리") : "로그인") + "</a>" : "") +
+    (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isDelegate ? "" : '<span class="acct-st"> · ' + (API.profile.status === "pending" ? "승인 대기" : API.profile.status === "rejected" ? "반려" : "위임 전") + "</span>") : "가입 마무리") : "로그인") + "</a>" : "") +
     '<a class="btn solid head-cta" href="' + (LIVE && !API.loggedIn ? "login.html#signup" : "agreement.html") + '">' + (LIVE && !API.loggedIn ? "회원가입" : "위임동의 현황") + "</a>" +
     '<button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="drawer">메뉴</button></div>' +
     '<nav class="wrap drawer" id="drawer" aria-label="전체 메뉴" hidden>' + (!LIVE ? '<a class="btn solid" href="login.html" style="justify-content:center">로그인 · 회원가입</a>' : "") + (LIVE ? '<a class="btn' + (API.loggedIn ? "" : " solid") + '" href="' + (API.loggedIn ? "account.html" : "login.html") + '" style="justify-content:center">' + (API.loggedIn ? "내 정보" : "로그인 · 회원가입") + "</a>" : "") + GROUPS.map(function (g) {
@@ -290,6 +290,39 @@
   /* ── pages ── */
   var R = {};
 
+  /* ── 메인 최상단: 민원 참여 ── */
+  function petitionsHtml() {
+    var L = arr(S.petitions).filter(function (x) { return x.active; });
+    if (!L.length) return "";
+    return '<section class="band petition-band"><div class="wrap">' + L.map(function (x) {
+      var g = x.guide || {};
+      return '<article class="petition" id="pt-' + esc(x.id) + '"><div class="pt-head"><span class="tag hot">' + esc(x.tag || "민원 참여") + "</span><h2>" + esc(x.title) + "</h2><p>" + esc(x.lead || "") + "</p>" +
+        (g.url ? '<p class="cta-row" style="margin:12px 0 0"><a class="btn solid" href="' + esc(g.url) + '" target="_blank" rel="noopener">' + esc(g.label || "참여 가이드 열기") + " ↗</a>" + (g.by ? '<span class="muted small">' + esc(g.by) + "</span>" : "") + "</p>" : "") + "</div>" +
+        '<div class="pt-body">' +
+          (arr(g.steps).length ? '<div><h3>참여 방법</h3><ol class="pt-steps">' + g.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></div>" : "") +
+          '<div><h3>접수처</h3><ul class="pt-ch">' + arr(x.channels).map(function (c) {
+            return "<li><b>" + esc(c.org) + '</b><span class="muted small">' + esc(c.what || "") + (c.note ? " · " + esc(c.note) : "") + "</span>" +
+              '<span class="pt-act">' + (c.tel ? '<a class="btn sm" href="tel:' + esc(c.tel.replace(/[^0-9]/g, "")) + '">' + esc(c.tel) + "</a>" : "") + (c.url ? '<a class="btn sm" href="' + esc(c.url) + '" target="_blank" rel="noopener">바로가기 ↗</a>' : "") + "</span></li>";
+          }).join("") + "</ul></div>" +
+        "</div>" +
+        (x.privateKey ? '<div class="pt-private" data-key="' + esc(x.privateKey) + '">' + (LIVE && API.isMember ? '<p class="muted small">회원 전용 안내를 불러오는 중…</p>'
+          : '<p class="small"><b>안건 정보 · 의원 연락처</b>는 외부 유출 금지라 승인 회원에게만 보입니다. ' + (LIVE && API.loggedIn ? "가입 승인 후 볼 수 있습니다." : '<a href="login.html">로그인 →</a>') + "</p>") + "</div>" : "") +
+        "</article>";
+    }).join("") + "</div></section>";
+  }
+  function linkify(t) {
+    return esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+      .replace(/(01[016789]-?\d{3,4}-?\d{4}|0\d{1,2}-\d{3,4}-\d{4})/g, function (m) { return '<a href="tel:' + m.replace(/-/g, "") + '">' + m + "</a>"; });
+  }
+  function bindPetitions() {
+    if (!(LIVE && API.isMember)) return;
+    document.querySelectorAll(".pt-private[data-key]").forEach(function (box) {
+      API.privateNote(box.getAttribute("data-key")).then(function (r) {
+        box.innerHTML = r && r.body ? '<div class="pt-note"><b>회원 전용 · 외부 유출 금지</b><div class="body">' + linkify(r.body) + '</div><span class="muted small">' + fmtTime(r.updated_at) + " 운영진 작성</span></div>" : (API.isAdmin ? '<p class="muted small">회원 전용 안내가 비어 있습니다. 운영진 › 민원 탭에서 적어 주세요.</p>' : "");
+      }).catch(function () { box.innerHTML = ""; });
+    });
+  }
+
   R.home = async function () {
     var dd = "", ddl = "입주 예정 " + esc(S.moveInText || "");
     if (S.moveInDate) {
@@ -302,7 +335,7 @@
       '<path class="r3" d="M0 148 Q220 112 440 140 Q640 164 840 136 Q1020 114 1200 136 V170 H0Z"/>' +
       '<path class="w" d="M-10 160 Q60 152 130 160 T270 160 T410 160 T550 160 T690 160 T830 160 T970 160 T1110 160 T1250 160"/></svg>';
     var upcoming = (await mergedSchedule()).filter(function (x) { return x.state !== "done"; }).slice(0, 4);
-    main.innerHTML =
+    main.innerHTML = petitionsHtml() +
       '<section class="hero"><div class="wrap hero-grid"><div>' +
       '<div class="eyebrow">고양창릉 공공주택지구 · LH 공공분양</div>' +
       "<h1>창릉 S-4<small>입주예정자협의회</small></h1>" +
@@ -312,34 +345,18 @@
       agreeMeter(true) + membersMeter() + progressMeter() +
       '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
       "</div>" + ridge + "</section>" +
-
       '<section class="band" id="homeDues" hidden><div class="wrap"></div></section>' +
       '<section class="band"><div class="wrap two"><div>' + head("공지사항", more("notice.html")) + noticeRows(arr(S.notices).slice(0, 5)) + "</div>" +
       "<div>" + head("다가오는 일정", more("schedule.html", "전체 일정")) + timeline(upcoming) + "</div></div></section>" +
-
-      '<div id="homeNews"></div>' +
-      '<section class="band first"><div class="wrap">' + head("처음 오셨나요?") +
-      '<ol class="steps steps-row">' +
-      (LIVE ? '<li><div><b><a href="login.html#signup">공급계약 후 회원가입</a></b><span>' + esc(consentOpenLabel()) + ' 계약이 시작되면 동·호수를 고르고 계약서 사진을 올려 가입합니다. 승인되면 게시판을 쓸 수 있습니다.</span></div></li>' +
-        '<li><div><b><a href="consent.html">위임동의서</a></b><span>가입 뒤 계약자 성명과 서명으로 위임장을 냅니다. 승인 대기 중에도 낼 수 있습니다.</span></div></li>' +
-        '<li><div><b><a href="participate.html">투표 · 민원 참여</a></b><span>위임 세대는 협의회 투표와 단체민원에 참여하고 세대별 현황을 볼 수 있습니다.</span></div></li>'
-      : "<li><div><b>공식 카페 가입</b><span>카페 · 바로가기 메뉴에서 카페에 가입합니다.</span></div></li>" +
-        "<li><div><b>계약자 인증 · 등업</b><span>동·호수와 이름만 보이게 가린 계약서를 올립니다.</span></div></li>" +
-        "<li><div><b>위임동의서 제출</b><span>선택 사항입니다. 모일수록 협상력이 커집니다.</span></div></li>") +
-      "</ol></div></section>" +
-
-      '<section class="band"><div class="wrap">' + head("자주 찾는 메뉴") + '<div class="shortcuts">' +
-      '<a class="shortcut" href="calculator.html"><span class="k">CALC</span><b>납부 계산기</b><span>회차별 금액과 예상 취득세</span></a>' +
-      '<a class="shortcut" href="floorplan.html"><span class="k">59 · 74 · 84</span><b>단지 · 평면</b><span>7개 타입 공급 정보</span></a>' +
-      '<a class="shortcut" href="agreement.html"><span class="k">' + arr(S.layout).length + '개 동</span><b>위임동의 현황판</b><span>동·호수별로 한눈에</span></a>' +
-      '<a class="shortcut" href="checklist.html"><span class="k">' + arr(S.checklist).reduce(function (s, g) { return s + arr(g.items).length; }, 0) + '항목</span><b>사전점검</b><span>공간별 체크리스트</span></a>' +
-      "</div></div></section>";
+      '<div id="homeNews"></div>';
+    bindPetitions();
     if (LIVE && API.isMember) Promise.all([API.duesMine(), API.duesPublic()]).then(function (r) {
       var m = r[0], d = r[1]; if (!m || (m.paid > 0 && m.paid >= (m.due || 1))) return;
       var h = duesCardHtml(m, d, true) || duesAdminHint(d); if (!h) return;
       var s = el("homeDues"); s.querySelector(".wrap").innerHTML = head("회비 안내") + h; s.hidden = false; bindCopy(s);
     }).catch(function () {});
   };
+
 
   async function homeNews() {
     if (!LIVE || page !== "home") return;
@@ -2043,6 +2060,19 @@
           el("fCamp").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createCampaign({ title: el("cT").value, target: el("cTo").value, description: el("cD").value }); show(); } catch (er) { err(er); } });
           B.querySelectorAll(".cst").forEach(function (s) { s.addEventListener("change", async function () { try { await API.admin.setCampaignStatus(Number(s.dataset.id), s.value); say("admMsg", "상태를 바꿨습니다."); } catch (er) { err(er); } }); });
           B.querySelectorAll(".delcamp").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deleteCampaign(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
+          // 메인 '민원 참여'의 회원 전용 안내 (외부 유출 금지 내용)
+          var PT = arr(S.petitions).filter(function (x) { return x.privateKey; });
+          if (PT.length) {
+            var notes = await Promise.all(PT.map(function (x) { return API.privateNote(x.privateKey).catch(function () { return null; }); }));
+            B.insertAdjacentHTML("afterbegin", PT.map(function (x, i) {
+              return '<form class="panel pn-form" data-key="' + esc(x.privateKey) + '" novalidate><h3 style="margin-bottom:6px">회원 전용 안내 · ' + esc(x.title) + '</h3>' +
+                '<p class="muted small" style="margin:0 0 8px">메인 \'민원 참여\' 아래에 승인 회원에게만 보입니다. 안건 정보, 의원 연락처처럼 외부에 나가면 안 되는 내용을 적으세요. 주소 · 전화번호는 자동으로 링크가 됩니다.</p>' +
+                '<textarea class="pn-body" rows="10" maxlength="5000">' + esc((notes[i] || {}).body || "") + '</textarea>' +
+                '<p class="cta-row" style="margin:8px 0 0"><button class="btn solid" type="submit">저장</button>' + (notes[i] && notes[i].updated_at ? '<span class="muted small">마지막 저장 ' + fmtTime(notes[i].updated_at) + "</span>" : "") + "</p></form>";
+            }).join("") + '<div style="height:24px"></div>');
+            B.querySelectorAll(".pn-form").forEach(function (f) { f.addEventListener("submit", async function (ev) { ev.preventDefault();
+              try { await API.admin.setPrivateNote(f.dataset.key, f.querySelector(".pn-body").value); say("admMsg", "회원 전용 안내를 저장했습니다."); } catch (er) { err(er); } }); });
+          }
         }
       } catch (e) { B.innerHTML = ""; err(e); }
     }

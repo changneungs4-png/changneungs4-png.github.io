@@ -207,6 +207,8 @@
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
     memberUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; var r = await sb.rpc("member_units"); return r.error ? [] : r.data; },
     /* 입주민 오픈채팅 입장 정보 (위임 회원 · 운영진만) */
+    /* 회원 전용 안내문 (외부 유출 금지 내용) */
+    privateNote: async function (key) { need(); if (!API.isMember) return null; var r = await sb.rpc("private_note_get", { p_key: key }); return r.error ? null : (r.data || [])[0] || null; },
     /* 회비 안내 · 월별 합계 (누구나), 우리 세대 납부 상태 (회원) */
     duesPublic: async function () { need(); var r = await sb.rpc("dues_public"); return r.error ? null : r.data; },
     duesMine: async function () { need(); if (!API.isMember) return null; var r = await sb.rpc("dues_mine"); return r.error ? null : (r.data || [])[0] || null; },
@@ -417,6 +419,7 @@
       deleteCampaign: async function (id) { need(); must(await sb.from("campaigns").delete().eq("id", id)); },
       /* 회비: 은행 거래내역 올리기 · 고치기 · 설정 */
       ownerUnit: async function () { need(); var r = await sb.rpc("owner_unit"); return r.error ? null : r.data; },
+      setPrivateNote: async function (key, body) { need(); must(await sb.rpc("private_note_set", { p_key: key, p_body: body || "" })); },
       cafeList: async function () { need(); return must(await sb.rpc("cafe_list")) || []; },
       cafeMark: async function (unit, state) { need(); must(await sb.rpc("cafe_mark", { p_unit: unit, p_state: state || "" })); },
       bankImport: async function (rows) { need(); return (must(await sb.rpc("bank_import", { p_rows: rows })) || [])[0] || { added: 0, skipped: 0, matched: 0 }; },
