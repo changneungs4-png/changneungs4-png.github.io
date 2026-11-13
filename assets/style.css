@@ -1135,3 +1135,29 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 }
 @media (min-width:761px){ #ocPayFull{display:none} }
 @media (max-width:640px){ #fAg.panel{padding:16px 12px} #fAg .consent-in{padding-inline:10px;margin-inline:-2px} }
+
+/* 내 아파트 · 커뮤니티 */
+.oc-me{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;background:var(--pine-soft);border-radius:12px;padding:12px 14px}
+.oc-me>div{display:grid;gap:2px;min-width:0}
+.oc-me b{font-size:16px;color:var(--pine);overflow-wrap:anywhere}
+.oc-me p{grid-column:1/-1;margin:0}
+.oc-gate{max-width:620px;margin:0 auto;text-align:center;display:grid;gap:10px;justify-items:center;padding:28px 22px}
+.oc-gate h2{font-size:22px}
+.oc-gate p{margin:0}
+.cm-ic{display:inline-grid;place-items:center;width:46px;height:46px;border-radius:14px;background:var(--pine-soft);font-size:24px}
+.cm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
+.cm-card{display:grid;gap:10px;align-content:start;padding:22px}
+.cm-card h2{font-size:21px}
+.cm-card p{margin:0;line-height:1.65}
+.cm-card .steps{margin:4px 0}
+.cm-card .btn.wide{margin-top:auto}
+.cm-check{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.cm-check li{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.cm-check li::before{content:"";width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none}
+.cm-check li.on{color:var(--fg);font-weight:600}
+.cm-check li.on::before{background:var(--pine);border-color:var(--pine);box-shadow:inset 0 0 0 3px var(--surface)}
+.cm-rule h3{font-size:17px;margin-bottom:6px}
+.cm-rule ul{margin:0;padding-left:1.2em;display:grid;gap:4px;font-size:14px;color:var(--muted);line-height:1.6}
+.btn[aria-disabled="true"]{opacity:.6;cursor:default;justify-content:center}
+.sec-h{font-size:22px;margin:18px 0 12px;scroll-margin-top:90px}
+@media (max-width:760px){ .cm-grid{grid-template-columns:minmax(0,1fr)} .oc-me{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .oc-me>div:first-child{grid-column:1/-1} .cm-card{padding:18px 16px} }

@@ -56,11 +56,11 @@
   /* ── 메뉴 ── */
   var GROUPS = [
     { name: "소식", items: [["schedule.html", "주요일정", "schedule", "청약부터 입주까지"], ["news.html", "언론보도", "news", "S-4 관련 기사"]] },
-    { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"]] },
+    { name: "우리 단지", items: [["floorplan.html", "단지 · 평면", "floorplan", "7개 타입과 단지 개요"], ["progress.html", "공사현황", "progress", "공정률과 현장 기록"], ["calculator.html", "내 아파트", "calculator", "우리 집 옵션 · 납부 계산"]] },
     { name: "협의회", items: [["association.html", "협의회 소개", "association", "인사말 · 조직 · 회칙 · 회계"], ["agreement.html", "위임동의", "agreement", "현황판 · 동의서 제출"], ["petition.html", "민원", "petition", "함께 내는 민원 참여"]] },
-    { name: "커뮤니티", items: [["links.html", "카페 · 바로가기", "links", "카페 · 옵션 계산기 · 기관"]] }
+    { name: "커뮤니티", items: [["cafe.html", "카페 · 오픈채팅", "cafe", "가입 · 입장 안내"], ["info.html", "정보", "info", "자료 · 자주 묻는 질문"], ["links.html", "바로가기", "links", "LH · 기관 · 문의처"]] }
   ];
-  var NAVKEY = { bylaws: "association", consent: "agreement", calculator: "links", participate: "petition" }[page] || page;
+  var NAVKEY = { bylaws: "association", consent: "agreement", participate: "petition", documents: "info", faq: "info" }[page] || page;
   var myGroup = GROUPS.filter(function (g) { return g.items.some(function (x) { return x[2] === NAVKEY; }); })[0];
   var HEAD = {
     login: ["MEMBERS", "로그인 · 회원가입", "입주예정자 인증을 거친 회원만 위임동의와 민원 참여, 회원 전용 안내를 이용할 수 있습니다."],
@@ -79,8 +79,10 @@
     agreement: ["AGREEMENT BOARD", "위임동의 현황판", "동·호수별 위임동의 현황입니다."],
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
     board: ["COMMUNITY", "자유게시판", "입주예정자끼리 정보와 이야기를 나눕니다."],
-    links: ["LINKS", "카페 · 바로가기", "공식 카페와 자주 쓰는 기관 사이트입니다."],
-    calculator: ["OPTION CALCULATOR", "평형별 옵션 계산기", "세부평형 · 층 · 선택품목을 고르면 총 분양비용과 회차별 납부액, 예상 취득세를 계산합니다."],
+    links: ["LINKS", "바로가기", "LH · 청약 · 세금 · 시청 등 자주 쓰는 기관 사이트와 문의처입니다."],
+    calculator: ["MY HOME", "내 아파트", "가입한 동 · 호수 기준으로 우리 집 평형과 층이 정해집니다. 선택품목을 고르면 총 분양비용과 회차별 납부액, 예상 취득세를 계산합니다."],
+    cafe: ["COMMUNITY", "카페 · 오픈채팅", "입주예정자끼리 이야기를 나누는 곳입니다. 공식 카페는 누구나, 오픈채팅은 위임동의 세대가 들어올 수 있습니다."],
+    info: ["INFORMATION", "정보", "공고문 원문 · 협의회 정리 자료와 자주 묻는 질문입니다."],
     petition: ["PETITION", "민원 참여", "입주예정자가 함께 내는 민원입니다. 참여 방법과 접수처를 확인하세요."],
     checklist: ["PRE-INSPECTION", "사전점검 체크리스트", "사전점검 날 공간별로 확인할 항목입니다. 체크한 내용은 이 기기에만 저장됩니다."],
     documents: ["ARCHIVE", "자료실", "공고문 원문과 협의회가 정리한 자료입니다."],
@@ -196,6 +198,8 @@
       privacy: P("M120 22 L186 46 V92 Q186 140 120 164 Q54 140 54 92 V46 Z") + P("M96 92 L114 110 L148 74"),
       admin: Cc(120, 90, 26) + P("M120 30 V48 M120 132 V150 M60 90 H78 M162 90 H180 M78 48 L91 61 M149 119 L162 132 M78 132 L91 119 M149 61 L162 48"),
       petition: R(60, 80, 120, 80, 6) + P("M60 104 H180") + R(100, 20, 44, 66, 3) + P("M110 44 L118 52 L134 34") + P("M96 92 H148"),
+      cafe: R(24, 30, 120, 70, 14) + P("M50 100 L44 124 L72 100") + R(100, 84, 120, 64, 14) + P("M190 148 L198 168 L172 148") + P("M46 56 H120 M46 74 H100 M122 108 H196 M122 124 H176"),
+      info: P("M30 50 H90 L104 64 H210 V150 H30 Z") + P("M30 76 H210") + Cc(170, 112, 18) + P("M164 106 Q164 98 170 98 Q178 98 178 105 Q178 110 170 114 V118"),
       links_: ""
     };
   })();
@@ -475,7 +479,7 @@
       '<div class="eyebrow">고양창릉 공공주택지구 · LH 공공분양</div>' +
       "<h1>창릉 S-4<small>입주예정자협의회</small></h1>" +
       '<p class="lead">창릉천 물길과 서오릉 숲 사이, ' + n(T) + '세대가 함께 만들어갈 새 동네입니다. 공지와 일정, 공사 진행과 위임동의 현황을 이곳에서 확인하세요.</p>' +
-      '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="account.html">내 정보 · 위임동의</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') : '<a class="btn solid" href="links.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
+      '<div class="cta-row">' + (LIVE ? (API.loggedIn ? '<a class="btn solid" href="account.html">내 정보 · 위임동의</a>' : '<a class="btn solid" href="login.html#signup">회원가입</a>') : '<a class="btn solid" href="cafe.html">공식 카페 가입 · 인증</a>') + '<a class="btn" href="notice.html">공지사항 보기</a></div></div>' +
       '<aside class="status" aria-label="단지 현황"><div class="top"><div><b class="num">' + dd + "</b></div><span>" + ddl + "<br>16개 동 · " + n(T) + "세대</span></div>" +
       agreeMeter(true) + membersMeter() + progressMeter() +
       '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
@@ -1223,26 +1227,62 @@
   }
   function bindChatTiles() { document.querySelectorAll('.tile[href="#chat"]').forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); openChat(); }); }); }
 
-  R.links = async function () {
-    var CT = arr(S.contacts);
-    C.innerHTML = "<div>" + head("바로가기") + '<div class="tiles">' + arr(S.links).map(tile).join("") + "</div></div>" +
-      (CT.length ? "<div>" + head("문의처") + '<div class="tablebox"><table class="spec kv">' + CT.map(function (c) { return "<tr><th>" + esc(c[0]) + '</th><td class="num sel-all">' + esc(c[1]) + "</td></tr>"; }).join("") + "</table></div></div>" : "") +
-      '<div class="two"><div>' + (arr(S.links).some(function (l) { return /카페/.test(l.title) && l.url; })
-        ? head("공식 카페 가입") + '<ol class="steps">' +
+  function cafeLink() { return arr(S.links).filter(function (l) { return /카페/.test(l.title) && l.url; })[0]; }
+  R.cafe = async function () {
+    var cf = cafeLink(), st = !LIVE ? "" : !API.loggedIn ? "login" : API.isDelegate || API.isAdmin ? "ok" : "need";
+    var chatBtn = st === "ok" ? '<button type="button" class="btn solid wide" id="chatOpen">오픈채팅 입장하기</button>'
+      : st === "login" ? '<a class="btn solid wide" href="login.html">로그인하고 입장하기</a>'
+      : st === "need" ? (API.consentOpen ? '<a class="btn solid wide" href="consent.html">위임동의서 내고 입장하기</a>' : '<span class="btn wide" aria-disabled="true">' + esc(consentOpenLabel()) + " 위임동의 시작 후 입장</span>")
+      : '<span class="btn wide" aria-disabled="true">서버 연결 후 입장</span>';
+    C.innerHTML = '<div class="cm-grid">' +
+      '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">☕</span><h2>공식 네이버 카페</h2><p class="muted">공지 · 질문 · 정보 나눔을 오래 남겨 두는 곳입니다. 계약자가 아니어도 가족이 함께 볼 수 있습니다.</p>' +
+        '<ol class="steps">' +
           "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
-          '<li><div><b>입주예정자 확인</b><span>입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 카페에 계약서를 따로 올리지 않아도 됩니다.</span></div></li>' +
-          '<li><div><b>오픈채팅 참여</b><span>위임동의를 마친 세대는 위 "입주민 오픈채팅"을 누르면 입장 비밀번호와 함께 바로 들어갈 수 있습니다.</span></div></li></ol>'
-        : head("입주예정자 확인") + '<p class="muted">입주예정자 확인은 <a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 동·호수를 고르고 계약서 사진을 올리면 운영진이 확인합니다. 공식 카페와 오픈채팅은 개설되면 이곳에 연결합니다.</p>') + "</div>" +
+          '<li><div><b>입주예정자 확인</b><span><a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 카페에 계약서를 따로 올리지 않아도 됩니다.</span></div></li>' +
+          "<li><div><b>등업</b><span>홈페이지에서 확인된 세대는 운영진이 카페 등급을 올려 드립니다.</span></div></li></ol>" +
+        (cf ? '<a class="btn solid wide" href="' + esc(safeUrl(cf.url)) + '" target="_blank" rel="noopener">카페 바로가기 ↗</a>' : '<span class="btn wide" aria-disabled="true">카페 개설 후 연결</span>') + "</section>" +
+      '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">💬</span><h2>입주민 오픈채팅</h2><p class="muted">빠른 소식과 일정 알림을 나누는 카카오톡 오픈채팅입니다. 비밀번호가 걸려 있어 <b class="fg">위임동의를 마친 세대</b>에게만 입장 비밀번호를 보여 드립니다.</p>' +
+        '<ul class="cm-check"><li class="' + (LIVE && API.loggedIn ? "on" : "") + '">홈페이지 로그인</li><li class="' + (LIVE && (API.isDelegate || API.isAdmin) ? "on" : "") + '">위임동의서 제출</li><li class="' + (st === "ok" ? "on" : "") + '">입장 비밀번호 확인</li></ul>' +
+        chatBtn + "</section></div>" +
+      '<section class="panel cm-rule"><h3>함께 지킬 약속</h3><ul><li>개인 연락처 · 계약서 · 동호수 사진을 올리지 않습니다.</li><li>특정 세대 · 업체 · 정당을 비방하지 않습니다.</li><li>회원 전용으로 공유된 내용은 밖으로 옮기지 않습니다.</li><li>문제가 생기면 운영진에게 카페 쪽지나 협의회 메일(' + esc((S.privacyOfficer || {}).contact || "changneung.s4@gmail.com") + ")로 알려 주세요.</li></ul></section>";
+    if (el("chatOpen")) el("chatOpen").addEventListener("click", openChat);
+    if (location.hash === "#chat" && st === "ok") openChat();
+  };
+  R.links = async function () {
+    var CT = arr(S.contacts), L = arr(S.links).filter(function (l) { return l.url !== "#chat" && !/카페/.test(l.title) && !/calculator/.test(l.url || ""); });
+    C.innerHTML = "<div>" + head("기관 사이트") + '<div class="tiles">' + L.map(tile).join("") +
+        '<a class="tile" href="cafe.html"><b>카페 · 오픈채팅</b><span>입주예정자 소통 · 위임 세대 채팅방</span></a></div></div>' +
+      (CT.length ? "<div>" + head("문의처") + '<div class="tablebox"><table class="spec kv">' + CT.map(function (c) { return "<tr><th>" + esc(c[0]) + '</th><td class="num sel-all">' + esc(c[1]) + "</td></tr>"; }).join("") + "</table></div></div>" : "") +
       "<div>" + head("휴대폰 홈 화면에 추가") +
       '<p class="muted"><b class="fg">아이폰(사파리)</b> 하단 공유 버튼을 누르고 "홈 화면에 추가"를 선택합니다.</p>' +
-      '<p class="muted"><b class="fg">안드로이드(크롬)</b> 오른쪽 위 메뉴에서 "홈 화면에 추가"를 선택합니다.</p></div></div>';
-    bindChatTiles();
-    if (location.hash === "#chat") openChat();
+      '<p class="muted"><b class="fg">안드로이드(크롬)</b> 오른쪽 위 메뉴에서 "홈 화면에 추가"를 선택합니다.</p></div>';
+    if (location.hash === "#chat") location.replace("cafe.html#chat");
+  };
+  // 정보: 자료실 + 자주 묻는 질문 (예전 두 페이지를 한곳에)
+  R.info = function () {
+    var keep = C;
+    keep.innerHTML = '<nav class="chips" style="margin-bottom:-8px"><a class="chip" href="#docs">자료</a><a class="chip" href="#faq">자주 묻는 질문</a></nav><section id="docs"><h2 class="sec-h">자료</h2><div id="infoDocs"></div></section><section id="faq"><h2 class="sec-h">자주 묻는 질문</h2><div id="infoFaq"></div></section>';
+    try { C = el("infoDocs"); R.documents(); C = el("infoFaq"); R.faq(); } finally { C = keep; }
   };
 
   R.calculator = function () {
     var D = S.optCalc;
     if (!D) { C.innerHTML = empty("계산기 자료가 없습니다", ""); return; }
+    // 내 아파트: 가입한 동 · 호수로 평형 계열과 층 구간을 정함 (운영진은 다른 평형도 볼 수 있음)
+    var ME = null;
+    if (LIVE) {
+      var pf = API.profile;
+      if (!API.loggedIn || !pf || pf.status === "rejected") {
+        C.innerHTML = '<div class="panel oc-gate"><span class="cm-ic" aria-hidden="true">🏠</span><h2>우리 집 기준으로 계산해 드립니다</h2>' +
+          '<p class="muted">회원가입 때 고른 동 · 호수로 평형과 층이 정해져, 우리 집에 맞는 선택품목과 분양가로 총액 · 회차별 납부액 · 취득세를 바로 볼 수 있습니다.</p>' +
+          (pf && pf.status === "rejected" ? gate("member") : '<p class="cta-row" style="justify-content:center"><a class="btn solid" href="login.html">로그인</a><a class="btn" href="login.html#signup">회원가입</a></p>') +
+          '<p class="muted small">평형별 공급 정보와 최고 분양가는 <a href="floorplan.html">단지 · 평면</a>에서 누구나 볼 수 있습니다.</p></div>';
+        return;
+      }
+      var uu = UNIT[pf.unit_id];
+      if (uu) { var fl = Math.floor(Number(uu.ho) / 100) || 1; ME = { unit: pf.unit_id, label: uu.dong + "동 " + uu.ho + "호", fam: uu.type, floor: fl, key: fl >= 5 ? "5층~최상층" : fl + "층" }; }
+    }
+    var FREE = !ME || (LIVE && API.isAdmin);
     var CATS = ["침실", "주방", "주방 및 복도", "알파룸", "주방가전", "현관", "거실", "욕실", "바닥재", "조명", "시스템에어컨"];
     var GN = { kitchen: "주방마감", fridge: "냉장고장", pantry: "팬트리", induction: "인덕션", dress: "드레스룸", floor: "바닥재", light: "조명", air: "시스템에어컨" };
     var TYPES = Object.keys(D.types), FAMS = Object.keys(D.families);
@@ -1250,14 +1290,17 @@
     function split(t) { var d = Math.floor(t / 10); return [d, d, d, d, d, d, d, t - 7 * d]; }
     var saved = {}; try { saved = JSON.parse(store("s4-optcalc") || "{}") || {}; } catch (e) { saved = {}; }
     C.innerHTML = '<div class="oc">' +
-      '<div class="oc-main"><h2 class="oc-h"><span class="oc-no">1</span>우리 집 고르기</h2><form class="panel oc-pick" id="ocForm" novalidate>' +
+      '<div class="oc-main"><h2 class="oc-h"><span class="oc-no">1</span>' + (ME ? "우리 집" : "평형 · 층 고르기") + '</h2>' +
+        (ME ? '<div class="oc-me"><div><span class="muted small">가입 세대</span><b>' + esc(ME.label) + '</b></div><div><span class="muted small">평형 계열</span><b>' + esc(ME.fam) + '</b></div><div><span class="muted small">층 · 분양가 구간</span><b>' + ME.floor + "층 · " + esc(ME.key) + "</b></div>" +
+          (LIVE && API.isAdmin ? '<p class="muted small">운영진이라 다른 평형 · 층도 골라 볼 수 있습니다.</p>' : "") + "</div>" : "") +
+        '<form class="panel oc-pick" id="ocForm" novalidate>' +
         '<div class="field"><span class="lbl">공급유형</span><div class="seg" role="radiogroup" aria-label="공급유형"><label><input type="radio" name="ocMode" value="basic" checked><span>기본형</span></label><label><input type="radio" name="ocMode" value="minus"><span>마이너스옵션</span></label></div></div>' +
-        '<div class="field"><label for="ocType">세부평형</label><select id="ocType">' + FAMS.map(function (f) {
-          return '<optgroup label="' + esc(f) + ' 계열">' + TYPES.filter(function (t) { return D.types[t][0] === f; }).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + "</option>"; }).join("") + "</optgroup>";
+        '<div class="field"><label for="ocType">세부평형</label><select id="ocType">' + FAMS.filter(function (f) { return FREE || f === ME.fam; }).map(function (f) {
+          return '<optgroup label="' + esc(f) + ' 계열">' + TYPES.filter(function (t) { return D.types[t][0] === f && (FREE || D.types[t][1][ME.key]); }).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + "</option>"; }).join("") + "</optgroup>";
         }).join("") + "</select></div>" +
         '<div class="field"><label for="ocFloor">층</label><select id="ocFloor"></select></div>' +
         '<div class="field"><label for="ocSpace">공간선택</label><select id="ocSpace"><option value="basic">침실2/3 분리</option><option value="A">A형 · 침실2+3 통합</option></select></div>' +
-        '<p class="muted small oc-note">세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.</p>' +
+        '<p class="muted small oc-note">' + (ME && !FREE ? "같은 계열에도 세부평형(L · H 등)에 따라 분양가가 조금 다릅니다. 계약서나 동호배치표의 주택형을 확인해 골라 주세요. 선택품목은 같습니다." : "세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.") + "</p>" +
       "</form>" +
       '<details class="panel oc-media-d" id="ocMediaD"' + (window.innerWidth > 760 ? " open" : "") + '><summary><b>평면도 · LH 공식 VR 보기</b><span class="muted small" id="ocMediaS"></span></summary><div class="oc-media" id="ocMedia"></div></details>' +
       '<div class="oc-opthead"><h2 class="oc-h"><span class="oc-no">2</span>선택품목 고르기</h2><button type="button" class="btn sm" id="ocReset">모두 풀기</button><span class="muted small" id="ocFamInfo"></span></div>' +
@@ -1316,7 +1359,9 @@
     function build() {
       var F = fam(), fl = D.types[TY.value][1], keep = FL.value;
       FL.innerHTML = Object.keys(fl).map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + "</option>"; }).join("");
-      if (fl[keep]) FL.value = keep; else FL.value = Object.keys(fl)[Object.keys(fl).length - 1];
+      if (ME && !FREE) { FL.value = ME.key; FL.disabled = true; }
+      else if (ME && fl[ME.key] && !keep) FL.value = ME.key;
+      else if (fl[keep]) FL.value = keep; else FL.value = Object.keys(fl)[Object.keys(fl).length - 1];
       var FK = D.types[TY.value][0];
       el("ocFamInfo").textContent = FK + " 계열 · " + F.opts.length + "개 품목 · 표준안내문 " + F.src;
       if (el("ocMedia").dataset.f !== FK) { el("ocMedia").innerHTML = media(FK); el("ocMedia").dataset.f = FK; el("ocMediaS").textContent = FK + " 평면도 · 방별 VR"; }
@@ -1414,10 +1459,12 @@
     });
     el("ocLbX").addEventListener("click", function () { LB.close(); });
     LB.addEventListener("click", function (e) { if (e.target === LB) LB.close(); });
-    if (saved.t && D.types[saved.t]) TY.value = saved.t;
+    var okT = function (t) { return t && D.types[t] && Array.prototype.some.call(TY.options, function (o) { return o.value === t; }); };
+    if (ME && !okT(saved.t)) { saved = {}; var dflt = okT(ME.fam) ? ME.fam : TY.options[0] && TY.options[0].value; if (dflt) TY.value = dflt; }
+    if (okT(saved.t)) TY.value = saved.t;
     if (saved.m === "minus") { C.querySelector('input[name="ocMode"][value="minus"]').checked = true; SPC.disabled = true; }
     else if (saved.s === "A") SPC.value = "A";
-    if (saved.f) { FL.innerHTML = '<option value="' + esc(saved.f) + '">' + esc(saved.f) + "</option>"; FL.value = saved.f; }
+    if (saved.f && FREE) { FL.innerHTML = '<option value="' + esc(saved.f) + '">' + esc(saved.f) + "</option>"; FL.value = saved.f; }
     build();
     // 지난번 고른 품목 다시 (같은 계열일 때만)
     if (saved.o && saved.g === D.types[TY.value][0] && saved.m !== "minus") { saved.o.forEach(function (id) { var i = el("oc-" + id); if (i) i.checked = true; }); enforce(); calc(); }
@@ -2094,8 +2141,9 @@
   R.admin = async function () {
     if (!LIVE || !API.loggedIn) { C.innerHTML = gate("login"); return; }
     if (!API.isAdmin) { C.innerHTML = empty("운영진만 볼 수 있습니다", ""); return; }
-    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["dues", "회비"], ["polls", "투표"], ["campaigns", "민원"], ["photos", "사진 · 방문"], ["news", "자동 수집"]];
-    var cur = (location.hash || "#pending").slice(1); if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
+    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["dues", "회비"], ["petition", "민원 · 투표"], ["visits", "현장 방문"], ["news", "자동 수집"]];
+    var TAB_ALIAS = { polls: "petition", campaigns: "petition", photos: "visits" };   // 예전 주소
+    var cur = (location.hash || "#pending").slice(1); cur = TAB_ALIAS[cur] || cur; if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
     C.innerHTML = '<div class="tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '<span class="cnt" id="cnt-' + t[0] + '"></span></button>'; }).join("") + "</div>" +
       '<p class="notice-box" id="admMsg" role="status" hidden></p><div id="adminBody"></div>';
     C.querySelector(".tabs").addEventListener("click", function (e) { var b = e.target.closest("button[data-t]"); if (!b) return; cur = b.dataset.t; history.replaceState(null, "", "#" + cur); C.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x === b); }); show(); });
@@ -2288,13 +2336,6 @@
         }
         if (cur === "cafe") await adminCafe(B, err, show, csv);
         if (cur === "dues") await adminDues(B, err, show, csv);
-        if (cur === "polls") {
-          var P = await API.polls();
-          B.innerHTML = '<form class="panel" id="fPoll" novalidate><h3 style="margin-bottom:10px">새 투표</h3><div class="field"><label for="pQ">질문</label><input id="pQ" maxlength="200"></div><div class="field"><label for="pO">선택지 (한 줄에 하나, 2~10개)</label><textarea id="pO" style="min-height:90px"></textarea></div><div class="field"><label for="pE">마감일</label><input id="pE" type="date"></div><button class="btn solid" type="submit">투표 열기</button></form>' +
-            head("투표 목록") + (P.length ? '<div class="tablebox"><table class="spec"><tbody>' + P.map(function (p) { var t = p.votes.reduce(function (s, v) { return s + v; }, 0); return "<tr><td>" + esc(p.question) + '</td><td class="num">' + n(t) + "표</td><td>" + (p.closed ? "마감" : fmtDate(p.ends_at) + " 마감") + '</td><td><button type="button" class="linkbtn delpoll" data-id="' + p.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("투표가 없습니다", ""));
-          el("fPoll").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createPoll({ question: el("pQ").value, options: el("pO").value.split("\n"), ends: el("pE").value }); show(); } catch (er) { err(er); } });
-          B.querySelectorAll(".delpoll").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deletePoll(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
-        }
         if (cur === "news") {
           var NW = await API.admin.newsAll(), RUNS = await API.admin.collectRuns().catch(function () { return null; }), CS = collectStatus(RUNS);
           el("cnt-news").textContent = CS.lv === "bad" ? " !" : "";
@@ -2315,7 +2356,7 @@
           });
           B.querySelectorAll(".togglenews").forEach(function (t) { t.addEventListener("click", async function () { try { await API.admin.setNewsHidden(Number(t.dataset.id), t.dataset.h === "1"); await show(); } catch (er) { err(er); } }); });
         }
-        if (cur === "photos") {
+        if (cur === "visits") {
           var VS = await API.visits(), PH = await API.photos(), today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
           var catOpts = function (sel) { return API.photoCats.map(function (c) { return "<option" + (c === sel ? " selected" : "") + ">" + c + "</option>"; }).join(""); };
           var warn = '<p class="muted small" style="margin:0 0 10px">사진은 누구나 볼 수 있습니다. <b>사람 얼굴 · 차량 번호판 · 서류</b>가 보이면 올리지 마세요. 올릴 때 자동으로 줄이고(긴 변 1600px) 촬영 위치 정보는 지웁니다. 한 번에 30장까지.</p>';
@@ -2323,16 +2364,12 @@
             '<form class="panel" id="fVisit" novalidate><h3 style="margin-bottom:10px" id="vHead">현장 방문 기록 쓰기</h3>' +
             '<div class="two" style="gap:12px"><div class="field"><label for="vDate">방문 날짜</label><input id="vDate" type="date" value="' + today + '"></div><div class="field"><label for="vTitle">제목</label><input id="vTitle" maxlength="120" placeholder="예: 11월 정기 현장 방문"></div></div>' +
             '<div class="field"><label for="vBody">내용</label><textarea id="vBody" maxlength="5000" style="min-height:120px" placeholder="확인한 공정, LH 답변, 다음 확인할 것"></textarea></div>' +
-            '<div class="field"><label for="vFiles">사진 <span class="muted small">선택 · 여러 장 · 사진관 "현장 방문"에도 함께 올라감</span></label><input id="vFiles" type="file" accept="image/*" multiple></div>' + warn +
+            '<div class="field"><label for="vFiles">사진 <span class="muted small">선택 · 여러 장 · 공사현황에 함께 보임</span></label><input id="vFiles" type="file" accept="image/*" multiple></div>' + warn +
             '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit" id="vSave">기록 올리기</button><button class="btn" type="button" id="vCancel" hidden>수정 취소</button></p><input type="hidden" id="vId"></form>' +
-            '<form class="panel" id="fPhoto" novalidate><h3 style="margin-bottom:10px">사진관에 사진 올리기</h3>' +
-            '<div class="two" style="gap:12px"><div class="field"><label for="phCat">분류</label><select id="phCat">' + catOpts("공사 현장") + '</select></div><div class="field"><label for="phDate">찍은 날짜</label><input id="phDate" type="date" value="' + today + '"></div></div>' +
-            '<div class="field"><label for="phTitle">제목 <span class="muted small">여러 장이면 모두 같은 제목</span></label><input id="phTitle" maxlength="120" placeholder="예: 403동 골조 공사"></div>' +
-            '<div class="field"><label for="phFiles">사진</label><input id="phFiles" type="file" accept="image/*" multiple></div>' + warn +
-            '<button class="btn solid" type="submit">사진 올리기</button></form></div>' +
+            '<div class="panel"><h3 style="margin-bottom:8px">어디에 보이나요?</h3><p class="muted small" style="margin:0">방문 기록과 사진은 <a href="progress.html">우리 단지 › 공사현황</a>의 현장 기록에 날짜순으로 보입니다. 사진관 메뉴는 없어졌고, 예전에 올린 사진은 아래에서 정리할 수 있습니다.</p></div>' + '</div>' +
             head("현장 방문 기록", '<span class="note">' + n(VS.length) + "건</span>") +
             (VS.length ? '<div class="tablebox"><table class="spec"><tbody>' + VS.map(function (v) { return '<tr><td class="num">' + dotDate(v.visited_on) + "</td><td><b>" + esc(v.title) + '</b><br><span class="muted small">' + esc(String(v.body || "").slice(0, 80)) + '</span></td><td class="num">사진 ' + arr(v.photos).length + '장</td><td><button type="button" class="linkbtn editv" data-id="' + v.id + '">수정</button> <button type="button" class="linkbtn delv" data-id="' + v.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("아직 방문 기록이 없습니다", "위 칸에 첫 기록을 남겨 보세요.")) +
-            head("사진관", '<span class="note">' + n(PH.length) + "장 · 제목 · 분류를 고치고 저장</span>") +
+            head("올린 사진", '<span class="note">' + n(PH.length) + "장 · 제목을 고치거나 지울 수 있습니다</span>") +
             (PH.length ? '<div class="adm-photos">' + PH.map(function (p) { return '<div class="adm-ph" data-id="' + p.id + '"><img src="' + esc(API.photoUrl(p.path)) + '" alt="" loading="lazy"><input class="t" maxlength="120" value="' + esc(p.title) + '" aria-label="제목"><select class="c" aria-label="분류">' + catOpts(p.cat) + '</select><input class="d" type="date" value="' + esc(p.taken_on || "") + '" aria-label="날짜"><p class="cta-row" style="margin:0"><button type="button" class="linkbtn savep">저장</button><button type="button" class="linkbtn delp">삭제</button></p></div>'; }).join("") + "</div>" : empty("아직 사진이 없습니다", ""));
           var prog = function (i, t) { say("admMsg", "사진 올리는 중… " + i + " / " + t); };
           var report = function (r, what) { say("admMsg", what + (r.done.length ? " · 사진 " + r.done.length + "장" : "") + (r.fails.length ? " · 실패 " + r.fails.length + "장: " + r.fails.join(" / ") : ""), !!r.fails.length); };
@@ -2341,11 +2378,6 @@
           el("fVisit").addEventListener("submit", async function (e) {
             e.preventDefault(); var btn = el("vSave"); busy(btn, true, "올리는 중…");
             try { var id = Number(el("vId").value) || null; var r = await API.admin.saveVisit({ id: id, date: el("vDate").value, title: el("vTitle").value, body: el("vBody").value }, el("vFiles").files, prog); await show(); report(r, id ? "방문 기록을 고쳤습니다" : "방문 기록을 올렸습니다"); }
-            catch (er) { busy(btn, false); err(er); }
-          });
-          el("fPhoto").addEventListener("submit", async function (e) {
-            e.preventDefault(); var btn = this.querySelector("button[type=submit]"); busy(btn, true, "올리는 중…");
-            try { var r = await API.admin.addPhotos(el("phFiles").files, { cat: el("phCat").value, title: el("phTitle").value, takenOn: el("phDate").value }, prog); await show(); report(r, "사진관에 올렸습니다"); }
             catch (er) { busy(btn, false); err(er); }
           });
           B.querySelectorAll(".editv").forEach(function (b) { b.addEventListener("click", function () {
@@ -2364,31 +2396,42 @@
             c.querySelector(".delp").addEventListener("click", async function () { var b = this; if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deletePhoto(p); c.remove(); say("admMsg", "사진을 삭제했습니다."); } catch (er) { err(er); } });
           });
         }
-        if (cur === "campaigns") {
+        if (cur === "petition") {
+          B.innerHTML = '<p class="muted small" style="margin:0 0 14px">민원 페이지(협의회 › 민원)에 보이는 내용을 관리합니다. 도래울역 민원의 문구 · 연락처는 홈페이지 자료 파일(assets/petition-kit.js)에 있고, 여기서는 회원 전용 안내를 고칩니다.</p><div id="admPN"></div><div id="admCP"></div><div id="admPL"></div>';
+          var Y = el("admCP");
           var CP = await API.campaigns(), ST = ["의견 모집", "접수 완료", "답변 완료"];
-          B.innerHTML = '<form class="panel" id="fCamp" novalidate><h3 style="margin-bottom:10px">새 단체민원</h3><div class="field"><label for="cT">제목</label><input id="cT" maxlength="120"></div><div class="field"><label for="cTo">대상 기관</label><input id="cTo" maxlength="60" placeholder="예: 고양시, LH 경기북부지역본부"></div><div class="field"><label for="cD">설명</label><textarea id="cD" style="min-height:90px"></textarea></div><button class="btn solid" type="submit">민원 열기</button></form>' +
+          Y.innerHTML = head("단체민원", '<span class="note">\'의견 모집\' 중인 민원은 민원 페이지 아래에서 위임 세대가 참여합니다</span>') + '<form class="panel" id="fCamp" novalidate><h3 style="margin-bottom:10px">새 단체민원</h3><div class="field"><label for="cT">제목</label><input id="cT" maxlength="120"></div><div class="field"><label for="cTo">대상 기관</label><input id="cTo" maxlength="60" placeholder="예: 고양시, LH 경기북부지역본부"></div><div class="field"><label for="cD">설명</label><textarea id="cD" style="min-height:90px"></textarea></div><button class="btn solid" type="submit">민원 열기</button></form>' +
             head("민원 목록") + (CP.length ? '<div class="tablebox"><table class="spec"><tbody>' + CP.map(function (c) { return "<tr><td>" + esc(c.title) + '</td><td class="num">' + n(c.joined) + '세대</td><td><select class="cst" data-id="' + c.id + '" aria-label="상태">' + ST.map(function (s) { return "<option" + (s === c.status ? " selected" : "") + ">" + s + "</option>"; }).join("") + '</select></td><td><button type="button" class="linkbtn delcamp" data-id="' + c.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("민원이 없습니다", ""));
           el("fCamp").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createCampaign({ title: el("cT").value, target: el("cTo").value, description: el("cD").value }); show(); } catch (er) { err(er); } });
-          B.querySelectorAll(".cst").forEach(function (s) { s.addEventListener("change", async function () { try { await API.admin.setCampaignStatus(Number(s.dataset.id), s.value); say("admMsg", "상태를 바꿨습니다."); } catch (er) { err(er); } }); });
-          B.querySelectorAll(".delcamp").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deleteCampaign(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
+          Y.querySelectorAll(".cst").forEach(function (s) { s.addEventListener("change", async function () { try { await API.admin.setCampaignStatus(Number(s.dataset.id), s.value); say("admMsg", "상태를 바꿨습니다."); } catch (er) { err(er); } }); });
+          Y.querySelectorAll(".delcamp").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deleteCampaign(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
           // 메인 '민원 참여'의 회원 전용 안내 (외부 유출 금지 내용)
           var PT = arr(S.petitions).filter(function (x) { return x.privateKey; });
           if (PT.length) {
             var notes = await Promise.all(PT.map(function (x) { return API.privateNote(x.privateKey).catch(function () { return null; }); }));
-            B.insertAdjacentHTML("afterbegin", PT.map(function (x, i) {
+            el("admPN").insertAdjacentHTML("afterbegin", PT.map(function (x, i) {
               return '<form class="panel pn-form" data-key="' + esc(x.privateKey) + '" novalidate><h3 style="margin-bottom:6px">회원 전용 안내 · ' + esc(x.title) + '</h3>' +
-                '<p class="muted small" style="margin:0 0 8px">메인 \'민원 참여\' 아래에 승인 회원에게만 보입니다. 안건 정보, 의원 연락처처럼 외부에 나가면 안 되는 내용을 적으세요. 주소 · 전화번호는 자동으로 링크가 됩니다.</p>' +
+                '<p class="muted small" style="margin:0 0 8px">민원 페이지 맨 위에 승인 회원에게만 보입니다. 안건 정보, 의원 연락처처럼 외부에 나가면 안 되는 내용을 적으세요. 주소 · 전화번호는 자동으로 링크가 됩니다.</p>' +
                 '<textarea class="pn-body" rows="10" maxlength="5000">' + esc((notes[i] || {}).body || "") + '</textarea>' +
                 '<p class="cta-row" style="margin:8px 0 0"><button class="btn solid" type="submit">저장</button>' + (notes[i] && notes[i].updated_at ? '<span class="muted small">마지막 저장 ' + fmtTime(notes[i].updated_at) + "</span>" : "") + "</p></form>";
             }).join("") + '<div style="height:24px"></div>');
-            B.querySelectorAll(".pn-form").forEach(function (f) { f.addEventListener("submit", async function (ev) { ev.preventDefault();
+            el("admPN").querySelectorAll(".pn-form").forEach(function (f) { f.addEventListener("submit", async function (ev) { ev.preventDefault();
               try { await API.admin.setPrivateNote(f.dataset.key, f.querySelector(".pn-body").value); say("admMsg", "회원 전용 안내를 저장했습니다."); } catch (er) { err(er); } }); });
           }
+        }
+        if (cur === "petition") {
+          var X = el("admPL");
+          var P = await API.polls();
+          X.innerHTML = head("투표", '<span class="note">열려 있는 투표는 민원 페이지 아래에 회원에게 보입니다 · 1세대 1표</span>') + '<form class="panel" id="fPoll" novalidate><h3 style="margin-bottom:10px">새 투표</h3><div class="field"><label for="pQ">질문</label><input id="pQ" maxlength="200"></div><div class="field"><label for="pO">선택지 (한 줄에 하나, 2~10개)</label><textarea id="pO" style="min-height:90px"></textarea></div><div class="field"><label for="pE">마감일</label><input id="pE" type="date"></div><button class="btn solid" type="submit">투표 열기</button></form>' +
+            head("투표 목록") + (P.length ? '<div class="tablebox"><table class="spec"><tbody>' + P.map(function (p) { var t = p.votes.reduce(function (s, v) { return s + v; }, 0); return "<tr><td>" + esc(p.question) + '</td><td class="num">' + n(t) + "표</td><td>" + (p.closed ? "마감" : fmtDate(p.ends_at) + " 마감") + '</td><td><button type="button" class="linkbtn delpoll" data-id="' + p.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("투표가 없습니다", ""));
+          el("fPoll").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createPoll({ question: el("pQ").value, options: el("pO").value.split("\n"), ends: el("pE").value }); show(); } catch (er) { err(er); } });
+          X.querySelectorAll(".delpoll").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deletePoll(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
         }
       } catch (e) { B.innerHTML = ""; err(e); }
     }
     window.addEventListener("hashchange", function () {
       var h = location.hash.slice(1);
+      h = TAB_ALIAS[h] || h;
       if (h !== cur && TABS.some(function (t) { return t[0] === h; })) { cur = h; C.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x.dataset.t === cur); }); show(); }
     });
     await counts(); await show();

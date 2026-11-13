@@ -220,7 +220,6 @@ window.SITE = {
   links: [
     { title: "LH 청약플러스", desc: "분양 공고 · 당첨 조회 · 계약 안내", url: "https://apply.lh.or.kr" },
     { title: "청약홈", desc: "입주자모집공고문 원문", url: "https://www.applyhome.co.kr" },
-    { title: "평형별 옵션 계산기", desc: "세부평형 · 층 · 옵션별 총액과 회차별 납부액", url: "calculator.html" },
     { title: "공식 네이버 카페", desc: "입주예정자 소통 · 정보 나눔", url: "https://cafe.naver.com/crs4" },
     { title: "입주민 오픈채팅", desc: "위임동의 세대 전용 · 누르면 입장", url: "#chat" },
     { title: "위택스", desc: "취득세 신고 · 납부", url: "https://www.wetax.go.kr" },
