@@ -220,17 +220,27 @@ export async function collect(env, fetcher = fetch) {
   // 구글 뉴스는 기간마다 돌려주는 기사가 달라서(긴 기간엔 최근 기사가 빠지기도 함) 7일 · 30일 · 120일을 모두 봄
   const jobs = [];
   for (const nq of NEWS_QUERIES) for (const w of ["when:7d", "when:30d", "when:120d"]) jobs.push({ ...nq, w });
-  const fails = {};
-  await pool(jobs, 8, async ({ topic, q, loose, w }) => {
-    if (late()) { skipped++; return; }
+  // 구글은 한꺼번에 많이 물으면 503으로 막으므로 2개씩, 사이를 띄우고, 막히면 잠깐 쉬었다 한 번 더. 계속 막히면 남은 구글 검색은 그만둠
+  const fails = {}, GAP = Number(env.GOOGLE_GAP_MS ?? 400), WAIT = Number(env.GOOGLE_RETRY_MS ?? 2500);
+  const nap = (ms) => new Promise((r) => setTimeout(r, ms));
+  let blocked = 0, gaveUp = false;
+  await pool(jobs, 2, async ({ topic, q, loose, w }) => {
+    if (late() || gaveUp) { skipped++; return; }
+    const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " " + w);
     try {
-      const u = "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=" + encodeURIComponent(q + " " + w);
-      const r = await fx(u, { headers: { "user-agent": "changneung-s4-news-bot" } });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      items.push(...parseRss(await r.text(), topic, !!loose));
+      for (let k = 0; ; k++) {
+        if (GAP) await nap(GAP);
+        const r = await fx(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; changneung-s4-news-bot)", "accept-language": "ko-KR,ko;q=0.9" } });
+        if ((r.status === 503 || r.status === 429) && k === 0 && !late()) { await nap(WAIT); continue; }
+        if (!r.ok) { if (r.status === 503 || r.status === 429) { blocked++; if (blocked >= 6) gaveUp = true; } throw new Error("HTTP " + r.status); }
+        blocked = 0;
+        items.push(...parseRss(await r.text(), topic, !!loose));
+        break;
+      }
     } catch (e) { (fails[q] = fails[q] || []).push(e.message); }
   });
-  for (const [q, f] of Object.entries(fails)) if (f.length === 3) errors.push("뉴스(" + q + "): " + f[2]);
+  if (gaveUp) errors.push("구글 뉴스가 요청을 막아(503) 이번엔 다음 검색 결과만 저장했습니다. 다음 수집 때 다시 시도합니다.");
+  else for (const [q, f] of Object.entries(fails)) if (f.length === 3) errors.push("뉴스(" + q + "): " + f[2]);
   const daum = [];
   if (env.KAKAO_REST_API_KEY) {
     await pool(KAKAO_QUERIES, 5, async ({ topic, q }) => {
@@ -314,7 +324,7 @@ export async function collect(env, fetcher = fetch) {
     const r = await fetcher(env.SUPABASE_URL + "/rest/v1/news_items?on_conflict=url", { method: "POST", headers: { ...H, prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(lh) });
     if (!r.ok) errors.push("저장(LH): HTTP " + r.status + " " + (await r.text()).slice(0, 200)); else inserted += lh.filter((x) => !had.has(x.url)).length;
   }
-  if (skipped) errors.push("시간 제한으로 검색 " + skipped + "건을 건너뜀(다음 수집 때 다시 찾음)");
+  if (skipped && !gaveUp) errors.push("시간 제한으로 검색 " + skipped + "건을 건너뜀(다음 수집 때 다시 찾음)");
   return { found: uniq.length, inserted, detailed, errors, daum, skipped, ms: Date.now() - t0 };
 }
 
