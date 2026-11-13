@@ -2,6 +2,6 @@
 (function () {
   var l = document.createElement("link");
   l.rel = "stylesheet";
-  l.href = "https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap";
+  l.href = "https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;700&display=swap";
   document.head.appendChild(l);
 })();

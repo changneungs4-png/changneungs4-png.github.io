@@ -159,8 +159,8 @@
   /* ── footer ── */
   var foot = document.createElement("footer");
   foot.className = "foot";
-  foot.innerHTML = '<div class="wrap sitemap">' + GROUPS.map(function (g) { return "<div><b>" + g.name + "</b>" + g.items.map(function (x) { return '<a href="' + x[0] + '">' + x[1] + "</a>"; }).join("") + "</div>"; }).join("") + "</div>" +
-    '<div class="wrap"><span>' + esc(S.name) + " · 최종 갱신 " + esc(S.updated) + '</span><a href="privacy.html">개인정보처리방침</a><button type="button" class="linkbtn" id="shareBtn">사이트 주소 복사</button><span>입주예정자가 자발적으로 운영하는 사이트이며 LH의 공식 사이트가 아닙니다.</span></div>';
+  foot.innerHTML = '<div class="wrap foot-line"><b>' + esc(S.name) + '</b><span class="foot-links"><a href="privacy.html">개인정보처리방침</a><button type="button" class="linkbtn" id="shareBtn">주소 복사</button><span>갱신 ' + esc(S.updated) + "</span></span></div>" +
+    '<div class="wrap foot-note">입주예정자가 자발적으로 운영하는 사이트이며 LH 공식 사이트가 아닙니다.</div>';
   document.body.appendChild(foot);
   el("shareBtn").addEventListener("click", function () {
     var btn = this, url = location.href.split("#")[0];
@@ -346,7 +346,7 @@
         '<details class="pt2-why"><summary>우리가 요청하는 것</summary><ul>' + arr(K.facts).map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></details></section>" +
       (x.privateKey ? '<div class="pt-private" data-key="' + esc(x.privateKey) + '">' + (member ? '<p class="muted small">회원 전용 안내를 불러오는 중…</p>'
         : '<p class="small"><b>안건 정보 · 의원 연락처</b>는 외부 유출 금지라 승인 회원에게만 보입니다. ' + (LIVE && API.loggedIn ? "가입 승인 후 볼 수 있습니다." : '<a href="login.html">로그인 →</a>') + "</p>") + "</div>" : "") +
-      '<nav class="pt2-nav" aria-label="참여 순서"><a href="#ptWrite"><b>1</b>글 쓰기</a><a href="#ptSend"><b>2</b>보내기</a><a href="#ptCheck"><b>3</b>참여 체크</a></nav>' +
+      '<nav class="pt2-nav" role="tablist" aria-label="참여 순서"><button type="button" role="tab" data-tab="ptWrite" aria-selected="true"><b>1</b>글 쓰기</button><button type="button" role="tab" data-tab="ptSend" aria-selected="false"><b>2</b>보내기</button><button type="button" role="tab" data-tab="ptCheck" aria-selected="false"><b>3</b>참여 체크</button></nav>' +
       // 1. 글 쓰기
       '<section class="panel pt2-sec" id="ptWrite"><h3><span class="pt2-no">1</span>보낼 글 만들기</h3>' +
         '<div class="pt2-field"><span class="lbl">어디에 쓸 글인가요?</span><div class="chips pt2-kinds" id="ptKind">' + PT_KINDS.map(function (k, i) { return '<button type="button" class="chip" data-kind="' + k[0] + '" aria-pressed="' + (i === 0) + '"><b>' + esc(k[1]) + "</b><small>" + esc(k[2]) + "</small></button>"; }).join("") + "</div></div>" +
@@ -360,6 +360,7 @@
           '<div class="pt2-act"><span class="muted small">고쳐 써도 됩니다. 보내기 전에 숫자 · 사실을 한 번 확인하세요.</span><button type="button" class="btn solid" id="ptCopy">📋 복사</button></div></div>' +
       "</section>" +
       // 2. 보내기
+      '<button type="button" class="btn solid wide pt2-next" data-go="ptSend">다음: 보내기 →</button>' +
       '<section class="panel pt2-sec" id="ptSend"><h3><span class="pt2-no">2</span>보내기</h3>' +
         '<h4>공식 민원 게시판</h4><p class="muted small">정식 접수 번호가 남는 곳입니다. "민원 · 이메일 본문"과 "민원 제목"을 만들어 붙여 넣으세요.</p>' +
         '<div class="pt2-boards">' + arr(K.boards).map(function (b) {
@@ -383,6 +384,7 @@
         '<button type="button" class="btn wide" id="ptMails">✉️ 의원 이메일 한 번에 복사</button>' +
       "</section>" +
       // 3. 참여 체크
+      '<button type="button" class="btn solid wide pt2-next" data-go="ptCheck">다음: 참여 체크 →</button>' +
       '<section class="panel pt2-sec" id="ptCheck"><h3><span class="pt2-no">3</span>참여 체크</h3><p class="muted small">한 것을 체크해 두세요. 이 기기에만 저장됩니다.</p>' +
         '<div class="meter" style="margin:0 0 10px"><div class="row"><span>나의 참여</span><b class="num" id="ptPct"></b></div><div class="bar-track signal"><i id="ptBar"></i></div></div>' +
         PT_CHECKS.map(function (c) { return '<label class="check"><input type="checkbox" data-ck="' + c[0] + '"> ' + esc(c[1]) + "</label>"; }).join("") +
@@ -392,8 +394,17 @@
       '<p class="muted small">민원 요지 · 예시 문구 · 연락처는 ' + esc(K.source.by) + '의 <a href="' + esc(safeUrl(K.source.url)) + '" target="_blank" rel="noopener">' + esc(K.source.label) + " ↗</a>(" + esc(K.asOf) + " 기준)을 바탕으로 정리했습니다.</p>" +
       "</article>";
   }
+  function ptTab(root, id, scroll) {
+    root.querySelectorAll(".pt2-sec").forEach(function (sc) { sc.hidden = sc.id !== id; });
+    root.querySelectorAll(".pt2-next").forEach(function (b) { b.hidden = b.previousElementSibling ? b.previousElementSibling.hidden : true; });
+    root.querySelectorAll(".pt2-nav [data-tab]").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tab === id ? "true" : "false"); });
+    if (scroll) { var nv = root.querySelector(".pt2-nav"); window.scrollTo({ top: nv.getBoundingClientRect().top + window.scrollY - 70, behavior: "smooth" }); }
+  }
   function bindPt(root, x, K) {
     var kind = "sns1", persona = 0, tone = 0, last = {};
+    root.querySelector(".pt2-nav").addEventListener("click", function (e) { var t = e.target.closest("[data-tab]"); if (t) ptTab(root, t.dataset.tab, true); });
+    root.addEventListener("click", function (e) { var g = e.target.closest(".pt2-next"); if (g) ptTab(root, g.dataset.go, true); });
+    ptTab(root, /^#pt(Send|Check|Etc)$/.test(location.hash) ? location.hash.slice(1) : "ptWrite");
     var T = el("ptText"), member = LIVE && API.isMember;
     function fitT() { T.style.height = "auto"; T.style.height = Math.min(Math.max(T.scrollHeight + 4, 90), 640) + "px"; }
     function setText(t, label) { T.value = t; fitT(); el("ptLen").textContent = n(t.length) + "자"; el("ptOutLabel").textContent = label; root.querySelector(".pt2-out").classList.remove("flash"); void T.offsetWidth; root.querySelector(".pt2-out").classList.add("flash"); }
@@ -460,7 +471,17 @@
     // 운영진이 연 단체민원 · 투표가 있으면 아래에 함께 (메뉴에서 빠진 '민원 · 투표' 기능)
     if (LIVE) try {
       var cp = await API.campaigns(), pl = API.isMember ? await API.polls() : [];
-      if (arr(cp).length || arr(pl).length) { el("ptMore").className = "pt2-more"; await R.participate(el("ptMore")); }
+      if (arr(cp).length || arr(pl).length) {
+        var art = C.querySelector(".pt2"), box = el("ptMore");
+        if (art) {   // 첫 민원의 네 번째 탭으로
+          var nav = art.querySelector(".pt2-nav"), sec = document.createElement("section");
+          sec.className = "panel pt2-sec"; sec.id = "ptEtc"; sec.hidden = true; nav.style.gridTemplateColumns = "repeat(4,1fr)";
+          nav.insertAdjacentHTML("beforeend", '<button type="button" role="tab" data-tab="ptEtc" aria-selected="false">단체·투표</button>');
+          art.querySelector("#ptCheck").after(sec); box.remove(); box = sec;
+        } else box.className = "pt2-more";
+        await R.participate(box);
+        if (art && location.hash === "#ptEtc") ptTab(art, "ptEtc");
+      }
     } catch (e) {}
   };
   function linkify(t) {
@@ -471,7 +492,7 @@
     if (!(LIVE && API.isMember)) return;
     document.querySelectorAll(".pt-private[data-key]").forEach(function (box) {
       API.privateNote(box.getAttribute("data-key")).then(function (r) {
-        box.innerHTML = r && r.body ? '<div class="pt-note"><b>회원 전용 · 외부 유출 금지</b><div class="body">' + linkify(r.body) + '</div><span class="muted small">' + fmtTime(r.updated_at) + " 운영진 작성</span></div>" : (API.isAdmin ? '<p class="muted small">회원 전용 안내가 비어 있습니다. 운영진 › 민원 탭에서 적어 주세요.</p>' : "");
+        box.innerHTML = r && r.body ? '<details class="pt-note"><summary><b>회원 전용 안건 정보</b><span class="muted small">외부 유출 금지 · ' + fmtTime(r.updated_at) + '</span></summary><div class="body">' + linkify(r.body) + "</div></details>" : (API.isAdmin ? '<p class="muted small">회원 전용 안내가 비어 있습니다. 운영진 › 민원 탭에서 적어 주세요.</p>' : "");
       }).catch(function () { box.innerHTML = ""; });
     });
   }
@@ -488,7 +509,7 @@
       '<path class="r3" d="M0 148 Q220 112 440 140 Q640 164 840 136 Q1020 114 1200 136 V170 H0Z"/>' +
       '<path class="w" d="M-10 160 Q60 152 130 160 T270 160 T410 160 T550 160 T690 160 T830 160 T970 160 T1110 160 T1250 160"/></svg>';
     var upcoming = (await mergedSchedule()).filter(function (x) { return x.state !== "done"; }).slice(0, 4);
-    main.innerHTML = petitionShortcut() +
+    main.innerHTML =
       '<section class="hero"><div class="wrap hero-grid"><div>' +
       '<div class="eyebrow">고양창릉 공공주택지구 · LH 공공분양</div>' +
       "<h1>창릉 S-4<small>입주예정자협의회</small></h1>" +
@@ -497,7 +518,7 @@
       '<aside class="status" aria-label="단지 현황"><div class="top"><div><b class="num">' + dd + "</b></div><span>" + ddl + "<br>16개 동 · " + n(T) + "세대</span></div>" +
       agreeMeter(true) + membersMeter() + progressMeter() +
       '<a class="go" href="agreement.html">동·호수별 현황판 보기 →</a></aside>' +
-      "</div>" + ridge + "</section>" +
+      "</div>" + ridge + "</section>" + petitionShortcut() +
       '<section class="band" id="homeDues" hidden><div class="wrap"></div></section>' +
       '<section class="band"><div class="wrap two"><div>' + head("공지사항", more("notice.html")) + noticeRows(arr(S.notices).slice(0, 5)) + "</div>" +
       "<div>" + head("다가오는 일정", more("schedule.html", "전체 일정")) + timeline(upcoming) + "</div></div></section>" +
@@ -1287,9 +1308,10 @@
       "</div>" +
       '<div class="oc-bar" id="ocBar" aria-hidden="true"><span>예상 총액</span><b class="num" id="ocBarTotal"></b><a href="#ocSum">자세히</a></div>' +
       '<dialog class="oc-lb" id="ocLb" aria-label="사진 크게 보기"><button type="button" class="oc-lb-x" id="ocLbX" aria-label="닫기">×</button><img id="ocLbImg" alt=""><p id="ocLbCap"></p></dialog>' +
-      "<div>" + '<div class="oc-payh"><h2 class="oc-h"><span class="oc-no">3</span>회차별 납부 예정액</h2><button type="button" class="btn sm" id="ocPayFull" aria-pressed="false">항목별로 보기</button></div><p class="muted small" style="margin:-4px 0 10px">입주 시 잔여금액은 대출 적용 전 금액입니다.</p>' +
+      '<h2 class="oc-h oc-h3"><span class="oc-no">3</span>납부 · 대출 · 세금</h2><div class="oc-tabs" role="tablist" id="ocTabs"><button type="button" role="tab" data-t="ocTabPay" aria-selected="true">납부 일정</button><button type="button" role="tab" data-t="ocTabLoan" aria-selected="false">중도금 대출</button><button type="button" role="tab" data-t="ocTabTax" aria-selected="false">취득세</button></div>' +
+      '<div class="oc-tab" id="ocTabPay">' + '<div class="oc-payh"><h3 class="oc-h">회차별 납부 예정액</h3><button type="button" class="btn sm" id="ocPayFull" aria-pressed="false">항목별로 보기</button></div><p class="muted small" style="margin:-4px 0 10px">입주 시 잔여금액은 대출 적용 전 금액입니다.</p>' +
         '<div class="tablebox"><table class="spec oc-pay" id="ocPayT"><thead><tr><th>회차 · 예정일</th><th class="r d">주택</th><th class="r d">발코니</th><th class="r d">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
-      '<div class="oc-loan"><div class="oc-payh"><h2 class="oc-h"><span class="oc-no">4</span>중도금 대출 · 매월 이자 준비금</h2></div>' +
+      '<div class="oc-loan oc-tab" id="ocTabLoan" hidden><div class="oc-payh"><h3 class="oc-h">중도금 대출 · 매월 이자 준비금</h3></div>' +
         '<p class="muted small" style="margin:-4px 0 10px">중도금을 집단대출로 내면 입주 때까지 매달 이자를 냅니다. 금리 · 조건은 은행 협약 후 확정됩니다.</p>' +
         '<form class="panel oc-loanf" id="ocLoanF" novalidate>' +
           '<div class="field"><label for="ocRate">예상 금리 <span class="muted small">연 %</span></label><input id="ocRate" type="number" inputmode="decimal" min="0" max="20" step="0.05" value="4.5"></div>' +
@@ -1301,7 +1323,7 @@
         '<div class="oc-loan-sum" id="ocLoanSum"></div>' +
         '<div class="tablebox"><table class="spec oc-loan-t"><thead><tr><th>기간</th><th class="r">대출 잔액</th><th class="r">매월 이자</th><th class="r">개월</th><th class="r d">기간 이자</th></tr></thead><tbody id="ocLoanT"></tbody></table></div>' +
         '<p class="muted small">월 이자 = 대출 잔액 × 금리 ÷ 12 (어림값). 입주 때 남은 대출은 잔금과 함께 갚거나 잔금대출로 바꿉니다. 은행 · 규제에 따라 한도가 줄 수 있습니다.</p></div>' +
-      '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
+      '<div class="two oc-tab" id="ocTabTax" hidden><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
         '<label class="check"><input type="checkbox" id="ocFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
         '<div class="tablebox"><table class="spec"><tbody id="ocTax"></tbody></table></div></div>' +
       '<div><h3 style="margin-bottom:8px">계산 기준</h3><p class="muted small">금액은 ' + esc(D.src) + "의 표 기준. 계약금 · 중도금은 각 10%(천원 미만 버림), 잔금은 나머지입니다.</p>" +
@@ -1517,6 +1539,11 @@
     BOX.addEventListener("change", function () { enforce(); calc(); });
     el("ocReset").addEventListener("click", function () { BOX.querySelectorAll("input[data-id]").forEach(function (x) { x.checked = false; }); SPC.value = "basic"; enforce(); calc(); el("ocMsg").textContent = "선택품목을 모두 풀었습니다."; });
     el("ocFirst").addEventListener("change", calc);
+    el("ocTabs").addEventListener("click", function (e) {
+      var t = e.target.closest("[data-t]"); if (!t) return;
+      ["ocTabPay", "ocTabLoan", "ocTabTax"].forEach(function (id) { el(id).hidden = id !== t.dataset.t; });
+      el("ocTabs").querySelectorAll("[data-t]").forEach(function (b) { b.setAttribute("aria-selected", b === t ? "true" : "false"); });
+    });
     el("ocLoanF").addEventListener("submit", function (e) { e.preventDefault(); });
     el("ocLoanF").addEventListener("input", calc); el("ocLoanF").addEventListener("change", calc);
     el("ocPicked").addEventListener("click", function (e) { var u = e.target.closest("[data-un]"); if (!u) return; var i = el("oc-" + u.dataset.un); if (i) { i.checked = false; if (i.type === "radio") { var nn = el("oc-none-" + opt(u.dataset.un)[4]); if (nn) nn.checked = true; } } enforce(); calc(); });
