@@ -2,8 +2,10 @@
 // 승인 회원만, 한 사람당 하루 PETITION_AI_DAILY(기본 20)번까지. 사실(숫자 · 요구사항)은 바꾸지 않고 표현만 새로 씁니다.
 //
 // 환경 변수 (Supabase 대시보드 → Edge Functions → Secrets)
-//   ANTHROPIC_API_KEY : Claude API 키 (없으면 501을 돌려주고, 화면은 조합 문장으로 대신함)
-//   PETITION_AI_MODEL : 선택 · 기본 claude-haiku-5-5
+//   GEMINI_API_KEY    : Google AI Studio 키 (무료 등급으로 사용 가능 · 있으면 이것을 먼저 씀)
+//   ANTHROPIC_API_KEY : Claude API 키 (유료 · Gemini 키가 없을 때)
+//   둘 다 없으면 501을 돌려주고, 화면은 조합 문장으로 대신함
+//   PETITION_AI_MODEL : 선택 · 기본 Gemini는 gemini-flash-latest, Claude는 claude-haiku-5-5
 //   PETITION_AI_DAILY : 선택 · 1인 하루 횟수 (기본 20)
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY : 자동
 
@@ -36,6 +38,31 @@ export function buildPrompt(kind, persona, base) {
   return { system, user, max_tokens: kind === "board" ? 1600 : 500 };
 }
 
+// Google Gemini (AI Studio 무료 등급 가능)
+async function gemini(p, env, fetcher) {
+  const model = env.PETITION_AI_MODEL || "gemini-flash-latest";
+  const r = await fetcher("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
+    method: "POST", signal: AbortSignal.timeout(45000),
+    headers: { "x-goog-api-key": env.GEMINI_API_KEY, "content-type": "application/json" },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: p.system }] }, contents: [{ role: "user", parts: [{ text: p.user }] }],
+      generationConfig: { temperature: 1, maxOutputTokens: p.max_tokens * 4 } }),
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status + " " + (await r.text()).slice(0, 80));
+  const out = await r.json();
+  return ((out.candidates || [])[0]?.content?.parts || []).filter((x) => x.text && !x.thought).map((x) => x.text).join("");
+}
+// Anthropic Claude (유료)
+async function claude(p, env, fetcher) {
+  const r = await fetcher("https://api.anthropic.com/v1/messages", {
+    method: "POST", signal: AbortSignal.timeout(45000),
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: env.PETITION_AI_MODEL || "claude-haiku-5-5", max_tokens: p.max_tokens, temperature: 1, system: p.system, messages: [{ role: "user", content: p.user }] }),
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const out = await r.json();
+  return (out.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
+}
+
 export async function handle(req, env, fetcher = fetch) {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "POST만 받습니다" }, 405);
@@ -50,7 +77,7 @@ export async function handle(req, env, fetcher = fetch) {
   let body = {}; try { body = await req.json(); } catch { /* */ }
   const kind = String(body.kind || "");
   if (!KINDS[kind]) return json({ error: "알 수 없는 문구 종류" }, 400);
-  if (!env.ANTHROPIC_API_KEY) return json({ error: "AI 키가 아직 설정되지 않았습니다" }, 501);
+  if (!env.GEMINI_API_KEY && !env.ANTHROPIC_API_KEY) return json({ error: "AI 키가 아직 설정되지 않았습니다" }, 501);
   // 하루 횟수 제한
   const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" };
   const since = new Date(Date.now() - 864e5).toISOString(), LIMIT = Number(env.PETITION_AI_DAILY) || 20;
@@ -58,14 +85,13 @@ export async function handle(req, env, fetcher = fetch) {
   const used = Number((cnt.headers.get("content-range") || "*/0").split("/")[1]) || 0;
   if (used >= LIMIT) return json({ error: "오늘은 AI 새로 쓰기를 " + LIMIT + "번 모두 썼습니다" }, 429);
   const p = buildPrompt(kind, body.persona, body.base);
-  const r = await fetcher("https://api.anthropic.com/v1/messages", {
-    method: "POST", signal: AbortSignal.timeout(45000),
-    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: env.PETITION_AI_MODEL || "claude-haiku-5-5", max_tokens: p.max_tokens, temperature: 1, system: p.system, messages: [{ role: "user", content: p.user }] }),
-  });
-  if (!r.ok) return json({ error: "AI 응답 오류 (HTTP " + r.status + ")" }, 502);
-  const out = await r.json();
-  const text = String((out.content || []).filter((c) => c.type === "text").map((c) => c.text).join("")).trim().replace(/^["“]|["”]$/g, "");
+  let text = "";
+  try { text = await (env.GEMINI_API_KEY ? gemini : claude)(p, env, fetcher); }
+  catch (e) {
+    const m = String(e.message || e);
+    return json({ error: /429|RESOURCE_EXHAUSTED/.test(m) ? "무료 AI 사용량이 잠시 찼습니다. 1~2분 뒤 다시 눌러 주세요" : "AI 응답 오류 (" + m.slice(0, 60) + ")" }, 502);
+  }
+  text = text.trim().replace(/^["“]|["”]$/g, "");
   if (!text) return json({ error: "AI가 빈 응답을 보냈습니다" }, 502);
   await fetcher(env.SUPABASE_URL + "/rest/v1/petition_ai_log", { method: "POST", headers: { ...H, prefer: "return=minimal" }, body: JSON.stringify({ user_id: uid, kind }) }).catch(() => {});
   return json({ text: text.slice(0, 4000), left: Math.max(LIMIT - used - 1, 0) });
@@ -74,6 +100,6 @@ export async function handle(req, env, fetcher = fetch) {
 if (typeof Deno !== "undefined" && Deno.serve) {
   Deno.serve((req) => handle(req, {
     SUPABASE_URL: Deno.env.get("SUPABASE_URL"), SUPABASE_SERVICE_ROLE_KEY: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), SUPABASE_ANON_KEY: Deno.env.get("SUPABASE_ANON_KEY"),
-    ANTHROPIC_API_KEY: Deno.env.get("ANTHROPIC_API_KEY"), PETITION_AI_MODEL: Deno.env.get("PETITION_AI_MODEL"), PETITION_AI_DAILY: Deno.env.get("PETITION_AI_DAILY"),
+    GEMINI_API_KEY: Deno.env.get("GEMINI_API_KEY"), ANTHROPIC_API_KEY: Deno.env.get("ANTHROPIC_API_KEY"), PETITION_AI_MODEL: Deno.env.get("PETITION_AI_MODEL"), PETITION_AI_DAILY: Deno.env.get("PETITION_AI_DAILY"),
   }));
 }
