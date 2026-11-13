@@ -1190,3 +1190,29 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 .as-acc-link b{font-family:var(--f-display);font-size:20px}
 .as-acc-link .more{color:var(--pine);font-weight:600}
 @media (max-width:760px){ .ac-rules{grid-template-columns:minmax(0,1fr)} }
+
+/* 내 아파트 · 중도금 대출 월 이자 */
+.oc-loan{margin-top:28px}
+.oc-loanf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin-bottom:14px}
+.oc-loanf .oc-loan-k,.oc-loanf>.check{grid-column:1/-1}
+.oc-loanf .field{margin:0;min-width:0}
+.oc-loanf .lbl{font-size:13px;color:var(--muted)}
+.oc-loanf input[type=number],.oc-loanf select{width:100%}
+.oc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.oc-chips label{position:relative;cursor:pointer}
+.oc-chips input{position:absolute;opacity:0;inset:0}
+.oc-chips span{display:inline-block;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--muted);background:var(--surface)}
+.oc-chips span small{font-size:11px;opacity:.8}
+.oc-chips input:checked+span{background:var(--pine-soft);border-color:var(--pine);color:var(--pine);font-weight:700}
+.oc-chips input:focus-visible+span{outline:2px solid var(--pine);outline-offset:2px}
+.oc-loan-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.oc-loan-cards>div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);min-width:0}
+.oc-loan-cards span{display:block}
+.oc-loan-cards b{font-size:18px;display:block;margin-top:2px;word-break:keep-all}
+.oc-loan-cards .hl{border-color:var(--pine);background:var(--pine-soft)}
+.oc-loan-cards .hl b{color:var(--pine)}
+.oc-loan-pre{margin:0 0 10px}
+.oc-loan-t tr.ev td{background:var(--pine-soft)}
+.oc-loan-t td,.oc-loan-t th{white-space:nowrap}
+.oc-loan-t tr.ev td.muted{white-space:normal}
+@media (max-width:640px){ .oc-loan-cards{grid-template-columns:repeat(2,minmax(0,1fr))} .oc-loan-cards b{font-size:16px} .oc-loan-t .d{display:none} .oc-loan-t td,.oc-loan-t th{font-size:13px;padding-left:6px;padding-right:6px} }

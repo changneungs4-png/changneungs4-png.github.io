@@ -1279,6 +1279,19 @@
       '<dialog class="oc-lb" id="ocLb" aria-label="사진 크게 보기"><button type="button" class="oc-lb-x" id="ocLbX" aria-label="닫기">×</button><img id="ocLbImg" alt=""><p id="ocLbCap"></p></dialog>' +
       "<div>" + '<div class="oc-payh"><h2 class="oc-h"><span class="oc-no">3</span>회차별 납부 예정액</h2><button type="button" class="btn sm" id="ocPayFull" aria-pressed="false">항목별로 보기</button></div><p class="muted small" style="margin:-4px 0 10px">입주 시 잔여금액은 대출 적용 전 금액입니다.</p>' +
         '<div class="tablebox"><table class="spec oc-pay" id="ocPayT"><thead><tr><th>회차 · 예정일</th><th class="r d">주택</th><th class="r d">발코니</th><th class="r d">선택품목</th><th class="r">회차 합계</th><th class="r">누적</th></tr></thead><tbody id="ocPay"></tbody></table></div></div>' +
+      '<div class="oc-loan"><div class="oc-payh"><h2 class="oc-h"><span class="oc-no">4</span>중도금 대출 · 매월 이자 준비금</h2></div>' +
+        '<p class="muted small" style="margin:-4px 0 10px">중도금(1~6차)을 집단대출로 내면 입주 때 잔금과 함께 갚을 때까지 대출 이자를 매달 냅니다. 금리 · 대출 한도 · 이자 납부 방식은 LH와 은행의 협약이 확정되면 안내되니, 지금은 예상 금리로 매달 준비할 돈을 미리 가늠해 보세요.</p>' +
+        '<form class="panel oc-loanf" id="ocLoanF" novalidate>' +
+          '<div class="field"><label for="ocRate">예상 금리 <span class="muted small">연 %</span></label><input id="ocRate" type="number" inputmode="decimal" min="0" max="20" step="0.05" value="4.5"></div>' +
+          '<div class="field oc-loan-k"><span class="lbl">대출로 낼 회차 <span class="muted small">빼면 그 회차는 현금으로 냄</span></span><div class="oc-chips">' +
+            D.dates.slice(1, 7).map(function (d, i) { return '<label><input type="checkbox" id="ocLn' + (i + 1) + '" checked><span>' + (i + 1) + "차 <small>" + esc(d.slice(2)) + "</small></span></label>"; }).join("") + "</div></div>" +
+          '<label class="check"><input type="checkbox" id="ocLnAll"> 발코니 · 선택품목 중도금도 대출로 (보통은 현금 납부)</label>' +
+          '<div class="field"><label for="ocPre">일부 상환 <span class="muted small">만원</span></label><input id="ocPre" type="number" inputmode="numeric" min="0" step="100" placeholder="예: 3000"></div>' +
+          '<div class="field"><label for="ocPreAt">상환 시점</label><select id="ocPreAt"></select></div>' +
+        "</form>" +
+        '<div class="oc-loan-sum" id="ocLoanSum"></div>' +
+        '<div class="tablebox"><table class="spec oc-loan-t"><thead><tr><th>기간</th><th class="r">대출 잔액</th><th class="r">매월 이자</th><th class="r">개월</th><th class="r d">기간 이자</th></tr></thead><tbody id="ocLoanT"></tbody></table></div>' +
+        '<p class="muted small">월 이자 = 그달 대출 잔액 × 금리 ÷ 12로 어림한 값입니다. 실제로는 은행의 일 단위 계산 · 납입일 · 금리 변동에 따라 다르고, 입주(' + esc(S.moveInText || "2030년 3월") + ') 때 남은 대출은 잔금과 함께 갚거나 잔금대출로 바꿉니다. 중도금 대출은 협약 은행 · 개인 신용 · 정부 대출 규제에 따라 한도가 줄거나 안 될 수도 있습니다.</p></div>' +
       '<div class="two"><div>' + head("예상 취득세", '<span class="note">1주택 · 전용 85㎡ 이하</span>') +
         '<label class="check"><input type="checkbox" id="ocFirst"> 생애최초 주택 구입 감면 (현행 최대 200만원 · 2028년 말까지 취득분)</label>' +
         '<div class="tablebox"><table class="spec"><tbody id="ocTax"></tbody></table></div></div>' +
@@ -1406,14 +1419,69 @@
       });
       el("ocSpH").style.flexGrow = house; el("ocSpB").style.flexGrow = bal; el("ocSpO").style.flexGrow = optSum;
       el("ocPicked").innerHTML = chosen.map(function (o) { return '<li><span>' + esc(o[2].replace(/^\S+\s/, "")) + '</span><b class="num">' + (o[3] ? won(o[3]) : "무상") + '</b><button type="button" class="linkbtn" data-un="' + esc(o[0]) + '" aria-label="' + esc(o[2]) + ' 빼기">빼기</button></li>'; }).join("");
+      loan(H, B, O);
       store("s4-optcalc", JSON.stringify(snap()));
       saveState();
     }
-    function snap() { var m = mode(), ids = m === "minus" ? {} : picked(); return { t: TY.value, f: FL.value, m: m, s: SPC.value, o: Object.keys(ids).sort(), g: D.types[TY.value][0] }; }
+    function snap() { var m = mode(), ids = m === "minus" ? {} : picked(); return { t: TY.value, f: FL.value, m: m, s: SPC.value, o: Object.keys(ids).sort(), g: D.types[TY.value][0], l: loanSnap() }; }
+    // ── 중도금 대출 · 월 이자 ──
+    var MOVE = (S.moveInDate || "2030-03-01").slice(0, 7).replace("-", ".");   // 입주 월 (yyyy.mm)
+    function ym(d) { return d.slice(0, 7); }
+    function addM(m, k) { var y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7)) - 1 + k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return y + "." + String(mo + 1).padStart(2, "0"); }
+    function months(a, b) { var out = [], m = a; while (m <= b && out.length < 120) { out.push(m); m = addM(m, 1); } return out; }
+    (function () {   // 상환 시점: 첫 대출 다음 달 ~ 입주 월
+      var L = months(addM(ym(D.dates[1]), 1), MOVE);
+      el("ocPreAt").innerHTML = L.map(function (m) { return '<option value="' + m + '">' + m.slice(0, 4) + "년 " + Number(m.slice(5)) + "월</option>"; }).join("");
+      el("ocPreAt").value = L[Math.min(12, L.length - 1)];
+    })();
+    function loanSnap() {
+      var k = []; for (var i = 1; i <= 6; i++) if (el("ocLn" + i).checked) k.push(i);
+      return { r: String(el("ocRate").value), k: k.join(""), a: el("ocLnAll").checked ? 1 : 0, p: String(el("ocPre").value || ""), pm: el("ocPreAt").value };
+    }
+    function loanSet(l) {
+      if (!l) return;
+      if (l.r) el("ocRate").value = l.r;
+      for (var i = 1; i <= 6; i++) el("ocLn" + i).checked = String(l.k || "").indexOf(String(i)) >= 0;
+      el("ocLnAll").checked = !!l.a; el("ocPre").value = l.p || "";
+      if (l.pm && Array.prototype.some.call(el("ocPreAt").options, function (o) { return o.value === l.pm; })) el("ocPreAt").value = l.pm;
+    }
+    function loan(H, B, O) {
+      var rate = Math.max(0, Math.min(20, parseFloat(el("ocRate").value) || 0)) / 100, all = el("ocLnAll").checked;
+      var ev = {}, cash = 0, total = 0;   // 월별 대출 실행액 (원)
+      for (var i = 1; i <= 6; i++) {
+        var amt = (H[i] + (all ? B[i] + O[i] : 0)) * 1000, rest = (all ? 0 : B[i] + O[i]) * 1000;
+        if (el("ocLn" + i).checked) { var mm = ym(D.dates[i]); ev[mm] = (ev[mm] || 0) + amt; total += amt; cash += rest; } else cash += amt + rest;
+      }
+      var pre = Math.max(0, (parseFloat(el("ocPre").value) || 0) * 10000), preAt = el("ocPreAt").value;
+      if (!total) { el("ocLoanSum").innerHTML = '<p class="muted small">대출로 낼 회차를 고르면 매월 이자를 계산합니다. 지금 계획은 중도금 ' + won(cash / 1000) + "을 모두 현금으로 냅니다.</p>"; el("ocLoanT").innerHTML = ""; return; }
+      // 대출 실행 다음 달부터 입주 월까지, 그달 초 잔액에 이자
+      var bal = 0, rows = [], maxI = 0, sumI = 0, preDone = 0, first = addM(ym(D.dates[1]), 0);
+      months(first, MOVE).forEach(function (m) {
+        if (m === preAt && pre > 0 && bal > 0) { preDone = Math.min(pre, bal); bal -= preDone; rows.push({ from: m, to: m, bal: bal, it: 0, n: 0, sum: 0, ev: "일부 상환 −" + eok(preDone), only: 1 }); }
+        var it = m > first ? Math.round(bal * rate / 12) : 0;
+        if (it) { sumI += it; maxI = Math.max(maxI, it); }
+        var last = rows[rows.length - 1];
+        if (last && !last.only && last.bal === bal && last.it === it) { last.to = m; last.n++; last.sum += it; }
+        else rows.push({ from: m, to: m, bal: bal, it: it, n: it ? 1 : 0, sum: it });
+        if (ev[m]) { bal += ev[m]; rows.push({ from: m, to: m, bal: bal, it: 0, n: 0, sum: 0, ev: "대출 실행 +" + eok(ev[m]), only: 1 }); }
+      });
+      rows = rows.filter(function (r) { return r.n || r.ev; });
+      el("ocLoanSum").innerHTML = '<div class="oc-loan-cards">' +
+        '<div><span class="muted small">대출 총액</span><b class="num">' + eok(total) + "</b></div>" +
+        '<div class="hl"><span class="muted small">최대 매월 이자</span><b class="num">' + n(maxI) + "원</b></div>" +
+        '<div><span class="muted small">입주까지 이자 합계</span><b class="num">' + eok(sumI) + "</b></div>" +
+        '<div><span class="muted small">중도금 중 현금 납부</span><b class="num">' + eok(cash) + "</b></div></div>" +
+        (preDone ? '<p class="small oc-loan-pre">' + esc(preAt.slice(0, 4) + "년 " + Number(preAt.slice(5)) + "월 ") + eok(preDone) + " 일부 상환 → 그 뒤 매월 이자 약 <b>" + n(Math.round(preDone * rate / 12)) + "원</b> 줄어듭니다.</p>" : "");
+      el("ocLoanT").innerHTML = rows.map(function (r) {
+        if (r.only) return '<tr class="ev"><td>' + r.from + '</td><td class="r num">' + eok(r.bal) + '</td><td colspan="3" class="muted small ev-t">' + esc(r.ev) + "</td></tr>";
+        return "<tr><td>" + r.from + (r.to !== r.from ? "~" + r.to.slice(r.to.slice(0, 4) === r.from.slice(0, 4) ? 5 : 0) : "") +
+          '</td><td class="r num">' + eok(r.bal) + '</td><td class="r num"><b>' + n(r.it) + '</b></td><td class="r num">' + r.n + '</td><td class="r num d">' + n(r.sum) + "</td></tr>";
+      }).join("") + '<tr class="total"><td>입주까지</td><td></td><td class="r num">' + eok(sumI) + '</td><td class="r num">' + rows.reduce(function (a, r) { return a + r.n; }, 0) + '</td><td class="r num d">' + n(sumI) + "</td></tr>";
+    }
     // 계정에 저장한 선택 (다른 기기에서도 불러옴)
     var SAVED = null, SAVED_AT = null, SV_READY = false;
     function hm(t) { var d = new Date(new Date(t).getTime() + 9 * 3600e3); return (d.getUTCMonth() + 1) + "." + d.getUTCDate() + " " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0"); }
-    function sameSnap(a, b) { return ["t", "f", "m", "s", "g"].every(function (k) { return a[k] === b[k]; }) && arr(a.o).slice().sort().join() === arr(b.o).slice().sort().join(); }
+    function sameSnap(a, b) { var la = a.l || {}, lb = b.l || {}; return ["t", "f", "m", "s", "g"].every(function (k) { return a[k] === b[k]; }) && arr(a.o).slice().sort().join() === arr(b.o).slice().sort().join() && ["r", "k", "a", "p", "pm"].every(function (k) { return String(la[k] == null ? "" : la[k]) === String(lb[k] == null ? "" : lb[k]); }); }
     function saveState() {
       var st = el("ocSaveSt"), b = el("ocSave"); if (!st || !SV_READY) return;
       var same = SAVED && sameSnap(SAVED, snap());
@@ -1431,6 +1499,8 @@
     BOX.addEventListener("change", function () { enforce(); calc(); });
     el("ocReset").addEventListener("click", function () { BOX.querySelectorAll("input[data-id]").forEach(function (x) { x.checked = false; }); SPC.value = "basic"; enforce(); calc(); el("ocMsg").textContent = "선택품목을 모두 풀었습니다."; });
     el("ocFirst").addEventListener("change", calc);
+    el("ocLoanF").addEventListener("submit", function (e) { e.preventDefault(); });
+    el("ocLoanF").addEventListener("input", calc); el("ocLoanF").addEventListener("change", calc);
     el("ocPicked").addEventListener("click", function (e) { var u = e.target.closest("[data-un]"); if (!u) return; var i = el("oc-" + u.dataset.un); if (i) { i.checked = false; if (i.type === "radio") { var nn = el("oc-none-" + opt(u.dataset.un)[4]); if (nn) nn.checked = true; } } enforce(); calc(); });
     el("ocPayFull").addEventListener("click", function () { var on = el("ocPayT").classList.toggle("full"); this.setAttribute("aria-pressed", on); this.textContent = on ? "합계만 보기" : "항목별로 보기"; });
     // 사진: 못 불러오면 칸을 숨김, 누르면 크게
@@ -1446,7 +1516,7 @@
     LB.addEventListener("click", function (e) { if (e.target === LB) LB.close(); });
     var okT = function (t) { return t && D.types[t] && Array.prototype.some.call(TY.options, function (o) { return o.value === t; }); };
     function apply(sv) {
-      sv = sv || {};
+      sv = sv || {}; loanSet(sv.l);
       if (ME && !okT(sv.t)) { sv = {}; var dflt = okT(ME.sub) ? ME.sub : okT(ME.fam) ? ME.fam : TY.options[0] && TY.options[0].value; if (dflt) TY.value = dflt; }
       if (okT(sv.t)) TY.value = sv.t;
       C.querySelector('input[name="ocMode"][value="' + (sv.m === "minus" ? "minus" : "basic") + '"]').checked = true; SPC.disabled = sv.m === "minus";
