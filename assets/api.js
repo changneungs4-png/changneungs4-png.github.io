@@ -214,6 +214,12 @@
         co_name: o.coOwner ? String(o.coName || "").trim() : null, co_signature: o.coOwner ? o.coSignature : null, rep_name: o.coOwner ? String(o.repName || "").trim() : null, form_version: FORM_VERSION }).select().single());
       st.hasAgreement = true; return row;
     },
+    // 내 아파트 선택 저장 (본인만 읽고 씀)
+    myOptions: async function () { need(); if (!uid()) return null; return must(await sb.from("my_options").select("data,updated_at").eq("user_id", uid()).maybeSingle()); },
+    saveMyOptions: async function (data) {
+      need(); if (!uid()) throw new Error("로그인이 필요합니다.");
+      return must(await sb.from("my_options").upsert({ user_id: uid(), data: data }, { onConflict: "user_id" }).select("data,updated_at").single());
+    },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
     memberUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; var r = await sb.rpc("member_units"); return r.error ? [] : r.data; },

@@ -1243,7 +1243,7 @@
         return;
       }
       var uu = UNIT[pf.unit_id];
-      if (uu) { var fl = Math.floor(Number(uu.ho) / 100) || 1; ME = { unit: pf.unit_id, label: uu.dong + "동 " + uu.ho + "호", fam: uu.type, floor: fl, key: fl >= 5 ? "5층~최상층" : fl + "층" }; }
+      if (uu) { var fl = Math.floor(Number(uu.ho) / 100) || 1, sub = uu.type + ((S.typeSuffix || {})[uu.dong] || ""); ME = { unit: pf.unit_id, label: uu.dong + "동 " + uu.ho + "호", fam: uu.type, sub: D.types[sub] ? sub : null, floor: fl, key: fl >= 5 ? "5층~최상층" : fl + "층" }; }
     }
     var FREE = !ME || (LIVE && API.isAdmin);
     var CATS = ["침실", "주방", "주방 및 복도", "알파룸", "주방가전", "현관", "거실", "욕실", "바닥재", "조명", "시스템에어컨"];
@@ -1254,16 +1254,16 @@
     var saved = {}; try { saved = JSON.parse(store("s4-optcalc") || "{}") || {}; } catch (e) { saved = {}; }
     C.innerHTML = '<div class="oc">' +
       '<div class="oc-main"><h2 class="oc-h"><span class="oc-no">1</span>' + (ME ? "우리 집" : "평형 · 층 고르기") + '</h2>' +
-        (ME ? '<div class="oc-me"><div><span class="muted small">가입 세대</span><b>' + esc(ME.label) + '</b></div><div><span class="muted small">평형 계열</span><b>' + esc(ME.fam) + '</b></div><div><span class="muted small">층 · 분양가 구간</span><b>' + ME.floor + "층 · " + esc(ME.key) + "</b></div>" +
+        (ME ? '<div class="oc-me"><div><span class="muted small">가입 세대</span><b>' + esc(ME.label) + '</b></div><div><span class="muted small">주택형</span><b>' + esc(ME.sub || ME.fam) + '</b></div><div><span class="muted small">층 · 분양가 구간</span><b>' + ME.floor + "층 · " + esc(ME.key) + "</b></div>" +
           (LIVE && API.isAdmin ? '<p class="muted small">운영진이라 다른 평형 · 층도 골라 볼 수 있습니다.</p>' : "") + "</div>" : "") +
         '<form class="panel oc-pick" id="ocForm" novalidate>' +
         '<div class="field"><span class="lbl">공급유형</span><div class="seg" role="radiogroup" aria-label="공급유형"><label><input type="radio" name="ocMode" value="basic" checked><span>기본형</span></label><label><input type="radio" name="ocMode" value="minus"><span>마이너스옵션</span></label></div></div>' +
         '<div class="field"><label for="ocType">세부평형</label><select id="ocType">' + FAMS.filter(function (f) { return FREE || f === ME.fam; }).map(function (f) {
-          return '<optgroup label="' + esc(f) + ' 계열">' + TYPES.filter(function (t) { return D.types[t][0] === f && (FREE || D.types[t][1][ME.key]); }).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + "</option>"; }).join("") + "</optgroup>";
+          return '<optgroup label="' + esc(f) + ' 계열">' + TYPES.filter(function (t) { return D.types[t][0] === f && (FREE || (ME.sub ? t === ME.sub : D.types[t][1][ME.key])); }).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + "</option>"; }).join("") + "</optgroup>";
         }).join("") + "</select></div>" +
         '<div class="field"><label for="ocFloor">층</label><select id="ocFloor"></select></div>' +
         '<div class="field"><label for="ocSpace">공간선택</label><select id="ocSpace"><option value="basic">침실2/3 분리</option><option value="A">A형 · 침실2+3 통합</option></select></div>' +
-        '<p class="muted small oc-note">' + (ME && !FREE ? "같은 계열에도 세부평형(L · H 등)에 따라 분양가가 조금 다릅니다. 계약서나 동호배치표의 주택형을 확인해 골라 주세요. 선택품목은 같습니다." : "세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.") + "</p>" +
+        '<p class="muted small oc-note">' + (ME && !FREE ? (ME.sub ? "세부 주택형은 LH 분양 팸플릿의 동·호배치도로 정해집니다(고층동 H · 저층동 L · 그 밖은 기본형). 계약서의 주택형과 다르면 운영진에게 알려 주세요." : "같은 계열에도 세부평형(L · H 등)에 따라 분양가가 조금 다릅니다. 계약서나 동호배치표의 주택형을 확인해 골라 주세요. 선택품목은 같습니다.") : "세부평형(L · H 등)과 층은 계약서의 동·호 배정으로 확인하세요. 같은 계열(예: 59AL · 59A · 59AH)은 선택품목이 같고 분양가만 다릅니다.") + "</p>" +
       "</form>" +
       '<details class="panel oc-media-d" id="ocMediaD"' + (window.innerWidth > 760 ? " open" : "") + '><summary><b>평면도 · LH 공식 VR 보기</b><span class="muted small" id="ocMediaS"></span></summary><div class="oc-media" id="ocMedia"></div></details>' +
       '<div class="oc-opthead"><h2 class="oc-h"><span class="oc-no">2</span>선택품목 고르기</h2><button type="button" class="btn sm" id="ocReset">모두 풀기</button><span class="muted small" id="ocFamInfo"></span></div>' +
@@ -1272,6 +1272,7 @@
       '<aside class="panel oc-sum" id="ocSum" aria-label="계산 결과"><span class="muted small">예상 총 분양비용</span><b class="oc-total num" id="ocTotal"></b>' +
         '<div class="oc-split" aria-hidden="true"><i class="h" id="ocSpH"></i><i class="b" id="ocSpB"></i><i class="o" id="ocSpO"></i></div>' +
         '<table class="spec kv oc-kv"><tbody id="ocKv"></tbody></table><p class="small oc-chosen" id="ocChosen"></p><ul class="oc-picked" id="ocPicked"></ul>' +
+        (LIVE && API.loggedIn ? '<div class="oc-save"><button type="button" class="btn solid sm" id="ocSave">내 선택 저장</button><span class="muted small" id="ocSaveSt" role="status" aria-live="polite">불러오는 중…</span></div>' : "") +
         '<p class="muted small" style="margin:8px 0 0">세금 · 등기비 · 대출이자는 빠진 금액입니다. 실제 금액은 LH 계약서로 확인하세요.</p></aside>' +
       "</div>" +
       '<div class="oc-bar" id="ocBar" aria-hidden="true"><span>예상 총액</span><b class="num" id="ocBarTotal"></b><a href="#ocSum">자세히</a></div>' +
@@ -1405,7 +1406,19 @@
       });
       el("ocSpH").style.flexGrow = house; el("ocSpB").style.flexGrow = bal; el("ocSpO").style.flexGrow = optSum;
       el("ocPicked").innerHTML = chosen.map(function (o) { return '<li><span>' + esc(o[2].replace(/^\S+\s/, "")) + '</span><b class="num">' + (o[3] ? won(o[3]) : "무상") + '</b><button type="button" class="linkbtn" data-un="' + esc(o[0]) + '" aria-label="' + esc(o[2]) + ' 빼기">빼기</button></li>'; }).join("");
-      store("s4-optcalc", JSON.stringify({ t: TY.value, f: FL.value, m: m, s: SPC.value, o: Object.keys(ids), g: D.types[TY.value][0] }));
+      store("s4-optcalc", JSON.stringify(snap()));
+      saveState();
+    }
+    function snap() { var m = mode(), ids = m === "minus" ? {} : picked(); return { t: TY.value, f: FL.value, m: m, s: SPC.value, o: Object.keys(ids).sort(), g: D.types[TY.value][0] }; }
+    // 계정에 저장한 선택 (다른 기기에서도 불러옴)
+    var SAVED = null, SAVED_AT = null, SV_READY = false;
+    function hm(t) { var d = new Date(new Date(t).getTime() + 9 * 3600e3); return (d.getUTCMonth() + 1) + "." + d.getUTCDate() + " " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0"); }
+    function sameSnap(a, b) { return ["t", "f", "m", "s", "g"].every(function (k) { return a[k] === b[k]; }) && arr(a.o).slice().sort().join() === arr(b.o).slice().sort().join(); }
+    function saveState() {
+      var st = el("ocSaveSt"), b = el("ocSave"); if (!st || !SV_READY) return;
+      var same = SAVED && sameSnap(SAVED, snap());
+      b.disabled = !!same; b.textContent = SAVED ? (same ? "저장됨" : "변경 내용 저장") : "내 선택 저장";
+      st.textContent = SAVED ? (same ? hm(SAVED_AT) + " 저장 · 다른 기기에서 로그인해도 그대로 보입니다" : "저장 안 된 변경이 있습니다 (" + hm(SAVED_AT) + " 저장본과 다름)") : "저장하면 다른 기기에서 로그인해도 이 선택이 그대로 보입니다.";
     }
     el("ocForm").addEventListener("submit", function (e) { e.preventDefault(); });
     TY.addEventListener("change", function () { SPC.value = "basic"; build(); });
@@ -1432,14 +1445,33 @@
     el("ocLbX").addEventListener("click", function () { LB.close(); });
     LB.addEventListener("click", function (e) { if (e.target === LB) LB.close(); });
     var okT = function (t) { return t && D.types[t] && Array.prototype.some.call(TY.options, function (o) { return o.value === t; }); };
-    if (ME && !okT(saved.t)) { saved = {}; var dflt = okT(ME.fam) ? ME.fam : TY.options[0] && TY.options[0].value; if (dflt) TY.value = dflt; }
-    if (okT(saved.t)) TY.value = saved.t;
-    if (saved.m === "minus") { C.querySelector('input[name="ocMode"][value="minus"]').checked = true; SPC.disabled = true; }
-    else if (saved.s === "A") SPC.value = "A";
-    if (saved.f && FREE) { FL.innerHTML = '<option value="' + esc(saved.f) + '">' + esc(saved.f) + "</option>"; FL.value = saved.f; }
-    build();
-    // 지난번 고른 품목 다시 (같은 계열일 때만)
-    if (saved.o && saved.g === D.types[TY.value][0] && saved.m !== "minus") { saved.o.forEach(function (id) { var i = el("oc-" + id); if (i) i.checked = true; }); enforce(); calc(); }
+    function apply(sv) {
+      sv = sv || {};
+      if (ME && !okT(sv.t)) { sv = {}; var dflt = okT(ME.sub) ? ME.sub : okT(ME.fam) ? ME.fam : TY.options[0] && TY.options[0].value; if (dflt) TY.value = dflt; }
+      if (okT(sv.t)) TY.value = sv.t;
+      C.querySelector('input[name="ocMode"][value="' + (sv.m === "minus" ? "minus" : "basic") + '"]').checked = true; SPC.disabled = sv.m === "minus";
+      SPC.value = sv.m !== "minus" && sv.s === "A" ? "A" : "basic";
+      if (sv.f && FREE) { FL.innerHTML = '<option value="' + esc(sv.f) + '">' + esc(sv.f) + "</option>"; FL.value = sv.f; }
+      build();
+      // 고른 품목 다시 (같은 계열일 때만)
+      if (sv.o && sv.g === D.types[TY.value][0] && sv.m !== "minus") { sv.o.forEach(function (id) { var i = el("oc-" + id); if (i) i.checked = true; }); enforce(); calc(); }
+    }
+    apply(saved);
+    if (el("ocSave")) {
+      API.myOptions().then(function (r) {
+        SV_READY = true;
+        if (r && r.data) {
+          SAVED_AT = r.updated_at; SAVED = r.data; apply(r.data);
+        }
+        saveState();
+      }, function () { SV_READY = true; el("ocSaveSt").textContent = "저장한 선택을 불러오지 못했습니다."; });
+      el("ocSave").addEventListener("click", async function () {
+        var b = this; busy(b, true);
+        try { var r = await API.saveMyOptions(snap()); SAVED = r.data; SAVED_AT = r.updated_at; el("ocMsg").textContent = "내 선택을 저장했습니다."; }
+        catch (e) { el("ocSaveSt").textContent = "저장하지 못했습니다: " + e.message; busy(b, false); return; }
+        busy(b, false); saveState();
+      });
+    }
     if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { el("ocBar").classList.toggle("show", !es[0].isIntersecting); }).observe(el("ocSum"));
   };
 
