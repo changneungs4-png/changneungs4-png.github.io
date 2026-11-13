@@ -311,7 +311,8 @@
   }
   function petitionShortcut() {
     var L = arr(S.petitions).filter(function (x) { return x.active; });
-    if (!L.length) return "";
+    // 민원은 로그인한 입주예정자에게만 (비회원 메인에는 알림 자체를 보이지 않음)
+    if (!L.length || !LIVE || !API.loggedIn || !API.profile || API.profile.status === "rejected") return "";
     return '<section class="band petition-band pt-short"><div class="wrap">' + L.map(function (x) {
       var g = x.guide || {};
       return '<a class="pt-card" href="petition.html#pt-' + esc(x.id) + '"><span class="tag hot">' + esc(x.tag || "민원 참여") + '</span><span class="pt-txt"><b>' + esc(x.title) + "</b><span>" + esc(x.short || "참여 방법과 접수처를 한 곳에 모았습니다.") + '</span></span><span class="pt-go">참여하기 →</span></a>';
