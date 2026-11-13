@@ -1161,3 +1161,4 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 .btn[aria-disabled="true"]{opacity:.6;cursor:default;justify-content:center}
 .sec-h{font-size:22px;margin:18px 0 12px;scroll-margin-top:90px}
 @media (max-width:760px){ .cm-grid{grid-template-columns:minmax(0,1fr)} .oc-me{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .oc-me>div:first-child{grid-column:1/-1} .cm-card{padding:18px 16px} }
+.org-note{margin:10px 0 0;text-align:center;line-height:1.6}
