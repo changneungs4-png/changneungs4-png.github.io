@@ -954,11 +954,9 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 .oc-gl{display:block;font-size:12px;color:var(--muted);padding:4px 0 0}
 .oc-item{display:flex;gap:8px;align-items:center}
 .oc-item>.oc-row{flex:1;min-width:0}
-.oc-thumb{flex:none;width:72px;padding:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;cursor:zoom-in}
-.oc-thumb i{display:block;width:100%;background-repeat:no-repeat}
-.oc-thumb img{display:block;width:100%;height:46px;object-fit:cover}
+.oc-ph.oc-thumb{flex:none;width:76px;height:52px;margin:0;padding:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;cursor:zoom-in}
+.oc-item .oc-ph.oc-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:left 60%}
 .oc-thumb:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
-.oc-lb-crop{width:min(820px,90vw);max-width:100%;background-repeat:no-repeat;background-color:#fff;border-radius:6px;margin:0 auto}
 .oc-row{display:flex;gap:8px;align-items:flex-start;padding:7px 4px;border-radius:6px;cursor:pointer;font-size:14px;line-height:1.45}
 .oc-row:hover{background:var(--pine-soft)}
 .oc-row input{margin-top:3px;accent-color:var(--pine);flex:none}
@@ -1118,9 +1116,6 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
 .oc-acc>summary b{font-size:16px}
 .oc-acc-s{margin-left:auto;font-size:13px;color:var(--pine);font-weight:700}
 .oc-acc-b{display:block;padding:0 14px 12px}
-.oc-acc-b .oc-ph{margin:0}
-.oc-acc-b .oc-ph img{height:140px}
-.oc-acc-b .oc-ph[hidden]+.oc-acc-l{grid-column:1/-1}
 .oc-acc-l{min-width:0}
 .oc-split{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--line);margin:4px 0 2px}
 .oc-split i{flex:0 1 0}
@@ -1137,7 +1132,6 @@ footer.foot .wrap .linkbtn{padding:0;font-size:inherit;color:var(--muted)}
   .oc-pay .d{display:none}
   .oc-pay.full .d{display:table-cell}
   .oc-acc-b{grid-template-columns:minmax(0,1fr)}
-  .oc-acc-b .oc-ph img{height:150px}
   .oc-media-d>summary,.oc-media-d .oc-media{padding:12px 14px}
 }
 @media (min-width:761px){ #ocPayFull{display:none} }
