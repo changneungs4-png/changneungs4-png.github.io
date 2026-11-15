@@ -1317,7 +1317,7 @@
           '<div class="field"><label for="ocRate">예상 금리 <span class="muted small">연 %</span></label><input id="ocRate" type="number" inputmode="decimal" min="0" max="20" step="0.05" value="4.5"></div>' +
           '<div class="field oc-loan-k"><span class="lbl">대출로 낼 회차 <span class="muted small">빼면 현금 납부</span></span><div class="oc-chips">' +
             D.dates.slice(1, 7).map(function (d, i) { return '<label><input type="checkbox" id="ocLn' + (i + 1) + '" checked><span>' + (i + 1) + "차 <small>" + esc(d.slice(2)) + "</small></span></label>"; }).join("") + "</div></div>" +
-          '<label class="check"><input type="checkbox" id="ocLnAll"> 발코니 · 선택품목 중도금도 대출로 (보통은 현금 납부)</label>' +
+          '<label class="check"><input type="checkbox" id="ocLnAll"> 발코니 확장 중도금도 대출로</label><p class="muted small oc-loan-opt">선택품목(옵션) 중도금은 대출이 안 돼 회차마다 현금으로 냅니다.</p>' +
           '<div class="field oc-loan-k"><span class="lbl">일부 상환 <span class="muted small">여러 번 가능</span></span><div id="ocPres" class="oc-pres"></div><button type="button" class="btn sm" id="ocPreAdd">+ 상환 추가</button></div>' +
                   "</form>" +
         '<div class="oc-loan-sum" id="ocLoanSum"></div>' +
@@ -1488,7 +1488,8 @@
       var rate = Math.max(0, Math.min(20, parseFloat(el("ocRate").value) || 0)) / 100, all = el("ocLnAll").checked;
       var ev = {}, cash = 0, total = 0;   // 월별 대출 실행액 (원)
       for (var i = 1; i <= 6; i++) {
-        var amt = (H[i] + (all ? B[i] + O[i] : 0)) * 1000, rest = (all ? 0 : B[i] + O[i]) * 1000;
+        // 선택품목(O)은 항상 현금 · 발코니(B)는 체크하면 대출
+        var amt = (H[i] + (all ? B[i] : 0)) * 1000, rest = (O[i] + (all ? 0 : B[i])) * 1000;
         if (el("ocLn" + i).checked) { var mm = ym(D.dates[i]); ev[mm] = (ev[mm] || 0) + amt; total += amt; cash += rest; } else cash += amt + rest;
       }
       var PRE = {}; preList().forEach(function (x) { var a = Math.max(0, (parseFloat(x.amt) || 0) * 10000); if (a) PRE[x.at] = (PRE[x.at] || 0) + a; });
@@ -1511,6 +1512,7 @@
         '<div class="hl"><span class="muted small">최대 매월 이자</span><b class="num">' + n(maxI) + "원</b></div>" +
         '<div><span class="muted small">입주까지 이자 합계</span><b class="num">' + eok(sumI) + "</b></div>" +
         '<div><span class="muted small">중도금 중 현금 납부</span><b class="num">' + eok(cash) + "</b></div></div>" +
+        (O[1] ? '<p class="small oc-loan-pre">선택품목 중도금은 1~6차마다 현금 <b>' + n(O[1] * 1000) + "원</b>씩 따로 준비하세요.</p>" : "") +
         (preDone ? '<p class="small oc-loan-pre">일부 상환 합계 ' + eok(preDone) + " → 입주까지 이자가 상환하지 않을 때(" + eok(base) + ")보다 약 <b>" + eok(base - sumI) + "</b> 줄고, 입주 때 남는 대출은 " + eok(bal) + "입니다.</p>" : "");
       el("ocLoanT").innerHTML = rows.map(function (r) {
         if (r.only) return '<tr class="ev"><td>' + r.from + '</td><td class="r num">' + eok(r.bal) + '</td><td colspan="3" class="muted small ev-t">' + esc(r.ev) + "</td></tr>";
