@@ -229,7 +229,7 @@
     /* 회비 안내 · 월별 합계 (누구나), 우리 세대 납부 상태 (회원) */
     duesPublic: async function () { need(); var r = await sb.rpc("dues_public"); return r.error ? null : r.data; },
     duesMine: async function () { need(); if (!API.isMember) return null; var r = await sb.rpc("dues_mine"); return r.error ? null : (r.data || [])[0] || null; },
-    chatInfo: async function () { need(); if (!API.isDelegate && !API.isAdmin) return null; var r = await sb.rpc("chat_info_get"); if (r.error) return null; return (r.data || [])[0] || null; },
+    chatInfo: async function () { need(); if (!API.isMember && !API.isAdmin) return null; var r = await sb.rpc("chat_info_get"); if (r.error) return null; return (r.data || [])[0] || null; },
     memberStats: async function () { need(); var r = await sb.rpc("member_stats"); return r.error ? null : r.data; },
     agreedUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
 

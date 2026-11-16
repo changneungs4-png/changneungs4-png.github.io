@@ -30,6 +30,8 @@
     return n(man) + "만원";
   }
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  // 로그인했는데 아직 위임동의서를 안 낸 세대 (승인 대기 포함, 반려 제외)
+  function needConsent() { return !!(LIVE && API.loggedIn && API.profile && API.profile.status !== "rejected" && !API.hasAgreement && API.consentOpen); }
   function safeUrl(u) { return /^(https?:)?\/\//i.test(u) || /^[\w\-./#]+$/.test(u) ? u : "#"; }
   function empty(title, desc) { return '<div class="empty"><b>' + esc(title) + "</b>" + (desc ? "<span>" + esc(desc) + "</span>" : "") + "</div>"; }
   function head(title, right) { return '<div class="sec-head"><h2>' + title + "</h2>" + (right || "") + "</div>"; }
@@ -80,7 +82,7 @@
     participate: ["PARTICIPATE", "단체민원 · 투표", "여러 세대가 함께 낸 목소리는 더 무겁습니다."],
     links: ["LINKS", "바로가기", "자주 쓰는 기관 사이트와 문의처"],
     calculator: ["MY HOME", "내 아파트", "우리 집 기준 분양비용 · 납부 일정 · 대출 이자 · 취득세"],
-    cafe: ["COMMUNITY", "카페 · 오픈채팅", "공식 카페는 누구나, 오픈채팅은 위임동의 세대만"],
+    cafe: ["COMMUNITY", "카페 · 오픈채팅", "공식 카페는 누구나, 오픈채팅은 승인 회원만"],
     info: ["INFORMATION", "정보", "공고문 · 정리 자료 · 자주 묻는 질문"],
     petition: ["PETITION", "민원 참여", "함께 내는 민원과 참여 방법"],
     documents: ["ARCHIVE", "자료실", "공고문 원문과 협의회가 정리한 자료입니다."],
@@ -99,7 +101,7 @@
     }).join("") + "</nav>" +
     (!LIVE ? '<a class="acct" id="acctLink" href="login.html">로그인</a>' : "") +
     (LIVE ? '<a class="acct" id="acctLink" href="' + (API.loggedIn ? "account.html" : "login.html") + '">' + (API.loggedIn ? (API.profile ? esc(API.profile.unit_id) + (API.isDelegate ? "" : '<span class="acct-st"> · ' + (API.profile.status === "pending" ? "승인 대기" : API.profile.status === "rejected" ? "반려" : "위임 전") + "</span>") : "가입 마무리") : "로그인") + "</a>" : "") +
-    '<a class="btn solid head-cta" href="' + (LIVE && !API.loggedIn ? "login.html#signup" : "agreement.html") + '">' + (LIVE && !API.loggedIn ? "회원가입" : "위임동의 현황") + "</a>" +
+    '<a class="btn solid head-cta' + (needConsent() ? " pulse" : "") + '" href="' + (LIVE && !API.loggedIn ? "login.html#signup" : needConsent() ? "consent.html" : "agreement.html") + '">' + (LIVE && !API.loggedIn ? "회원가입" : needConsent() ? "위임동의하기" : "위임동의 현황") + "</a>" +
     '<button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="drawer">메뉴</button></div>' +
     '<nav class="wrap drawer" id="drawer" aria-label="전체 메뉴" hidden>' + (!LIVE ? '<a class="btn solid" href="login.html" style="justify-content:center">로그인 · 회원가입</a>' : "") + (LIVE ? '<a class="btn' + (API.loggedIn ? "" : " solid") + '" href="' + (API.loggedIn ? "account.html" : "login.html") + '" style="justify-content:center">' + (API.loggedIn ? "내 정보" : "로그인 · 회원가입") + "</a>" : "") + GROUPS.map(function (g) {
       return "<div><h4>" + g.name + '</h4><div class="dl">' + g.items.map(function (x) { return '<a href="' + x[0] + '"' + cur(x) + ">" + x[1] + "</a>"; }).join("") + "</div></div>";
@@ -1200,9 +1202,9 @@
   }
   async function openChat() {
     if (!LIVE) return;
-    if (!API.isDelegate && !API.isAdmin) {
-      sheet('<b class="sheet-t">위임동의 세대 전용 채팅방입니다</b><p class="muted">비밀번호가 걸린 채팅방이라, 위임동의를 마친 세대에게만 입장 비밀번호를 알려드립니다.</p>' +
-        '<p class="cta-row">' + (!API.loggedIn ? '<a class="btn solid" href="login.html">로그인</a>' : API.consentOpen ? '<a class="btn solid" href="consent.html">위임동의서 제출</a>' : '<span class="muted small">' + esc(consentOpenLabel()) + " 공급계약 후 위임동의서를 낼 수 있습니다.</span>") + "</p>");
+    if (!API.isMember && !API.isAdmin) {
+      sheet('<b class="sheet-t">승인된 회원 전용 채팅방입니다</b><p class="muted">비밀번호가 걸린 채팅방이라, 가입 승인을 받은 세대에게만 입장 비밀번호를 알려드립니다.</p>' +
+        '<p class="cta-row">' + (!API.loggedIn ? '<a class="btn solid" href="login.html">로그인</a><a class="btn" href="login.html#signup">회원가입</a>' : '<span class="muted small">운영진이 계약서를 확인해 승인하면 바로 들어올 수 있습니다.</span>') + "</p>");
       return;
     }
     var c = await API.chatInfo().catch(function () { return null; });
@@ -1211,17 +1213,39 @@
     var o = sheet('<b class="sheet-t">입주민 오픈채팅</b><p class="muted small">채팅방에 들어갈 때 아래 비밀번호를 붙여 넣으세요.</p>' +
       '<div class="chat-pw"><span class="muted small">입장 비밀번호</span><b class="num" id="chatPw">' + esc(c.password) + "</b></div>" +
       '<p class="cta-row"><a class="btn solid" id="chatGo" href="' + esc(safeUrl(c.url)) + '">비밀번호 복사하고 입장</a></p>' +
-      '<p class="muted small" style="margin:0">' + (API.isDelegate ? "비밀번호는 위임 세대끼리만 나눠 주세요." : "운영진이라 위임 전에도 보입니다.") + "</p>");
+      '<p class="muted small" style="margin:0">' + (API.isMember ? "비밀번호는 회원끼리만 나눠 주세요." : "운영진이라 승인 전에도 보입니다.") + "</p>");
     o.querySelector("#chatGo").addEventListener("click", function () { try { navigator.clipboard.writeText(c.password); } catch (e) { /* 복사 안 돼도 입장 */ } });
+  }
+  /* 위임동의 권유: 아직 안 낸 회원에게 상단 띠(항상) + 하루 한 번 팝업 */
+  function consentNudge() {
+    if (!needConsent() || ["consent", "login", "admin", "privacy"].indexOf(page) >= 0) return;
+    var a = agreedCount(), left = Math.max(0, NEED - a);
+    var hdr = document.querySelector("header");
+    if (hdr && !el("cnBar")) {
+      var bar = document.createElement("div"); bar.id = "cnBar"; bar.className = "cn-bar";
+      bar.innerHTML = '<div class="wrap"><span><b>' + esc(API.profile.unit_id) + "</b> 세대는 아직 위임동의 전입니다" + (a ? ' · 지금 <b class="num">' + n(a) + "</b>세대 참여" : "") + '</span><a class="btn sm" href="consent.html">위임동의하기 →</a></div>';
+      hdr.after(bar);
+    }
+    if (page === "account" || store("cn-nudge") === new Date().toDateString()) return;
+    setTimeout(function () {
+      var o = sheet('<div class="cn-pop"><span class="cn-ic" aria-hidden="true">✍️</span><b class="sheet-t">위임동의서를 아직 내지 않으셨어요</b>' +
+        '<p class="muted">LH · 고양시와 협의할 때 힘이 되는 건 <b class="fg">위임한 세대 수</b>입니다. 과반(' + n(NEED) + '세대)이 모여야 공식 협의가 쉬워집니다.</p>' +
+        '<div class="cn-meter">' + agreeMeter(true) + "</div>" +
+        (a ? '<p class="small"><b>' + n(left) + "세대</b> 더 모이면 과반입니다.</p>" : "") +
+        '<p class="muted small">휴대폰으로 1분이면 끝나고, 내 정보에서 언제든 철회할 수 있습니다.</p>' +
+        '<p class="cta-row"><a class="btn solid wide" href="consent.html">지금 위임동의하기</a></p><button type="button" class="linkbtn cn-later">오늘은 그만 보기</button></div>');
+      o.querySelector(".cn-later").addEventListener("click", function () { store("cn-nudge", new Date().toDateString()); o.remove(); });
+      o.querySelector(".sheet-x").addEventListener("click", function () { store("cn-nudge", new Date().toDateString()); });
+    }, 900);
   }
   function bindChatTiles() { document.querySelectorAll('.tile[href="#chat"]').forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); openChat(); }); }); }
 
   function cafeLink() { return arr(S.links).filter(function (l) { return /카페/.test(l.title) && l.url; })[0]; }
   R.cafe = async function () {
-    var cf = cafeLink(), st = !LIVE ? "" : !API.loggedIn ? "login" : API.isDelegate || API.isAdmin ? "ok" : "need";
+    var cf = cafeLink(), st = !LIVE ? "" : !API.loggedIn ? "login" : API.isMember || API.isAdmin ? "ok" : "need";
     var chatBtn = st === "ok" ? '<button type="button" class="btn solid wide" id="chatOpen">오픈채팅 입장하기</button>'
       : st === "login" ? '<a class="btn solid wide" href="login.html">로그인하고 입장하기</a>'
-      : st === "need" ? (API.consentOpen ? '<a class="btn solid wide" href="consent.html">위임동의서 내고 입장하기</a>' : '<span class="btn wide" aria-disabled="true">' + esc(consentOpenLabel()) + " 위임동의 시작 후 입장</span>")
+      : st === "need" ? '<span class="btn wide" aria-disabled="true">가입 승인 후 입장</span>'
       : '<span class="btn wide" aria-disabled="true">서버 연결 후 입장</span>';
     C.innerHTML = '<div class="cm-grid">' +
       '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">☕</span><h2>공식 네이버 카페</h2><p class="muted">공지 · 질문 · 정보 나눔을 오래 남겨 두는 곳입니다. 계약자가 아니어도 가족이 함께 볼 수 있습니다.</p>' +
@@ -1230,8 +1254,8 @@
           '<li><div><b>입주예정자 확인</b><span><a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 카페에 계약서를 따로 올리지 않아도 됩니다.</span></div></li>' +
           "<li><div><b>등업</b><span>홈페이지 <a href=\"account.html\">내 정보</a>에 카페 닉네임을 적어 두면, 운영진이 확인된 세대의 카페 등급을 올려 드립니다.</span></div></li></ol>" +
         (cf ? '<a class="btn solid wide" href="' + esc(safeUrl(cf.url)) + '" target="_blank" rel="noopener">카페 바로가기 ↗</a>' : '<span class="btn wide" aria-disabled="true">카페 개설 후 연결</span>') + "</section>" +
-      '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">💬</span><h2>입주민 오픈채팅</h2><p class="muted">빠른 소식과 일정 알림을 나누는 카카오톡 오픈채팅입니다. 비밀번호가 걸려 있어 <b class="fg">위임동의를 마친 세대</b>에게만 입장 비밀번호를 보여 드립니다.</p>' +
-        '<ul class="cm-check"><li class="' + (LIVE && API.loggedIn ? "on" : "") + '">홈페이지 로그인</li><li class="' + (LIVE && (API.isDelegate || API.isAdmin) ? "on" : "") + '">위임동의서 제출</li><li class="' + (st === "ok" ? "on" : "") + '">입장 비밀번호 확인</li></ul>' +
+      '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">💬</span><h2>입주민 오픈채팅</h2><p class="muted">빠른 소식과 일정 알림을 나누는 카카오톡 오픈채팅입니다. 비밀번호가 걸려 있어 <b class="fg">가입 승인을 받은 세대</b>에게 입장 비밀번호를 보여 드립니다.</p>' +
+        '<ul class="cm-check"><li class="' + (LIVE && API.loggedIn ? "on" : "") + '">홈페이지 로그인</li><li class="' + (LIVE && (API.isMember || API.isAdmin) ? "on" : "") + '">가입 승인</li><li class="' + (st === "ok" ? "on" : "") + '">입장 비밀번호 확인</li></ul>' +
         chatBtn + "</section></div>" +
       '<section class="panel cm-rule"><h3>함께 지킬 약속 <span class="muted small">회칙 제6장</span></h3><ul>' +
         "<li>정치 · 종교 관련 글, 업체 홍보, 욕설과 비방은 금지합니다(제29조).</li>" +
@@ -1245,7 +1269,7 @@
   R.links = async function () {
     var CT = arr(S.contacts), L = arr(S.links).filter(function (l) { return l.url !== "#chat" && !/카페/.test(l.title) && !/calculator/.test(l.url || ""); });
     C.innerHTML = "<div>" + head("기관 사이트") + '<div class="tiles">' + L.map(tile).join("") +
-        '<a class="tile" href="cafe.html"><b>카페 · 오픈채팅</b><span>입주예정자 소통 · 위임 세대 채팅방</span></a></div></div>' +
+        '<a class="tile" href="cafe.html"><b>카페 · 오픈채팅</b><span>입주예정자 소통 · 회원 채팅방</span></a></div></div>' +
       (CT.length ? "<div>" + head("문의처") + '<div class="tablebox"><table class="spec kv">' + CT.map(function (c) { return "<tr><th>" + esc(c[0]) + '</th><td class="num sel-all">' + esc(c[1]) + "</td></tr>"; }).join("") + "</table></div></div>" : "") +
       "<div>" + head("휴대폰 홈 화면에 추가") +
       '<p class="muted"><b class="fg">아이폰(사파리)</b> 하단 공유 버튼을 누르고 "홈 화면에 추가"를 선택합니다.</p>' +
@@ -2325,7 +2349,7 @@
             '<form class="find" id="mFind"><label for="mQ" class="sr">검색</label><input id="mQ" placeholder="동-호, 카페 닉네임"></form></div><div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>타입</th><th>카페 닉네임</th><th>상태</th><th>위임동의</th><th>가입</th><th></th></tr></thead><tbody id="mList"></tbody></table></div>' +
             '<div class="adm-sec">' + head("가입 · 승인 기록", '<span class="note">최근 100건 · 지우지 않고 보관</span>') + '<div class="tablebox"><table class="spec"><tbody id="mLog"><tr><td class="muted">불러오는 중…</td></tr></tbody></table></div></div>' +
             (O.length ? '<div class="adm-sec">' + head("가입 중단 계정", '<span class="note">계정만 있고 계약서 사진이 없는 세대</span>') + '<div class="tablebox"><table class="spec"><tbody>' + O.map(function (o) { return '<tr><td class="num">' + esc(o.unit_id) + '</td><td class="num">' + fmtTime(o.created_at) + '</td><td><button type="button" class="linkbtn delorphan" data-id="' + o.id + '">계정 삭제</button></td></tr>'; }).join("") + "</tbody></table></div></div>" : "") +
-            '<div class="adm-sec">' + '<form class="panel chat-admin" id="fChat" novalidate><h3 style="margin-bottom:10px">입주민 오픈채팅 입장 정보 <span class="muted small">위임 세대에게만 보임</span></h3>' +
+            '<div class="adm-sec">' + '<form class="panel chat-admin" id="fChat" novalidate><h3 style="margin-bottom:10px">입주민 오픈채팅 입장 정보 <span class="muted small">승인 회원에게만 보임</span></h3>' +
             '<div class="two" style="gap:12px"><div class="field"><label for="chUrl">채팅방 주소</label><input id="chUrl" placeholder="https://open.kakao.com/o/..." value="' + esc(CI.url || "") + '"></div>' +
             '<div class="field"><label for="chPw">입장 비밀번호</label><input id="chPw" maxlength="40" value="' + esc(CI.password || "") + '"></div></div>' +
             '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit">저장</button>' + (CI.updated_at ? '<span class="muted small">마지막 변경 ' + fmtTime(CI.updated_at) + "</span>" : "") + '</p></form>' + "</div>";
@@ -2562,7 +2586,7 @@
     LIVE_MEMBERS = ms2 ? ms2.reduce(function (s, r) { return s + r.members; }, 0) : null;
   }
   if (R[page]) {
-    try { await R[page](); if (page === "home") await homeNews(); }
+    try { await R[page](); if (page === "home") await homeNews(); consentNudge(); }
     catch (e) { if (C) C.innerHTML = '<div class="notice-box">' + esc(API.errorText ? API.errorText(e) : e.message) + "</div>"; }
   }
   }
