@@ -1228,7 +1228,7 @@
         '<ol class="steps">' +
           "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
           '<li><div><b>입주예정자 확인</b><span><a href="login.html#signup">이 홈페이지 회원가입</a>으로 합니다. 카페에 계약서를 따로 올리지 않아도 됩니다.</span></div></li>' +
-          "<li><div><b>등업</b><span>홈페이지에서 확인된 세대는 운영진이 카페 등급을 올려 드립니다.</span></div></li></ol>" +
+          "<li><div><b>등업</b><span>홈페이지 <a href=\"account.html\">내 정보</a>에 카페 닉네임을 적어 두면, 운영진이 확인된 세대의 카페 등급을 올려 드립니다.</span></div></li></ol>" +
         (cf ? '<a class="btn solid wide" href="' + esc(safeUrl(cf.url)) + '" target="_blank" rel="noopener">카페 바로가기 ↗</a>' : '<span class="btn wide" aria-disabled="true">카페 개설 후 연결</span>') + "</section>" +
       '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">💬</span><h2>입주민 오픈채팅</h2><p class="muted">빠른 소식과 일정 알림을 나누는 카카오톡 오픈채팅입니다. 비밀번호가 걸려 있어 <b class="fg">위임동의를 마친 세대</b>에게만 입장 비밀번호를 보여 드립니다.</p>' +
         '<ul class="cm-check"><li class="' + (LIVE && API.loggedIn ? "on" : "") + '">홈페이지 로그인</li><li class="' + (LIVE && (API.isDelegate || API.isAdmin) ? "on" : "") + '">위임동의서 제출</li><li class="' + (st === "ok" ? "on" : "") + '">입장 비밀번호 확인</li></ul>' +
@@ -1618,6 +1618,7 @@
     var rows = [
       ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 계약서 사진, 가입 · 접속 기록", "입주예정자 확인, 1세대 1계정 관리", "계약서 사진은 운영진 확인(승인 · 반려) 즉시 삭제. 나머지는 탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지"],
       ["위임동의서", "주택형 · 동 · 호수, 계약자 성명, 휴대전화번호, 서명, 동의 일시, 공동명의자 성명 · 서명(공동명의자 본인이 서명할 때만) (서면 접수 시 위임장 스캔본)", "계약자 확인, 과반수 동의 집계, 협의회 공지 · 의견수렴 · 투표", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
+      ["카페 닉네임 (선택)", "회원이 내 정보에 적은 네이버 카페 닉네임, 등업 처리 기록", "카페 등업(입주예정자 확인된 세대만)", "회원이 지우거나 탈퇴 · 협의회 해산 시까지"],
       ["회비", "협의회 통장 거래내역(입금 일시 · 금액 · 입금자명), 세대별 납부 여부", "회비 납부 확인, 회계 공개(월별 합계만 공개, 입금자 이름은 비공개)", "협의회 해산 시 결산 · 인계 후 파기"],
       ["투표 · 단체민원", "세대별 투표 · 참여 여부 (예전 게시판 글 · 댓글 포함)", "1세대 1표 집계, 참여 세대 수 공개", "삭제 시 또는 협의회 해산 시까지"],
       ["민원 AI 글쓰기", "AI 이용 횟수 기록(회원 · 시각 · 글 종류). 쓴 문장은 저장하지 않음", "1인 하루 이용 횟수 제한(5번)", "30일 뒤 자동 삭제"]
@@ -1800,6 +1801,9 @@
     var p = API.profile, ag = p.status !== "rejected" ? await API.myAgreement() : null;
     var badge = { pending: ["tag hot", "승인 대기"], approved: ["tag", "승인됨"], rejected: ["tag off", "반려됨"] }[p.status];
     var dongLabel = p.unit_id.split("-")[0] + "동";
+    var CAFEFORM = p.status === "rejected" ? "" : head("네이버 카페 닉네임") + '<form class="panel" id="fCafe" novalidate><div class="field"><label for="cNick">카페 닉네임 <span class="muted small">선택</span></label><input id="cNick" maxlength="30" autocomplete="off" placeholder="예: 403-18xx/창릉새집" value="' + esc(p.cafe_nick || "") + '"></div>' +
+      '<p class="muted small" style="margin:-4px 0 10px">' + (p.status === "approved" ? "적어 두면 운영진이 카페 등급을 올려 드립니다." : "승인되면 운영진이 이 닉네임으로 카페 등급을 올려 드립니다.") + ' 카페에서 닉네임을 바꾸면 여기도 고쳐 주세요.</p>' +
+      '<button class="btn solid" type="submit">저장</button><p class="notice-box" id="cMsg" role="status" hidden></p></form>';
     var PWFORM = head("비밀번호 바꾸기") + '<form class="panel" id="fPw" novalidate><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form>';
     C.innerHTML =
       '<div class="two acct-grid"><div class="acct-col">' + head("내 계정") + '<div class="panel"><div class="acct-head"><b>' + esc(unitLabel(p.unit_id)) + '</b><span class="' + badge[0] + '">' + badge[1] + "</span>" + (API.isAdmin ? '<span class="tag">운영진</span>' : "") + "</div>" +
@@ -1807,7 +1811,7 @@
       (p.reviewed_at ? "<tr><th>" + (p.status === "approved" ? "승인일" : "처리일") + "</th><td>" + fmtDate(p.reviewed_at) + "</td></tr>" : "") + "</table>" +
       (p.status === "pending" ? '<p class="notice-box">운영진이 올려주신 사진으로 세대를 확인하고 있습니다. 승인되면 회원 전용 안내와 민원 참여를 이용할 수 있습니다.</p>' : "") +
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
-      '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' + PWFORM + "</div>" +
+      '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' + CAFEFORM + PWFORM + "</div>" +
 
       "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진 승인 후 현황판에 반영됩니다." : "") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn" id="accWi">내 위임장 보기 · 인쇄</button> ' + (API.isDelegate ? '<button type="button" class="btn" id="accChat">입주민 오픈채팅 입장</button> ' : "") + '<button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판에서 바로 빠지고 투표 · 민원 참여와 세대별 현황 보기가 중지됩니다. 게시판은 계속 쓸 수 있고, 위임동의서를 다시 내면 바로 회복됩니다.</p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
         : delegateNote(true)) : "") +
@@ -1837,6 +1841,12 @@
       try { await API.reapply({ file: el("rFile").files[0] }); await R.account(); } catch (err) { busy(btn, false); say("rMsg", API.errorText(err), true); }
     });
 
+    if (el("fCafe")) el("fCafe").addEventListener("submit", async function (e) {
+      e.preventDefault(); var btn = this.querySelector("button"); busy(btn, true);
+      try { await API.setCafeNick(el("cNick").value); say("cMsg", el("cNick").value.trim() ? "카페 닉네임을 저장했습니다." : "카페 닉네임을 지웠습니다."); }
+      catch (err) { say("cMsg", API.errorText(err), true); }
+      busy(btn, false);
+    });
     el("fPw").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.changePassword(el("pPw").value, el("pPw2").value); el("pPw").value = el("pPw2").value = ""; say("pMsg2", "비밀번호를 바꿨습니다."); } catch (err) { say("pMsg2", API.errorText(err), true); } });
   };
 
@@ -1953,7 +1963,7 @@
     function cnt(k) { return L.filter(function (r) { var x = kind(r); return k === "wait" ? x === "wait" || x === "changed" : x === k; }).length; }
     B.innerHTML =
       '<div class="panel cafe-how"><b>카페 등업 하는 법</b><ol class="small">' +
-        "<li>회원이 위임동의서에 네이버 카페 닉네임을 적으면 아래 <b>등업 대기</b>에 나옵니다. 계약서는 홈페이지에서 이미 확인했습니다.</li>" +
+        "<li>회원이 내 정보에 네이버 카페 닉네임을 적으면 아래 <b>등업 대기</b>에 나옵니다. 계약서는 홈페이지에서 이미 확인했습니다.</li>" +
         "<li>카페 관리 › 멤버 관리에서 그 닉네임을 찾아 등급을 올리고, 여기서 <b>등업함</b>을 누릅니다.</li>" +
         "<li>승인이 취소되거나 (위임 세대만 등업하는 경우) 위임을 철회하면 <b>내려야 함</b>에 나옵니다. 카페에서 등급을 내리고 <b>내림</b>을 누르세요.</li></ol>" +
         '<label class="chk" style="margin:8px 0 0"><input type="checkbox" id="cfOnly"' + (only ? " checked" : "") + "> 위임동의를 낸 세대만 등업 대상으로 보기</label></div>" +
@@ -2237,7 +2247,7 @@
   R.admin = async function () {
     if (!LIVE || !API.loggedIn) { C.innerHTML = gate("login"); return; }
     if (!API.isAdmin) { C.innerHTML = empty("운영진만 볼 수 있습니다", ""); return; }
-    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["dues", "회비"], ["petition", "민원 · 투표"], ["visits", "현장 방문"], ["news", "자동 수집"]];
+    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["dues", "회비"], ["cafe", "카페 등업"], ["petition", "민원 · 투표"], ["visits", "현장 방문"], ["news", "자동 수집"]];
     var TAB_ALIAS = { polls: "petition", campaigns: "petition", photos: "visits" };   // 예전 주소
     var cur = (location.hash || "#pending").slice(1); cur = TAB_ALIAS[cur] || cur; if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
     C.innerHTML = '<div class="tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '<span class="cnt" id="cnt-' + t[0] + '"></span></button>'; }).join("") + "</div>" +
