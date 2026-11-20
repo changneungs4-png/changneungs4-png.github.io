@@ -62,6 +62,12 @@
     if (!/^image\/(jpeg|png|webp|heic|heif)$|^application\/pdf$/.test(f.type)) throw new Error("사진(JPG · PNG · HEIC) 또는 PDF만 올릴 수 있습니다.");
     if (f.size > 5 * 1024 * 1024) throw new Error("파일이 너무 큽니다. 5MB 이하로 올려주세요.");
   }
+  function cafeNickOf(v) {
+    v = String(v || "").trim();
+    if (!v) throw new Error("네이버 카페 닉네임을 입력하세요. 운영진이 카페 인증 여부를 확인합니다.");
+    if (v.length > 30) throw new Error("카페 닉네임은 30자 이내로 입력하세요.");
+    return v;
+  }
   async function uploadContract(f) {
     checkFile(f);
     var ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
@@ -149,13 +155,13 @@
     /* 로그인 계정의 세대 (아이디 = 동-호) */
     get accountUnit() { return st.session ? String(st.session.user.email || "").split("@")[0] : null; },
 
-    /* 가입: 세대로 계정 → 계약서 사진 업로드 → 회원 정보(대기). 가입 · 위임은 공급계약 시작 후. 위임동의서는 가입 뒤 따로 */
+    /* 가입: 세대로 계정 → 회원 정보(대기, 카페 닉네임) → 운영진이 네이버 카페 인증 확인 후 승인. 위임동의서는 가입 뒤 바로 */
     signUp: async function (o) {
       need();
       if (!validUnit(o.unit)) throw new Error("동과 호수를 고르세요.");
       if (!o.password || o.password.length < 8) throw new Error("비밀번호는 8자 이상이어야 합니다.");
       if (o.password !== o.password2) throw new Error("비밀번호 확인이 일치하지 않습니다.");
-      checkFile(o.file);
+      cafeNickOf(o.cafeNick);
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
       if (!API.signupOpen) { var sa = st.signupAt || st.openAt; throw new Error("가입은 " + (sa.getMonth() + 1) + "월 " + sa.getDate() + "일부터 받습니다."); }
       if (await API.unitTaken(o.unit)) throw new Error("이 세대는 이미 가입되어 있습니다. 본인 세대인데 가입한 적이 없다면 운영진에게 문의하세요.");
@@ -163,22 +169,23 @@
       must(r);
       if (!r.data.session) { var s = await sb.auth.signInWithPassword({ email: emailOf(o.unit), password: o.password }); must(s); st.session = s.data.session; }
       else st.session = r.data.session;
-      return API.completeProfile({ file: o.file, privacy: true });
+      return API.completeProfile({ cafeNick: o.cafeNick, privacy: true });
     },
     /* 계정은 있는데 회원 정보가 없을 때(가입 중단) 마무리 */
     completeProfile: async function (o) {
       need();
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
-      var unit = API.accountUnit, path = await uploadContract(o.file);
-      must(await sb.from("profiles").insert({ id: uid(), username: unit, unit_id: unit, contract_path: path }));
+      // 계약서 인증은 네이버 카페에서. 홈페이지는 카페 닉네임만 받고, 운영진이 카페 인증 여부를 확인해 승인
+      var unit = API.accountUnit, nick = cafeNickOf(o.cafeNick);
+      must(await sb.from("profiles").insert({ id: uid(), username: unit, unit_id: unit, cafe_nick: nick }));
       await loadProfile();
       return st.profile;
     },
     /* 반려 후 계약서 다시 내기 */
     reapply: async function (o) {
       need();
-      var path = await uploadContract(o.file);
-      must(await sb.from("profiles").update({ contract_path: path, status: "pending" }).eq("id", uid()));
+      var nick = cafeNickOf(o.cafeNick);
+      must(await sb.from("profiles").update({ cafe_nick: nick, status: "pending" }).eq("id", uid()));
       await loadProfile(); return st.profile;
     },
     /* 게시판 표시 이름 (비우면 "403-1804", 정하면 "닉네임 · 403-1804") */
@@ -290,6 +297,20 @@
 
     /* 운영진 */
     admin: {
+      /* 계약서 인증을 카페로 옮기며: 홈페이지에 남은 계약서 사진을 모두 지움 (한 번만 쓰는 정리) */
+      purgeContracts: async function () {
+        need(); var paths = [], b = sb.storage.from("contracts");
+        var top = must(await b.list("", { limit: 1000 })) || [];
+        for (var i = 0; i < top.length; i++) {
+          if (top[i].id) { paths.push(top[i].name); continue; }   // 파일
+          var sub = must(await b.list(top[i].name, { limit: 1000 })) || [];
+          sub.forEach(function (f) { if (f.id) paths.push(top[i].name + "/" + f.name); });
+        }
+        for (var k = 0; k < paths.length; k += 100) must(await b.remove(paths.slice(k, k + 100)));
+        var ps = must(await sb.from("profiles").select("id").not("contract_path", "is", null)) || [];
+        if (ps.length) must(await sb.from("profiles").update({ contract_path: null }).in("id", ps.map(function (x) { return x.id; })));
+        return { files: paths.length, profiles: ps.length };
+      },
       profiles: async function (status) {
         need(); var q = sb.from("profiles").select("*").order("created_at", { ascending: true });
         if (status) q = q.eq("status", status);
