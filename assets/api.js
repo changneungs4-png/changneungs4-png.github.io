@@ -150,7 +150,6 @@
       if (!r.ok || !j.text) throw new Error(j.error || (r.status === 404 ? "AI 기능이 아직 설치되지 않았습니다" : "AI 응답을 받지 못했습니다 (HTTP " + r.status + ")"));
       return j;
     },
-    unitTaken: async function (unit) { need(); return !!must(await sb.rpc("unit_taken", { p_unit: unit })); },
 
     /* 로그인 계정의 세대 (아이디 = 동-호) */
     get accountUnit() { return st.session ? String(st.session.user.email || "").split("@")[0] : null; },
@@ -164,7 +163,6 @@
       cafeNickOf(o.cafeNick);
       if (!o.privacy) throw new Error("개인정보 수집 · 이용에 동의해야 가입할 수 있습니다.");
       if (!API.signupOpen) { var sa = st.signupAt || st.openAt; throw new Error("가입은 " + (sa.getMonth() + 1) + "월 " + sa.getDate() + "일부터 받습니다."); }
-      if (await API.unitTaken(o.unit)) throw new Error("이 세대는 이미 가입되어 있습니다. 본인 세대인데 가입한 적이 없다면 운영진에게 문의하세요.");
       var r = await sb.auth.signUp({ email: emailOf(o.unit), password: o.password });
       must(r);
       if (!r.data.session) { var s = await sb.auth.signInWithPassword({ email: emailOf(o.unit), password: o.password }); must(s); st.session = s.data.session; }
