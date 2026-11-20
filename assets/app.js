@@ -475,25 +475,10 @@
     }
     C.innerHTML = (L.length ? L.map(function (x) {
       return KIT[x.id] ? ptHtml(x, KIT[x.id]) : petitionsHtml().replace('<section class="band petition-band"><div class="wrap">', "").replace(/<\/div><\/section>$/, "");
-    }).join("") : empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다.")) + '<div id="ptMore"></div>';
+    }).join("") : empty("진행 중인 민원이 없습니다", "새 민원 참여가 열리면 이곳에 안내합니다."));
     bindPetitions();
     L.forEach(function (x) { if (KIT[x.id]) bindPt(el("pt-" + x.id), x, KIT[x.id]); });
     var id = location.hash.slice(1), t = id && document.getElementById(id); if (t) setTimeout(function () { t.scrollIntoView({ block: "start" }); }, 0);
-    // 운영진이 연 단체민원 · 투표가 있으면 아래에 함께 (메뉴에서 빠진 '민원 · 투표' 기능)
-    if (LIVE) try {
-      var cp = await API.campaigns(), pl = canUse() ? await API.polls() : [];
-      if (arr(cp).length || arr(pl).length) {
-        var art = C.querySelector(".pt2"), box = el("ptMore");
-        if (art) {   // 첫 민원의 네 번째 탭으로
-          var nav = art.querySelector(".pt2-nav"), sec = document.createElement("section");
-          sec.className = "panel pt2-sec"; sec.id = "ptEtc"; sec.hidden = true; nav.style.gridTemplateColumns = "repeat(4,1fr)";
-          nav.insertAdjacentHTML("beforeend", '<button type="button" role="tab" data-tab="ptEtc" aria-selected="false">단체·투표</button>');
-          art.querySelector("#ptCheck").after(sec); box.remove(); box = sec;
-        } else box.className = "pt2-more";
-        await R.participate(box);
-        if (art && location.hash === "#ptEtc") ptTab(art, "ptEtc");
-      }
-    } catch (e) {}
   };
   function linkify(t) {
     return esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
@@ -1648,7 +1633,7 @@
 
   R.privacy = function () {
     var rows = [
-      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 네이버 카페 닉네임, 가입 · 접속 기록", "입주예정자 확인(카페 계약서 인증과 대조), 1세대 1계정 관리, 카페 등업", "탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지. 계약서는 홈페이지에서 받지 않습니다"],
+      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 네이버 카페 닉네임, 가입 · 접속 기록", "입주예정자 확인(카페 계약서 인증과 대조), 1세대 1계정 관리", "탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지. 계약서는 홈페이지에서 받지 않습니다"],
       ["위임동의서", "주택형 · 동 · 호수, 계약자 성명, 휴대전화번호, 서명, 동의 일시, 공동명의자 성명 · 서명(공동명의자 본인이 서명할 때만) (서면 접수 시 위임장 스캔본)", "계약자 확인, 과반수 동의 집계, 협의회 공지 · 의견수렴 · 투표", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
       ["회비", "협의회 통장 거래내역(입금 일시 · 금액 · 입금자명), 세대별 납부 여부", "회비 납부 확인, 회계 공개(월별 합계만 공개, 입금자 이름은 비공개)", "협의회 해산 시 결산 · 인계 후 파기"],
       ["투표 · 단체민원", "세대별 투표 · 참여 여부 (예전 게시판 글 · 댓글 포함)", "1세대 1표 집계, 참여 세대 수 공개", "삭제 시 또는 협의회 해산 시까지"],
@@ -2278,8 +2263,8 @@
   R.admin = async function () {
     if (!LIVE || !API.loggedIn) { C.innerHTML = gate("login"); return; }
     if (!API.isAdmin) { C.innerHTML = empty("운영진만 볼 수 있습니다", ""); return; }
-    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["dues", "회비"], ["cafe", "카페 등업"], ["petition", "민원 · 투표"], ["visits", "현장 방문"], ["news", "자동 수집"]];
-    var TAB_ALIAS = { polls: "petition", campaigns: "petition", photos: "visits" };   // 예전 주소
+    var TABS = [["pending", "가입 승인"], ["members", "회원"], ["agreements", "위임동의 명단"], ["dues", "회비"], ["petition", "민원 안내"], ["news", "자동 수집"]];
+    var TAB_ALIAS = { polls: "petition", campaigns: "petition", photos: "pending", visits: "pending", cafe: "pending" };   // 예전 주소 (카페 등업 · 현장 방문 · 투표는 2026-11-20 정리)
     var cur = (location.hash || "#pending").slice(1); cur = TAB_ALIAS[cur] || cur; if (!TABS.some(function (t) { return t[0] === cur; })) cur = "pending";
     C.innerHTML = '<div class="tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '<span class="cnt" id="cnt-' + t[0] + '"></span></button>'; }).join("") + "</div>" +
       '<p class="notice-box" id="admMsg" role="status" hidden></p><div id="adminBody"></div>';
@@ -2303,11 +2288,6 @@
       try { var cs = collectStatus(await API.admin.collectRuns()); el("cnt-news").textContent = cs.lv === "bad" ? " !" : ""; } catch (e) {}
       try { var pd = await API.admin.profiles("pending"); el("cnt-pending").textContent = pd.length ? " " + pd.length : ""; } catch (e) {}
       try { var wd = await API.admin.withdrawals(); el("cnt-agreements").textContent = wd.length ? " " + wd.length : ""; } catch (e) {}
-      try {   // 카페: 등업 대기(닉네임 있는 승인 회원 중 미처리 · 닉네임 바뀜) + 내려야 함
-        var cl = await API.admin.cafeList(), nc = cl.filter(function (r) { var ok2 = r.status === "approved" || (r.agreed && !r.status);
-          return (ok2 && r.nick && (r.state !== "up" || (r.marked_nick && r.nick !== r.marked_nick))) || (r.state === "up" && !ok2); }).length;
-        el("cnt-cafe").textContent = nc ? " " + nc : "";
-      } catch (e) {}
     }
 
     async function show() {
@@ -2540,35 +2520,20 @@
           });
         }
         if (cur === "petition") {
-          B.innerHTML = '<p class="muted small" style="margin:0 0 14px">민원 페이지(협의회 › 민원)에 보이는 내용을 관리합니다. 도래울역 민원의 문구 · 연락처는 홈페이지 자료 파일(assets/petition-kit.js)에 있고, 여기서는 회원 전용 안내를 고칩니다.</p><div id="admPN"></div><div id="admCP"></div><div id="admPL"></div>';
-          var Y = el("admCP");
-          var CP = await API.campaigns(), ST = ["의견 모집", "접수 완료", "답변 완료"];
-          Y.innerHTML = head("단체민원", '<span class="note">\'의견 모집\' 중인 민원은 민원 페이지 아래에서 위임 세대가 참여합니다</span>') + '<form class="panel" id="fCamp" novalidate><h3 style="margin-bottom:10px">새 단체민원</h3><div class="field"><label for="cT">제목</label><input id="cT" maxlength="120"></div><div class="field"><label for="cTo">대상 기관</label><input id="cTo" maxlength="60" placeholder="예: 고양시, LH 경기북부지역본부"></div><div class="field"><label for="cD">설명</label><textarea id="cD" style="min-height:90px"></textarea></div><button class="btn solid" type="submit">민원 열기</button></form>' +
-            head("민원 목록") + (CP.length ? '<div class="tablebox"><table class="spec"><tbody>' + CP.map(function (c) { return "<tr><td>" + esc(c.title) + '</td><td class="num">' + n(c.joined) + '세대</td><td><select class="cst" data-id="' + c.id + '" aria-label="상태">' + ST.map(function (s) { return "<option" + (s === c.status ? " selected" : "") + ">" + s + "</option>"; }).join("") + '</select></td><td><button type="button" class="linkbtn delcamp" data-id="' + c.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("민원이 없습니다", ""));
-          el("fCamp").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createCampaign({ title: el("cT").value, target: el("cTo").value, description: el("cD").value }); show(); } catch (er) { err(er); } });
-          Y.querySelectorAll(".cst").forEach(function (s) { s.addEventListener("change", async function () { try { await API.admin.setCampaignStatus(Number(s.dataset.id), s.value); say("admMsg", "상태를 바꿨습니다."); } catch (er) { err(er); } }); });
-          Y.querySelectorAll(".delcamp").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deleteCampaign(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
+          B.innerHTML = '<p class="muted small" style="margin:0 0 14px">민원 페이지 맨 위 \'회원 전용 안건 정보\'를 관리합니다. 위임 세대에게만 보입니다. 민원 문구 · 연락처는 홈페이지 자료 파일에서 바꿉니다.</p><div id="admPN"></div>';
           // 메인 '민원 참여'의 회원 전용 안내 (외부 유출 금지 내용)
           var PT = arr(S.petitions).filter(function (x) { return x.privateKey; });
           if (PT.length) {
             var notes = await Promise.all(PT.map(function (x) { return API.privateNote(x.privateKey).catch(function () { return null; }); }));
             el("admPN").insertAdjacentHTML("afterbegin", PT.map(function (x, i) {
               return '<form class="panel pn-form" data-key="' + esc(x.privateKey) + '" novalidate><h3 style="margin-bottom:6px">회원 전용 안내 · ' + esc(x.title) + '</h3>' +
-                '<p class="muted small" style="margin:0 0 8px">민원 페이지 맨 위에 승인 회원에게만 보입니다. 안건 정보, 의원 연락처처럼 외부에 나가면 안 되는 내용을 적으세요. 주소 · 전화번호는 자동으로 링크가 됩니다.</p>' +
+                '<p class="muted small" style="margin:0 0 8px">민원 페이지 맨 위에 위임 세대에게만 보입니다. 안건 정보, 의원 연락처처럼 외부에 나가면 안 되는 내용을 적으세요. 주소 · 전화번호는 자동으로 링크가 됩니다.</p>' +
                 '<textarea class="pn-body" rows="10" maxlength="5000">' + esc((notes[i] || {}).body || "") + '</textarea>' +
                 '<p class="cta-row" style="margin:8px 0 0"><button class="btn solid" type="submit">저장</button>' + (notes[i] && notes[i].updated_at ? '<span class="muted small">마지막 저장 ' + fmtTime(notes[i].updated_at) + "</span>" : "") + "</p></form>";
             }).join("") + '<div style="height:24px"></div>');
             el("admPN").querySelectorAll(".pn-form").forEach(function (f) { f.addEventListener("submit", async function (ev) { ev.preventDefault();
               try { await API.admin.setPrivateNote(f.dataset.key, f.querySelector(".pn-body").value); say("admMsg", "회원 전용 안내를 저장했습니다."); } catch (er) { err(er); } }); });
           }
-        }
-        if (cur === "petition") {
-          var X = el("admPL");
-          var P = await API.polls();
-          X.innerHTML = head("투표", '<span class="note">열려 있는 투표는 민원 페이지 아래에 회원에게 보입니다 · 1세대 1표</span>') + '<form class="panel" id="fPoll" novalidate><h3 style="margin-bottom:10px">새 투표</h3><div class="field"><label for="pQ">질문</label><input id="pQ" maxlength="200"></div><div class="field"><label for="pO">선택지 (한 줄에 하나, 2~10개)</label><textarea id="pO" style="min-height:90px"></textarea></div><div class="field"><label for="pE">마감일</label><input id="pE" type="date"></div><button class="btn solid" type="submit">투표 열기</button></form>' +
-            head("투표 목록") + (P.length ? '<div class="tablebox"><table class="spec"><tbody>' + P.map(function (p) { var t = p.votes.reduce(function (s, v) { return s + v; }, 0); return "<tr><td>" + esc(p.question) + '</td><td class="num">' + n(t) + "표</td><td>" + (p.closed ? "마감" : fmtDate(p.ends_at) + " 마감") + '</td><td><button type="button" class="linkbtn delpoll" data-id="' + p.id + '">삭제</button></td></tr>'; }).join("") + "</tbody></table></div>" : empty("투표가 없습니다", ""));
-          el("fPoll").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.createPoll({ question: el("pQ").value, options: el("pO").value.split("\n"), ends: el("pE").value }); show(); } catch (er) { err(er); } });
-          X.querySelectorAll(".delpoll").forEach(function (b) { b.addEventListener("click", async function () { if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; } try { await API.admin.deletePoll(Number(b.dataset.id)); show(); } catch (er) { err(er); } }); });
         }
       } catch (e) { B.innerHTML = ""; err(e); }
     }
