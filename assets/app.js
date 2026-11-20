@@ -1050,13 +1050,11 @@
   function agreeSteps() {
     var go = LIVE && !API.loggedIn ? '<a class="btn solid" href="login.html#signup">회원가입</a>' : "";
     return '<details class="ag-steps"><summary><ol>' +
-      "<li><b>1</b>카페 계약서 인증</li><li><b>2</b>홈페이지 가입</li><li><b>3</b>운영진 확인</li><li><b>4</b>위임동의서 서명</li>" +
+      "<li><b>1</b>카페 가입 · 계약 인증</li><li><b>2</b>홈페이지 가입 · 위임동의</li><li><b>3</b>회비 납부</li>" +
       '</ol><span class="more-t">자세히</span></summary><div class="ag-steps-body"><ol class="steps">' +
-      '<li><div><b>카페 계약서 인증</b><span><a href="cafe.html">네이버 카페</a> 등업 게시판에서 계약서로 세대를 인증합니다. 홈페이지는 계약서를 받지 않습니다.</span></div></li>' +
-      "<li><div><b>홈페이지 가입</b><span>동·호수 · 비밀번호 · 카페 닉네임만 넣으면 됩니다. 한 세대에는 한 계정만 만들 수 있습니다.</span></div></li>" +
-      "<li><div><b>운영진 확인</b><span>운영진이 카페 닉네임으로 계약서 인증 여부를 확인해 승인합니다.</span></div></li>" +
-      '<li><div><b>위임동의서 서명</b><span><a href="consent.html">위임동의서</a>를 읽고 계약자 성명과 서명으로 냅니다. 주민등록번호는 받지 않습니다. 서면 위임장은 공식 메일로 보내도 됩니다.</span></div></li>' +
-      "<li><div><b>현황판 반영</b><span>제출하면 바로 반영되고, 내 아파트 · 민원 · 오픈채팅이 열립니다. 내 정보에서 언제든 철회할 수 있습니다.</span></div></li>" +
+      '<li><div><b>카페 가입 · 계약 인증</b><span><a href="cafe.html">네이버 카페</a>에 가입해 닉네임을 [닉네임] [동] [타입]으로 맞추고, 등업 게시판에 계약서로 세대를 인증합니다. 홈페이지는 계약서를 받지 않습니다.</span></div></li>' +
+      '<li><div><b>홈페이지 가입 · 위임동의</b><span>동·호수 · 비밀번호 · <strong>카페 닉네임(필수)</strong>으로 가입하면 운영진이 카페 인증을 확인해 승인합니다. 승인 후 <a href="consent.html">위임동의서</a>를 계약자 성명과 서명으로 내면 현황판에 반영되고 내 아파트 · 민원 · 오픈채팅이 열립니다. 주민등록번호는 받지 않습니다.</span></div></li>' +
+      '<li><div><b>회비 납부</b><span>위임동의 후 <a href="accounting.html">회계 공개</a>에 안내된 협의회 통장으로 회비를 냅니다. 입금자명은 동·호수로 적어 주세요.</span></div></li>' +
       '</ol><p class="muted small">협의회는 법적 권한이 있는 단체가 아닌 자발적 모임이라, 위임 세대 수가 곧 대표성입니다.</p></div></details>' +
       (go ? '<p class="cta-row" style="margin:0">' + go + "</p>" : "");
   }
@@ -1254,7 +1252,7 @@
           '<li><div><b>카페 가입 · 닉네임 설정</b><span>닉네임은 <strong class="fg">[닉네임] [동] [타입]</strong>, 사이를 한 칸씩 띄어 씁니다. 예: <strong class="fg">홍길동 101 59A</strong>. 한 세대 가족은 같은 닉네임 뒤에 (가족)을 붙입니다. 예: 홍길동(가족) 101 59A</span>' +
             '<details class="cm-nick"><summary>닉네임 설정 방법 보기</summary><img src="assets/img/cafe-nick.webp" alt="창릉신도시 S4블록 공식카페 닉네임 설정 방법 안내: 닉네임 · 동 · 타입을 한 칸씩 띄어 쓰고, 가족은 (가족)을 붙이며, 카페 프로필 수정에서 별명을 바꿉니다." loading="lazy" width="768" height="1024"></details></div></li>' +
           "<li><div><b>계약서 인증 · 등업</b><span>카페 등업 게시판에 계약서로 세대를 인증하면 운영진이 등급을 올려 드립니다.</span></div></li>" +
-          '<li><div><b>홈페이지 위임동의</b><span><a href="login.html#signup">홈페이지에 가입</a>할 때 카페 닉네임을 적으면 운영진이 카페 인증을 확인해 승인합니다. 승인 후 위임동의서를 내면 현황판에 반영됩니다.</span></div></li></ol>' +
+          '<li><div><b>홈페이지 위임동의</b><span><a href="login.html#signup">홈페이지에 가입</a>할 때 카페 닉네임을 꼭 적어 주세요. 운영진이 카페 인증을 확인해 승인하면 위임동의서를 낼 수 있습니다. 그다음 회비를 납부합니다.</span></div></li></ol>' +
         (cf ? '<a class="btn solid wide" href="' + esc(safeUrl(cf.url)) + '" target="_blank" rel="noopener">카페 바로가기 ↗</a>' : '<span class="btn wide" aria-disabled="true">카페 개설 후 연결</span>') + "</section>" +
       '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">💬</span><h2>입주민 오픈채팅</h2><p class="muted">빠른 소식과 일정 알림을 나누는 카카오톡 오픈채팅입니다. 비밀번호가 걸려 있어 <b class="fg">위임동의를 마친 세대</b>에게 입장 비밀번호를 보여 드립니다.</p>' +
         '<ul class="cm-check"><li class="' + (LIVE && API.loggedIn ? "on" : "") + '">홈페이지 로그인</li><li class="' + (LIVE && API.profile && API.profile.status === "approved" ? "on" : "") + '">카페 인증 확인</li><li class="' + (canUse() ? "on" : "") + '">위임동의서 제출</li><li class="' + (st === "ok" ? "on" : "") + '">입장 비밀번호 확인</li></ul>' +
@@ -1757,7 +1755,7 @@
     if (!PREVIEW && API.loggedIn && !needsProfile) { location.replace("account.html"); return; }
     var tab = needsProfile || location.hash === "#signup" ? "signup" : "login";
     var closed = !PREVIEW && !needsProfile && !API.signupOpen;   // 가입 시작 시각 (서버 설정)
-    var fileField = '<div class="field"><label for="sNick">네이버 카페 닉네임 <span class="muted small">[닉네임] [동] [타입] · 예: 홍길동 403 59C</span></label><input id="sNick" maxlength="30" autocomplete="off" required placeholder="예: 홍길동 403 59C"></div>';
+    var fileField = '<div class="field"><label for="sNick">네이버 카페 닉네임 <span class="muted small">(필수) [닉네임] [동] [타입] · 예: 홍길동 403 59C</span></label><input id="sNick" maxlength="30" autocomplete="off" required placeholder="예: 홍길동 403 59C"></div>';
     var privacy = '<details class="terms"><summary>개인정보 수집 · 이용 안내 보기</summary><p class="body">' + esc(PRIVACY_SIGNUP) + "</p></details>" +
       '<label class="check" for="sPriv"><input type="checkbox" id="sPriv"> 개인정보 수집 · 이용에 동의합니다 (필수)</label>';
     C.innerHTML =
@@ -1780,7 +1778,7 @@
           '<div class="field"><label for="sPw2">비밀번호 확인</label><input id="sPw2" type="password" autocomplete="new-password" required></div></div>') +
       fileField + privacy +
       '<button class="btn solid wide" type="submit">' + (needsProfile ? "가입 마무리" : "가입 신청") + '</button><p class="notice-box" id="sMsg" role="alert" hidden></p>' +
-      '<p class="muted small" style="margin:12px 0 0">계약서 인증은 <a href="cafe.html">네이버 카페</a>에서 합니다. 운영진이 카페 인증을 확인(승인)하면 위임동의서를 낼 수 있고, 위임동의 후 회원 기능이 열립니다. 한 세대에는 한 계정만 만들 수 있습니다.</p></form></div>');
+      '<p class="muted small" style="margin:12px 0 0">순서: <a href="cafe.html">카페 가입 · 계약 인증</a> → 홈페이지 가입 · 위임동의 → 회비 납부. 카페 닉네임은 운영진이 카페 인증을 확인하는 기준이라 꼭 카페와 똑같이 적어 주세요. 한 세대에는 한 계정만 만들 수 있습니다.</p></form></div>');
     bindUnitPicker("l");
     if (!needsProfile && !closed) bindUnitPicker("s");
     function setTab(t) {
@@ -1824,7 +1822,7 @@
     var p = API.profile, ag = p.status !== "rejected" ? await API.myAgreement() : null;
     var badge = { pending: ["tag hot", "카페 인증 확인 중"], approved: ["tag", "인증 확인됨"], rejected: ["tag off", "반려됨"] }[p.status];
     var dongLabel = p.unit_id.split("-")[0] + "동";
-    var CAFEFORM = p.status === "rejected" ? "" : head("네이버 카페 닉네임") + '<form class="panel" id="fCafe" novalidate><div class="field"><label for="cNick">카페 닉네임</label><input id="cNick" maxlength="30" autocomplete="off" placeholder="예: 홍길동 403 59C" value="' + esc(p.cafe_nick || "") + '"></div>' +
+    var CAFEFORM = p.status === "rejected" ? "" : head("네이버 카페 닉네임") + '<form class="panel" id="fCafe" novalidate>' + (p.cafe_nick ? "" : '<p class="notice-box bad" style="margin:0 0 12px">카페 닉네임이 없어 운영진이 카페 인증을 확인할 수 없습니다. 카페에서 쓰는 닉네임을 넣어 주세요.</p>') + '<div class="field"><label for="cNick">카페 닉네임 <span class="muted small">(필수)</span></label><input id="cNick" maxlength="30" autocomplete="off" required placeholder="예: 홍길동 403 59C" value="' + esc(p.cafe_nick || "") + '"></div>' +
       '<p class="muted small" style="margin:-4px 0 10px">' + (p.status === "approved" ? "카페 인증이 확인된 닉네임입니다." : "운영진이 이 닉네임으로 카페 인증 여부를 확인합니다.") + ' 카페에서 닉네임을 바꾸면 여기도 고쳐 주세요.</p>' +
       '<button class="btn solid" type="submit">저장</button><p class="notice-box" id="cMsg" role="status" hidden></p></form>';
     var PWFORM = head("비밀번호 바꾸기") + '<form class="panel" id="fPw" novalidate><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form>';
@@ -1866,7 +1864,7 @@
 
     if (el("fCafe")) el("fCafe").addEventListener("submit", async function (e) {
       e.preventDefault(); var btn = this.querySelector("button"); busy(btn, true);
-      try { await API.setCafeNick(el("cNick").value); say("cMsg", el("cNick").value.trim() ? "카페 닉네임을 저장했습니다." : "카페 닉네임을 지웠습니다."); }
+      try { await API.setCafeNick(el("cNick").value); say("cMsg", "카페 닉네임을 저장했습니다."); }
       catch (err) { say("cMsg", API.errorText(err), true); }
       busy(btn, false);
     });

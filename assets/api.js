@@ -196,8 +196,7 @@
     },
     /* 네이버 카페 닉네임: 운영진이 이걸 보고 카페 등업 */
     setCafeNick: async function (nick) {
-      need(); nick = String(nick || "").trim();
-      if (nick.length > 30) throw new Error("카페 닉네임은 30자까지입니다.");
+      need(); nick = cafeNickOf(nick);
       must(await sb.rpc("set_my_cafe_nick", { p_nick: nick })); await loadProfile();
     },
     changePassword: async function (pw, pw2) {
