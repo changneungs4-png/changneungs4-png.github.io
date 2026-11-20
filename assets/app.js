@@ -1259,7 +1259,8 @@
     C.innerHTML = '<div class="cm-grid">' +
       '<section class="panel cm-card"><span class="cm-ic" aria-hidden="true">☕</span><h2>공식 네이버 카페</h2><p class="muted">공지 · 질문 · 정보 나눔을 오래 남겨 두는 곳입니다. 계약자가 아니어도 가족이 함께 볼 수 있습니다.</p>' +
         '<ol class="steps">' +
-          "<li><div><b>카페 가입</b><span>닉네임은 \"동-호수 끝자리/닉네임\" 형식을 권장합니다. 예: 403-18xx/창릉새집</span></div></li>" +
+          '<li><div><b>카페 가입 · 닉네임 설정</b><span>닉네임은 <strong class="fg">[닉네임] [동] [타입]</strong>, 사이를 한 칸씩 띄어 씁니다. 예: <strong class="fg">홍길동 101 59A</strong>. 한 세대 가족은 같은 닉네임 뒤에 (가족)을 붙입니다. 예: 홍길동(가족) 101 59A</span>' +
+            '<details class="cm-nick"><summary>닉네임 설정 방법 보기</summary><img src="assets/img/cafe-nick.webp" alt="창릉신도시 S4블록 공식카페 닉네임 설정 방법 안내: 닉네임 · 동 · 타입을 한 칸씩 띄어 쓰고, 가족은 (가족)을 붙이며, 카페 프로필 수정에서 별명을 바꿉니다." loading="lazy" width="768" height="1024"></details></div></li>' +
           "<li><div><b>계약서 인증 · 등업</b><span>카페 등업 게시판에 계약서로 세대를 인증하면 운영진이 등급을 올려 드립니다.</span></div></li>" +
           '<li><div><b>홈페이지 위임동의</b><span><a href="login.html#signup">홈페이지에 가입</a>할 때 카페 닉네임을 적고 위임동의서를 내면, 운영진이 카페 인증을 확인해 현황판에 반영합니다.</span></div></li></ol>' +
         (cf ? '<a class="btn solid wide" href="' + esc(safeUrl(cf.url)) + '" target="_blank" rel="noopener">카페 바로가기 ↗</a>' : '<span class="btn wide" aria-disabled="true">카페 개설 후 연결</span>') + "</section>" +
@@ -1764,7 +1765,7 @@
     if (!PREVIEW && API.loggedIn && !needsProfile) { location.replace("account.html"); return; }
     var tab = needsProfile || location.hash === "#signup" ? "signup" : "login";
     var closed = !PREVIEW && !needsProfile && !API.signupOpen;   // 가입 시작 시각 (서버 설정)
-    var fileField = '<div class="field"><label for="sNick">네이버 카페 닉네임 <span class="muted small">카페에서 계약서 인증을 마친 닉네임</span></label><input id="sNick" maxlength="30" autocomplete="off" required placeholder="예: 403-18xx/창릉새집"></div>';
+    var fileField = '<div class="field"><label for="sNick">네이버 카페 닉네임 <span class="muted small">[닉네임] [동] [타입] · 예: 홍길동 403 59C</span></label><input id="sNick" maxlength="30" autocomplete="off" required placeholder="예: 홍길동 403 59C"></div>';
     var privacy = '<details class="terms"><summary>개인정보 수집 · 이용 안내 보기</summary><p class="body">' + esc(PRIVACY_SIGNUP) + "</p></details>" +
       '<label class="check" for="sPriv"><input type="checkbox" id="sPriv"> 개인정보 수집 · 이용에 동의합니다 (필수)</label>';
     C.innerHTML =
@@ -1831,7 +1832,7 @@
     var p = API.profile, ag = p.status !== "rejected" ? await API.myAgreement() : null;
     var badge = { pending: ["tag hot", "카페 인증 확인 중"], approved: ["tag", "인증 확인됨"], rejected: ["tag off", "반려됨"] }[p.status];
     var dongLabel = p.unit_id.split("-")[0] + "동";
-    var CAFEFORM = p.status === "rejected" ? "" : head("네이버 카페 닉네임") + '<form class="panel" id="fCafe" novalidate><div class="field"><label for="cNick">카페 닉네임</label><input id="cNick" maxlength="30" autocomplete="off" placeholder="예: 403-18xx/창릉새집" value="' + esc(p.cafe_nick || "") + '"></div>' +
+    var CAFEFORM = p.status === "rejected" ? "" : head("네이버 카페 닉네임") + '<form class="panel" id="fCafe" novalidate><div class="field"><label for="cNick">카페 닉네임</label><input id="cNick" maxlength="30" autocomplete="off" placeholder="예: 홍길동 403 59C" value="' + esc(p.cafe_nick || "") + '"></div>' +
       '<p class="muted small" style="margin:-4px 0 10px">' + (p.status === "approved" ? "카페 인증이 확인된 닉네임입니다." : "운영진이 이 닉네임으로 카페 인증 여부를 확인합니다.") + ' 카페에서 닉네임을 바꾸면 여기도 고쳐 주세요.</p>' +
       '<button class="btn solid" type="submit">저장</button><p class="notice-box" id="cMsg" role="status" hidden></p></form>';
     var PWFORM = head("비밀번호 바꾸기") + '<form class="panel" id="fPw" novalidate><div class="field"><label for="pPw">새 비밀번호</label><input id="pPw" type="password" autocomplete="new-password"></div><div class="field"><label for="pPw2">새 비밀번호 확인</label><input id="pPw2" type="password" autocomplete="new-password"></div><button class="btn" type="submit">변경</button><p class="notice-box" id="pMsg2" role="status" hidden></p></form>';
@@ -1847,7 +1848,7 @@
         : delegateNote(true)) : "") +
       (p.status === "approved" ? '<div id="accDues"></div>' : "") +
       (p.status === "rejected" ? head("다시 신청하기") + '<form class="panel" id="fRe" novalidate>' +
-        '<div class="field"><label for="rNick">네이버 카페 닉네임 <span class="muted small">카페에서 계약서 인증을 마친 닉네임</span></label><input id="rNick" maxlength="30" autocomplete="off" required value="' + esc(p.cafe_nick || "") + '"></div>' +
+        '<div class="field"><label for="rNick">네이버 카페 닉네임 <span class="muted small">[닉네임] [동] [타입]</span></label><input id="rNick" maxlength="30" autocomplete="off" required value="' + esc(p.cafe_nick || "") + '"></div>' +
         '<button class="btn solid" type="submit">재신청</button><p class="notice-box" id="rMsg" role="alert" hidden></p>' +
         '<p class="muted small" style="margin:10px 0 0">세대를 잘못 골랐다면 운영진에게 계정 삭제를 요청한 뒤 맞는 세대로 다시 가입하세요.</p></form>' : "") +
       "</div></div>" +

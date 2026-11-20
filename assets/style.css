@@ -1265,3 +1265,7 @@ footer.foot .foot-note{margin-top:6px;font-size:12px;opacity:.85;display:block}
 .head-cta.pulse{background:var(--signal);border-color:var(--signal);box-shadow:0 0 0 0 color-mix(in srgb,var(--signal) 55%,transparent);animation:cnPulse 2.2s infinite}
 @keyframes cnPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--signal) 50%,transparent)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.head-cta.pulse{animation:none}}
+
+.cm-nick{margin-top:6px}
+.cm-nick summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--pine)}
+.cm-nick img{display:block;width:100%;max-width:420px;height:auto;margin-top:8px;border-radius:10px;border:1px solid var(--line)}
