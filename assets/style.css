@@ -1269,3 +1269,9 @@ footer.foot .foot-note{margin-top:6px;font-size:12px;opacity:.85;display:block}
 .cm-nick{margin-top:6px}
 .cm-nick summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--pine)}
 .cm-nick img{display:block;width:100%;max-width:420px;height:auto;margin-top:8px;border-radius:10px;border:1px solid var(--line)}
+
+/* 회칙: 항 · 목 */
+.bl-art .bl-para{padding-left:1.1em;text-indent:-1.1em}
+.bl-art ol.bl-sub{list-style:none;counter-reset:mok;padding-left:1.2em;margin:4px 0 2px}
+.bl-art ol.bl-sub>li{counter-increment:mok;position:relative;padding-left:1.6em}
+.bl-art ol.bl-sub>li::before{content:counter(mok,hangul) ".";position:absolute;left:0;color:var(--muted)}
