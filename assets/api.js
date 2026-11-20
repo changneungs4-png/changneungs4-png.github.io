@@ -214,6 +214,7 @@
     submitAgreement: async function (o) {
       need();
       if (!st.profile || st.profile.status === "rejected") throw new Error("가입한 회원만 위임동의서를 낼 수 있습니다.");
+      if (st.profile.status !== "approved" && !st.profile.is_admin) throw new Error("운영진이 카페 인증을 확인(가입 승인)한 뒤에 위임동의서를 낼 수 있습니다.");
       if (!API.consentOpen) throw new Error("위임동의서는 공급계약이 시작되는 " + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터 낼 수 있습니다.");
       checkConsent(o);
       var row = must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), signature: o.signature, agree_delegation: true, agree_privacy: true, agree_identity: true,
