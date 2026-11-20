@@ -227,6 +227,12 @@
       need(); if (!uid()) throw new Error("로그인이 필요합니다.");
       return must(await sb.from("my_options").upsert({ user_id: uid(), data: data }, { onConflict: "user_id" }).select("data,updated_at").single());
     },
+    /* 휴대전화번호(선택) 동의 바꾸기: 철회하면 번호 삭제 */
+    setMyContact: async function (agree, phone) {
+      need(); phone = String(phone || "").trim();
+      if (agree && !phoneOk(phone)) throw new Error("휴대전화번호를 바르게 입력하세요. (예: 010-1234-5678)");
+      must(await sb.rpc("set_my_contact", { p_agree: !!agree, p_phone: agree ? phone : null }));
+    },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
     memberUnits: async function () { need(); if (!API.isAdmin) return []; var r = await sb.rpc("member_units"); return r.error ? [] : r.data; },

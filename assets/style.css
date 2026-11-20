@@ -1276,3 +1276,4 @@ footer.foot .foot-note{margin-top:6px;font-size:12px;opacity:.85;display:block}
 .bl-art ol.bl-sub>li{counter-increment:mok;position:relative;padding-left:1.6em}
 .bl-art ol.bl-sub>li::before{content:counter(mok,hangul) ".";position:absolute;left:0;color:var(--muted)}
 #pFind,#mFind{flex:1 1 240px;max-width:320px}#pFind input,#mFind input{width:100%}
+.ct-box{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}.ct-box .field{margin:8px 0}

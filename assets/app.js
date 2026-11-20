@@ -1743,11 +1743,11 @@
       "<p>회칙: 고양창릉 S4블록 입주예정자협의회 회칙 (38개 조) · 홈페이지 협의회 › 회칙</p></section>" +
       "<section><h2>02 개인정보 수집 및 이용 (필수)</h2>" + consentPrivHtml("wi-priv") + "</section>" +
       "<section><h2>03 개인정보 수집 및 이용 (선택)</h2>" + consentOptHtml("wi-priv") + "</section>" +
-      '<ul class="wi-checks"><li>' + box(!blank) + " 위 구성 및 위임 내용에 동의합니다 (필수)</li><li>" + box(!blank) + " 위 개인정보 수집 · 이용에 동의합니다 (필수)</li><li>" + box(!blank && a.agree_contact) + " 휴대전화번호 수집 · 이용에 동의합니다 (선택)</li></ul>" +
+      '<ul class="wi-checks"><li>' + box(!blank) + " 위 구성 및 위임 내용에 동의합니다 (필수)</li><li>" + box(!blank) + " 위 개인정보 수집 · 이용에 동의합니다 (필수)</li><li>" + box(!blank && !!a.agree_contact) + " 휴대전화번호 수집 · 이용에 동의합니다 (선택)</li></ul>" +
       "<section><h2>04 확인 및 서명</h2><p class=\"wi-oath\">" + esc(CONSENT_OATH) + "</p></section>" +
       '<table class="wi-head"><tr><th>동 / 호수</th><td>' + (blank ? "_______ 동 _______ 호" : esc(u ? u.dong + "동 " + u.ho + "호 (" + u.type + ")" : a.unit_id)) + "</td></tr>" +
       "<tr><th>계약자 성명</th><td>" + line(a && a.signer_name) + "</td></tr>" +
-      "<tr><th>휴대전화번호<br><span class=\"muted\">(선택 · 동의한 경우)</span></th><td>" + line(a && a.phone) + "</td></tr>" +
+      "<tr><th>휴대전화번호<br><span class=\"muted\">(선택 · 동의한 경우)</span></th><td>" + line(a && a.phone) + (a && a.contact_updated_at ? ' <span class="muted">(연락처 동의 변경 ' + esc(fmtTime(a.contact_updated_at)) + ")</span>" : "") + "</td></tr>" +
       "<tr><th>작성일</th><td>" + (blank ? "2026 년 ___ 월 ___ 일" : esc(fmtTime(a.signed_at))) + "</td></tr>" +
       "<tr><th>계약자 서명</th><td>" + sig(a && a.signature, "서면 원본 보관") + "</td></tr>" +
       "<tr><th>공동명의자 성명 · 서명<br><span class=\"muted\">(공동명의 세대, 본인 직접)</span></th><td>" + (blank ? '(성명) <span class="sigline"></span> (서명) <span class="sigline"></span>' : a.co_name ? esc(a.co_name) + " " + sig(a.co_signature, "") : "-") + "</td></tr>" +
@@ -1851,7 +1851,10 @@
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
       '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' + CAFEFORM + PWFORM + "</div>" +
 
-      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진이 카페 인증을 확인하면 현황판에 반영됩니다." : "") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn" id="accWi">내 위임장 보기 · 인쇄</button> ' + (API.isDelegate ? '<button type="button" class="btn" id="accChat">입주민 오픈채팅 입장</button> ' : "") + '<button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판 집계에서 바로 빠지고 내 아파트 · 민원 · 오픈채팅 이용이 중지됩니다. 위임동의서를 다시 내면 바로 회복됩니다.</p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
+      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진이 카페 인증을 확인하면 현황판에 반영됩니다." : "") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn" id="accWi">내 위임장 보기 · 인쇄</button> ' + (API.isDelegate ? '<button type="button" class="btn" id="accChat">입주민 오픈채팅 입장</button> ' : "") + '<button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판 집계에서 바로 빠지고 내 아파트 · 민원 · 오픈채팅 이용이 중지됩니다. 위임동의서를 다시 내면 바로 회복됩니다.</p>' + (ag.source === "paper" ? "" : '<div class="ct-box" id="ctBox"><b>휴대전화번호 <span class="muted small">(선택)</span></b><p class="muted small" style="margin:4px 0 8px">공지 · 투표 안내 연락에만 씁니다. 동의하지 않아도 위임동의와 회원 이용에 제한이 없고, 철회하면 번호가 바로 삭제됩니다.</p>' +
+        '<label class="check" for="ctOn"><input type="checkbox" id="ctOn"' + (ag.agree_contact ? " checked" : "") + '> 휴대전화번호 수집 · 이용에 동의합니다 (선택)</label>' +
+        '<div class="field" id="ctField"' + (ag.agree_contact ? "" : " hidden") + '><label for="ctPhone" class="sr">휴대전화번호</label><input id="ctPhone" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="010-0000-0000" value="' + esc(ag.phone || "") + '"></div>' +
+        '<button type="button" class="btn" id="ctSave">저장</button><p class="notice-box" id="ctMsg" role="status" hidden></p></div>') + '<p class="notice-box" id="aMsg" role="status" hidden></p></div>'
         : delegateNote(true)) : "") +
       (p.status === "approved" ? '<div id="accDues"></div>' : "") +
       (p.status === "rejected" ? head("다시 신청하기") + '<form class="panel" id="fRe" novalidate>' +
@@ -1869,6 +1872,15 @@
     }).catch(function () {});
     if (el("accWi") && ag) el("accWi").addEventListener("click", function () { showPrint(wiDoc(ag), "내 위임장"); });
     if (el("accChat")) el("accChat").addEventListener("click", openChat);
+    if (el("ctOn")) {
+      el("ctOn").addEventListener("change", function () { el("ctField").hidden = !this.checked; if (this.checked) el("ctPhone").focus(); });
+      el("ctSave").addEventListener("click", async function () {
+        var b = this, on = el("ctOn").checked; busy(b, true);
+        try { await API.setMyContact(on, el("ctPhone").value); if (!on) el("ctPhone").value = ""; say("ctMsg", on ? "휴대전화번호 제공에 동의했습니다." : "연락처 동의를 철회했습니다. 저장된 번호를 삭제했습니다."); }
+        catch (e) { say("ctMsg", API.errorText(e), true); }
+        busy(b, false);
+      });
+    }
     if (el("withdraw")) el("withdraw").addEventListener("click", async function () {
       var btn = this;
       if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "한 번 더 누르면 철회 (투표 · 민원 참여 중지)"; return; }
