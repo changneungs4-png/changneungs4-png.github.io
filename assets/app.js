@@ -1015,7 +1015,7 @@
       body = consentOpenLabel() + " 공급계약이 시작되면 위임동의서를 낼 수 있습니다. 위임한 세대는 투표 · 단체민원에 참여하고 세대별 현황을 볼 수 있습니다." + (API.isMember ? " 지금은 회원 전용 안내와 민원 참여를 이용할 수 있습니다." : "");
     } else {
       title = "위임장을 낸 세대만 참여할 수 있습니다";
-      body = "위임동의서를 내면 투표 · 단체민원 참여와 세대별 현황 보기가 바로 열립니다." + (API.profile && API.profile.status === "pending" ? " 승인 대기 중에도 낼 수 있습니다." : "");
+      body = "위임동의서를 내면 투표 · 단체민원 참여와 세대별 현황 보기가 바로 열립니다.";
       cta = '<a class="btn solid" href="consent.html">위임동의서 제출</a>';
     }
     if (!block) return '<p class="notice-box small">' + esc(title) + ". " + esc(body) + (cta ? ' <a href="consent.html">위임동의서 제출 →</a>' : "") + "</p>";
@@ -1045,6 +1045,10 @@
     if (current && UNIT[current]) { D.value = String(UNIT[current].dong); fill(); H.value = current; }
   }
   var PRIVACY_SIGNUP = "수집 항목: 동 · 호수(아이디), 비밀번호(암호화하여 저장), 네이버 카페 닉네임, 가입 · 접속 기록\n목적: 입주예정자 여부 확인(카페 계약서 인증 대조)과 1세대 1계정 관리\n보유 기간: 탈퇴 또는 협의회 해산 시까지\n계약서는 홈페이지에서 받지 않습니다(인증은 네이버 카페에서).\n동의하지 않을 수 있으나, 이 경우 가입할 수 없습니다.";
+
+  /* 운영진 검색: "403동 1804호", "403 1804", "4031804", 닉네임 일부 모두 찾기 */
+  function qNorm(v) { return String(v || "").toLowerCase().replace(/[\s\-_·.,()]/g, "").replace(/(\d)[동호]/g, "$1"); }
+  function qHit(q, list) { q = qNorm(q); if (!q) return true; return list.some(function (v) { return qNorm(v).indexOf(q) >= 0; }); }
 
   /* ── 위임동의 현황판 ── */
   function agreeSteps() {
@@ -2302,14 +2306,46 @@
         if (cur === "pending") {
           var L = await API.admin.profiles("pending"), AG = {};
           try { arr(await API.admin.agreements()).forEach(function (a) { AG[a.user_id] = a; }); } catch (e) {}
-          B.innerHTML = L.length ? '<div class="review-list">' + L.map(function (p) {
+          var nAg = L.filter(function (p) { return AG[p.id]; }).length, nNo = L.filter(function (p) { return !p.cafe_nick; }).length;
+          B.innerHTML = (L.length ? '<div class="toolbar"><div class="chips" id="pSt" role="group" aria-label="대기 걸러 보기">' +
+              '<button type="button" class="chip" data-s="" aria-pressed="true">전체 ' + L.length + "</button>" +
+              '<button type="button" class="chip" data-s="ag" aria-pressed="false">위임동의 제출 ' + nAg + "</button>" +
+              '<button type="button" class="chip" data-s="noag" aria-pressed="false">위임동의 전 ' + (L.length - nAg) + "</button>" +
+              (nNo ? '<button type="button" class="chip" data-s="nonick" aria-pressed="false">닉네임 없음 ' + nNo + "</button>" : "") +
+            '</div><form class="find" id="pFind"><label for="pQ" class="sr">가입 신청 검색</label><input id="pQ" type="search" placeholder="동·호수 또는 카페 닉네임" autocomplete="off"></form></div>' +
+            '<p class="muted small" id="pCnt" role="status" style="margin:0 0 8px"></p>' : "") +
+            (L.length ? '<div class="review-list">' + L.map(function (p) {
             var a = AG[p.id];
             return '<article class="panel review" data-id="' + p.id + '"><div class="row-info"><b>' + esc(unitLabel(p.unit_id)) + '</b><span class="muted small">' + fmtTime(p.created_at) + " 신청</span>" +
               (a ? '<span class="tag">위임동의 제출</span>' : '<span class="tag off">위임동의 전</span>') + "</div>" +
               '<div class="contract"><span class="muted small">네이버 카페 닉네임</span> <b class="fg">' + (p.cafe_nick ? esc(p.cafe_nick) : "(없음)") + "</b>" + (p.contract_path ? ' <button type="button" class="linkbtn view" data-path="' + esc(p.contract_path) + '">예전 계약서 사진</button>' : "") + "</div>" +
               '<div class="review-act"><button type="button" class="btn solid approve">카페 인증 확인 · 승인</button><input class="reason" placeholder="반려 사유 (예: 카페에서 찾을 수 없음)" aria-label="반려 사유"><button type="button" class="btn reject">반려</button><button type="button" class="btn danger del">계정 삭제</button></div>' +
               '<p class="muted small" style="margin:0">카페 등업 게시판에서 이 닉네임이 <b>이 동 · 호수로 계약서 인증</b>을 마쳤는지 확인하고 승인하세요. 다른 세대로 인증됐다면 <b>계정 삭제</b>를 눌러 세대를 풀어 주세요.</p></article>';
-          }).join("") + "</div>" : empty("대기 중인 가입 신청이 없습니다", "");
+          }).join("") + '</div><div id="pNone" hidden>' + empty("찾는 신청이 없습니다", "동·호수나 카페 닉네임을 다시 확인해 주세요. 이미 승인됐다면 회원 탭에서 찾을 수 있습니다.") + "</div>" : empty("대기 중인 가입 신청이 없습니다", ""));
+          if (L.length) {
+            var pq = "", ps = "";
+            var pDraw = function () {
+              var n = 0;
+              B.querySelectorAll(".review").forEach(function (r) {
+                var p = L.filter(function (x) { return x.id === r.dataset.id; })[0];
+                var okS = !ps || (ps === "ag" ? !!AG[p.id] : ps === "noag" ? !AG[p.id] : !p.cafe_nick);
+                var hit = okS && qHit(pq, [p.unit_id, unitLabel(p.unit_id), p.cafe_nick, (AG[p.id] || {}).cafe_nick]);
+                r.hidden = !hit; if (hit) n++;
+              });
+              el("pCnt").textContent = pq || ps ? n + "건 찾음 (대기 " + B.querySelectorAll(".review").length + "건 중)" : "";
+              el("pNone").hidden = n > 0;
+            };
+            el("pQ").addEventListener("input", function () { pq = this.value; pDraw(); });
+            el("pFind").addEventListener("submit", function (e) {   // Enter: 하나만 남으면 승인 버튼으로
+              e.preventDefault(); var v = [].filter.call(B.querySelectorAll(".review"), function (r) { return !r.hidden; });
+              if (v.length === 1) { v[0].scrollIntoView({ block: "center" }); v[0].querySelector(".approve").focus(); }
+            });
+            el("pSt").addEventListener("click", function (e) {
+              var b = e.target.closest(".chip"); if (!b) return; ps = b.dataset.s;
+              this.querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", c === b); }); pDraw();
+            });
+            el("pQ").focus();
+          }
           // 예전 방식(계약서 사진)으로 올라온 파일 정리
           B.insertAdjacentHTML("beforeend", '<div class="panel" style="margin-top:16px"><p class="muted small" style="margin:0 0 8px">계약서 인증은 이제 네이버 카페에서 합니다. 예전에 홈페이지로 올라온 계약서 사진이 남아 있다면 한 번에 지울 수 있습니다(되돌릴 수 없음).</p><button type="button" class="btn danger" id="purgeCt">남은 계약서 사진 모두 삭제</button></div>');
           el("purgeCt").addEventListener("click", async function () {
@@ -2321,11 +2357,11 @@
           }); });
           B.querySelectorAll(".review").forEach(function (r) {
             var p = L.filter(function (x) { return x.id === r.dataset.id; })[0];
-            r.querySelector(".approve").addEventListener("click", async function () { busy(this, true); try { await API.admin.approve(p); r.remove(); say("admMsg", unitLabel(p.unit_id) + " 승인했습니다. 위임동의서가 있으면 집계에 반영됩니다."); counts(); } catch (e) { busy(this, false); err(e); } });
-            r.querySelector(".reject").addEventListener("click", async function () { busy(this, true); try { await API.admin.reject(p, r.querySelector(".reason").value); r.remove(); say("admMsg", "반려했습니다. 회원이 닉네임을 고쳐 다시 신청할 수 있습니다."); counts(); } catch (e) { busy(this, false); err(e); } });
+            r.querySelector(".approve").addEventListener("click", async function () { busy(this, true); try { await API.admin.approve(p); r.remove(); pDraw(); say("admMsg", unitLabel(p.unit_id) + " 승인했습니다. 위임동의서가 있으면 집계에 반영됩니다."); counts(); } catch (e) { busy(this, false); err(e); } });
+            r.querySelector(".reject").addEventListener("click", async function () { busy(this, true); try { await API.admin.reject(p, r.querySelector(".reason").value); r.remove(); pDraw(); say("admMsg", "반려했습니다. 회원이 닉네임을 고쳐 다시 신청할 수 있습니다."); counts(); } catch (e) { busy(this, false); err(e); } });
             r.querySelector(".del").addEventListener("click", async function () {
               var b = this; if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "한 번 더 누르면 삭제"; return; }
-              busy(b, true); try { await API.admin.deleteAccount(p); r.remove(); say("admMsg", unitLabel(p.unit_id) + " 계정을 삭제했습니다. 이제 이 세대로 새로 가입할 수 있습니다."); counts(); } catch (e) { busy(b, false); err(e); }
+              busy(b, true); try { await API.admin.deleteAccount(p); r.remove(); pDraw(); say("admMsg", unitLabel(p.unit_id) + " 계정을 삭제했습니다. 이제 이 세대로 새로 가입할 수 있습니다."); counts(); } catch (e) { busy(b, false); err(e); }
             });
           });
         }
@@ -2368,10 +2404,10 @@
           function draw() {
             el("mList").innerHTML = M.filter(function (p) {
               var okS = !sf || (sf === "agreed" ? p.status === "approved" && !!agOf(p) : sf === "noagree" ? p.status === "approved" && !agOf(p) : p.status === sf);
-              return okS && (!q || (p.unit_id + ((agOf(p) || {}).cafe_nick || "")).indexOf(q) >= 0);
+              return okS && qHit(q, [p.unit_id, unitLabel(p.unit_id), p.cafe_nick, (agOf(p) || {}).cafe_nick]);
             }).map(function (p) {
               var ag = agOf(p);
-              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc((agOf(p) || {}).cafe_nick || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.unit_id === OWNER ? " · 최고 관리자" : p.is_admin ? " · 운영진" : "") + "</td><td>" + (ag ? '<span class="tag">' + (ag.source === "paper" ? "서면" : "온라인") + '</span> <span class="num small">' + fmtDate(ag.signed_at) + "</span>" : '<span class="tag off">미제출</span>') + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
+              return '<tr><td class="num">' + esc(p.unit_id) + "</td><td>" + esc((UNIT[p.unit_id] || {}).type || "") + "</td><td>" + esc(p.cafe_nick || (agOf(p) || {}).cafe_nick || "-") + "</td><td>" + ({ approved: "승인", pending: "대기", rejected: "반려" })[p.status] + (p.unit_id === OWNER ? " · 최고 관리자" : p.is_admin ? " · 운영진" : "") + "</td><td>" + (ag ? '<span class="tag">' + (ag.source === "paper" ? "서면" : "온라인") + '</span> <span class="num small">' + fmtDate(ag.signed_at) + "</span>" : '<span class="tag off">미제출</span>') + '</td><td class="num">' + fmtDate(p.created_at) + "</td><td>" +
                 (p.unit_id === OWNER ? '<span class="muted small">다른 운영진이 바꿀 수 없음</span>' : "") +
                 (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER ? '<button type="button" class="linkbtn revoke" data-id="' + p.id + '">승인 취소</button>' : "") +
                 (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER && (meOwner || !OWNER) ? ' <button type="button" class="linkbtn setadm" data-id="' + p.id + '" data-on="' + (p.is_admin ? "0" : "1") + '">' + (p.is_admin ? "운영진 해제" : "운영진 지정") + "</button>" : "") +
