@@ -7,7 +7,7 @@
 window.SITE = {
   name: "고양창릉 S-4블록 입주예정자협의회",
   short: "창릉 S-4 입예협",
-  updated: "2026.11.20",
+  updated: "2026.11.21",
 
   /* 단지 기본 정보 (모집공고 기준) */
   totalUnits: 1024,
@@ -238,7 +238,8 @@ window.SITE = {
     { title: "고양특례시청", desc: "창릉신도시 도시계획 · 교통 소식", url: "https://www.goyang.go.kr" }
   ],
   /* 개인정보 보호책임자: 협의회 대표 운영진. contact에 이메일 또는 전화를 적어주세요 */
-  privacyOfficer: { role: "협의회 운영진 대표", contact: "changneung.s4@gmail.com" },
+  privacyOfficer: { role: "협의회 회장 (구성 전에는 준비위원회 위원장)", contact: "changneung.s4@gmail.com" },
+  privacyDate: "2026.11.21",
 
   contacts: [
     ["LH 경기북부지역본부 (분양 문의)", "031-941-0730"]

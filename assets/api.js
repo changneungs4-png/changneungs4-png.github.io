@@ -6,13 +6,13 @@
   var sb = enabled ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "s4-auth" }
   }) : null;
-  var FORM_VERSION = "2026-11-v9";
+  var FORM_VERSION = "2026-11-v9.1";   // v9.1: 휴대전화번호 선택 항목으로 분리, 세대별 공개 범위 명시
   function phoneOk(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(String(v || "").replace(/\s/g, "")); }
   function checkConsent(c) {
     if (!c) throw new Error("위임동의서를 작성하세요.");
     if (!c.signer || c.signer.trim().length < 2) throw new Error("위임동의서의 계약자 성명을 입력하세요.");
     if (!c.signature) throw new Error("위임장 서명 칸에 서명해 주세요.");
-    if (!phoneOk(c.phone)) throw new Error("휴대전화번호를 바르게 입력하세요. (예: 010-1234-5678)");
+    if (c.contact && !phoneOk(c.phone)) throw new Error("연락처 수집에 동의했다면 휴대전화번호를 바르게 입력하세요. (예: 010-1234-5678)");
     if (c.coOwner && (!c.coName || c.coName.trim().length < 2)) throw new Error("공동명의자 성명을 입력하세요.");
     if (c.coOwner && !c.repName) throw new Error("공동명의 세대는 대표 회원 성명을 입력하세요.");
     if (c.coOwner && [String(c.signer || "").trim(), String(c.coName || "").trim()].indexOf(String(c.repName || "").trim()) < 0) throw new Error("대표 회원은 계약자나 공동명의자 중 한 명이어야 합니다.");
@@ -105,7 +105,7 @@
     get loggedIn() { return !!st.session; },
     /* 가입 회원 = 승인된 세대 (게시판 · 투표 결과 보기) */
     get isMember() { return !!(st.profile && st.profile.status === "approved"); },
-    /* 위임 회원 = 승인 + 위임동의 (운영진은 예외): 투표 · 단체민원 참여, 세대별 현황 */
+    /* 위임 회원 = 승인 + 위임동의 (운영진은 예외): 내 아파트 · 민원 · 오픈채팅. 세대별 현황은 운영진만 */
     get isDelegate() { return !!(st.profile && st.profile.status === "approved" && (st.profile.is_admin || st.hasAgreement)); },
     /* 가입 · 위임장 제출 시작(공급계약 시작) */
     get consentOpenAt() { return st.openAt; },
@@ -217,7 +217,7 @@
       if (!API.consentOpen) throw new Error("위임동의서는 공급계약이 시작되는 " + (st.openAt.getMonth() + 1) + "월 " + st.openAt.getDate() + "일부터 낼 수 있습니다.");
       checkConsent(o);
       var row = must(await sb.from("agreements").insert({ signer_name: o.signer.trim(), signature: o.signature, agree_delegation: true, agree_privacy: true, agree_identity: true,
-        agree_third_party: !!o.thirdParty, agree_contact: true, phone: String(o.phone || "").trim(), cafe_nick: String(o.cafeNick || "").trim() || null,
+        agree_third_party: !!o.thirdParty, agree_contact: !!o.contact, phone: o.contact ? String(o.phone || "").trim() : null, cafe_nick: String(o.cafeNick || "").trim() || null,
         co_name: o.coOwner ? String(o.coName || "").trim() : null, co_signature: o.coOwner ? o.coSignature : null, rep_name: o.coOwner ? String(o.repName || "").trim() : null, form_version: FORM_VERSION }).select().single());
       st.hasAgreement = true; return row;
     },
@@ -229,7 +229,7 @@
     },
     withdrawAgreement: async function () { need(); must(await sb.from("agreements").delete().eq("user_id", uid())); st.hasAgreement = false; },
     stats: async function () { need(); return must(await sb.rpc("agreement_stats")); },
-    memberUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; var r = await sb.rpc("member_units"); return r.error ? [] : r.data; },
+    memberUnits: async function () { need(); if (!API.isAdmin) return []; var r = await sb.rpc("member_units"); return r.error ? [] : r.data; },
     /* 입주민 오픈채팅 입장 정보 (위임 회원 · 운영진만) */
     /* 회원 전용 안내문 (외부 유출 금지 내용) */
     privateNote: async function (key) { need(); if (!API.isMember) return null; var r = await sb.rpc("private_note_get", { p_key: key }); return r.error ? null : (r.data || [])[0] || null; },
@@ -238,7 +238,7 @@
     duesMine: async function () { need(); if (!API.isMember) return null; var r = await sb.rpc("dues_mine"); return r.error ? null : (r.data || [])[0] || null; },
     chatInfo: async function () { need(); if (!API.isMember && !API.isAdmin) return null; var r = await sb.rpc("chat_info_get"); if (r.error) return null; return (r.data || [])[0] || null; },
     memberStats: async function () { need(); var r = await sb.rpc("member_stats"); return r.error ? null : r.data; },
-    agreedUnits: async function () { need(); if (!API.isDelegate && !API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
+    agreedUnits: async function () { need(); if (!API.isAdmin) return []; return must(await sb.rpc("agreed_units")); },
 
     /* 게시판 */
     posts: async function () { need(); return must(await sb.from("posts").select("id,cat,title,author_id,author_label,created_at,comments(count)").order("id", { ascending: false }).limit(200)); },

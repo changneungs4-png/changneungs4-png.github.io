@@ -1007,15 +1007,15 @@
     var k = new Date(d.getTime() + 9 * 3600 * 1000);
     return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일";
   }
-  /* 위임 전 세대 안내: 투표 · 민원 · 세대별 현황은 위임 세대만 */
+  /* 위임 전 세대 안내: 내 아파트 · 민원 · 오픈채팅은 위임 세대만 */
   function delegateNote(block) {
     var title, body, cta = "";
     if (!API.consentOpen) {
       title = "위임장은 공급계약 후 받습니다";
-      body = consentOpenLabel() + " 공급계약이 시작되면 위임동의서를 낼 수 있습니다. 위임한 세대는 투표 · 단체민원에 참여하고 세대별 현황을 볼 수 있습니다." + (API.isMember ? " 지금은 회원 전용 안내와 민원 참여를 이용할 수 있습니다." : "");
+      body = consentOpenLabel() + " 공급계약이 시작되면 위임동의서를 낼 수 있습니다. 위임한 세대는 내 아파트 · 민원 · 오픈채팅을 이용할 수 있습니다." + (API.isMember ? " 지금은 회원 전용 안내와 민원 참여를 이용할 수 있습니다." : "");
     } else {
       title = "위임장을 낸 세대만 참여할 수 있습니다";
-      body = "위임동의서를 내면 투표 · 단체민원 참여와 세대별 현황 보기가 바로 열립니다.";
+      body = "위임동의서를 내면 내 아파트 · 민원 · 오픈채팅이 바로 열립니다.";
       cta = '<a class="btn solid" href="consent.html">위임동의서 제출</a>';
     }
     if (!block) return '<p class="notice-box small">' + esc(title) + ". " + esc(body) + (cta ? ' <a href="consent.html">위임동의서 제출 →</a>' : "") + "</p>";
@@ -1068,7 +1068,7 @@
     if (LIVE) {
       stats = await API.stats();
       var mst = await API.memberStats().catch(function () { return null; });
-      canSee = API.isDelegate || API.isAdmin;
+      canSee = API.isAdmin;   // 세대별 위임 · 가입 여부는 운영진만 (회원 · 방문자는 동별 숫자)
       AGREED = {};
       if (canSee) arr(await API.agreedUnits()).forEach(function (id) { AGREED[id] = 1; });
       if (canSee) arr(await API.memberUnits()).forEach(function (id) { MEMBER[id] = 1; });
@@ -1080,8 +1080,8 @@
 
     C.innerHTML =
       '<div class="ag-summary" id="agSum"></div>' + agreeSteps() +
-      (LIVE && !canSee && !API.isMember ? '<div class="notice-box">동별 집계는 누구나 볼 수 있습니다. 세대별 현황은 위임장을 낸 세대에게만 보입니다. ' + (API.loggedIn ? '<a href="consent.html">위임동의서 →</a>' : '<a href="login.html">로그인</a>') + "</div>" : "") +
-      (LIVE && API.isMember ? '<div class="notice-box' + (API.hasAgreement ? " good" : "") + '">' + (API.hasAgreement ? esc(unitLabel(myUnit)) + "는 위임동의를 마쳤습니다." : esc(unitLabel(myUnit)) + "는 아직 위임동의 전입니다. 위임하면 세대별 현황도 열립니다. " + (API.consentOpen ? '<a href="consent.html">위임동의서 제출 →</a>' : esc(consentOpenLabel()) + " 공급계약 후 제출할 수 있습니다.")) + "</div>" : "") +
+      (LIVE && !canSee && !API.isMember ? '<div class="notice-box">개인정보 보호를 위해 동별 위임 세대 수만 공개합니다. ' + (API.loggedIn ? '<a href="consent.html">위임동의서 →</a>' : '<a href="login.html">로그인</a>') + "</div>" : "") +
+      (LIVE && API.isMember ? '<div class="notice-box' + (API.hasAgreement ? " good" : "") + '">' + (API.hasAgreement ? esc(unitLabel(myUnit)) + "는 위임동의를 마쳤습니다." : esc(unitLabel(myUnit)) + "는 아직 위임동의 전입니다. " + (API.consentOpen ? '<a href="consent.html">위임동의서 제출 →</a>' : esc(consentOpenLabel()) + " 공급계약 후 제출할 수 있습니다.")) + "</div>" : "") +
       (canSee ? '<div class="toolbar">' + chips("agTypes", TYPES, "타입") +
         '<form class="find" id="agFind" role="search"><label for="agQ" class="small muted">세대 찾기</label><input id="agQ" placeholder="예: 403-1803" autocomplete="off"><button class="btn" type="submit">찾기</button></form></div>' +
         '<div class="legend small"><span><i class="sw on"></i>위임동의 완료</span>' + (LIVE ? '<span><i class="sw mem"></i>가입 · 위임 전</span>' : "") + '<span><i class="sw off"></i>미가입</span><span><i class="sw none"></i>필로티 · 비주거</span>' + (myUnit ? '<span><i class="sw mine"></i>우리 세대</span>' : "") + "</div>" : "") +
@@ -1641,26 +1641,36 @@
   };
 
   R.privacy = function () {
+    var OFF = S.privacyOfficer || {};
     var rows = [
-      ["회원가입", "동 · 호수(아이디), 비밀번호(암호화 저장), 네이버 카페 닉네임, 가입 · 접속 기록", "입주예정자 확인(카페 계약서 인증과 대조), 1세대 1계정 관리", "탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지. 계약서는 홈페이지에서 받지 않습니다"],
-      ["위임동의서", "주택형 · 동 · 호수, 계약자 성명, 휴대전화번호, 서명, 동의 일시, 공동명의자 성명 · 서명(공동명의자 본인이 서명할 때만) (서면 접수 시 위임장 스캔본)", "계약자 확인, 과반수 동의 집계, 협의회 공지 · 의견수렴 · 투표", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 분쟁 대비로 해산 시까지)"],
+      ["회원가입 (필수)", "동 · 호수(아이디), 비밀번호(암호화 저장), 네이버 카페 닉네임, 가입 · 접속 기록", "입주예정자 확인(카페 계약서 인증과 대조), 1세대 1계정 관리", "탈퇴 또는 협의회 해산 시까지. 가입 · 승인 · 반려 기록(세대 · 일시 · 처리자)은 분쟁 대비로 해산 시까지"],
+      ["위임동의서 (필수)", "계약자 성명, 동 · 호수 · 주택형, 서명, 동의 일시. 공동명의 세대는 공동명의자 성명 · 서명과 대표 회원 성명(공동명의자 본인이 서명할 때만). 서면 접수 시 위임장 사진 · 스캔본", "계약자 확인, 위임 의사 확인 및 세대별 동의 집계, 회원 등록, 공동명의 세대의 대표 회원 확인", "동의 철회 또는 입주자대표회의 인계 완료 · 협의회 해산 시 지체 없이 파기 (제출 · 철회 기록은 세대 · 일시만 분쟁 대비로 해산 시까지)"],
+      ["위임동의서 (선택)", "휴대전화번호", "공지 · 의견수렴 · 투표 안내 연락", "필수 항목과 같음. 이 항목만 철회하려면 운영진에게 알려 주세요"],
       ["회비", "협의회 통장 거래내역(입금 일시 · 금액 · 입금자명), 세대별 납부 여부", "회비 납부 확인, 회계 공개(월별 합계만 공개, 입금자 이름은 비공개)", "협의회 해산 시 결산 · 인계 후 파기"],
-      ["투표 · 단체민원", "세대별 투표 · 참여 여부 (예전 게시판 글 · 댓글 포함)", "1세대 1표 집계, 참여 세대 수 공개", "삭제 시 또는 협의회 해산 시까지"],
+      ["민원 참여 · 내 아파트", "세대별 민원 참여 여부, 내 아파트 계산기에 저장한 선택 내용(본인만 열람)", "참여 세대 수 집계, 저장한 계산 결과 다시 보기", "삭제 · 탈퇴 시 또는 협의회 해산 시까지"],
       ["민원 AI 글쓰기", "AI 이용 횟수 기록(회원 · 시각 · 글 종류). 쓴 문장은 저장하지 않음", "1인 하루 이용 횟수 제한(5번)", "30일 뒤 자동 삭제"]
     ];
     var LB = ["구분", "항목", "목적", "보유 기간"];
-    C.innerHTML = "<div>" + head("수집 항목과 보유 기간") + '<div class="tablebox"><table class="spec stack"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
-      rows.map(function (r) { return "<tr>" + r.map(function (c, i) { return '<td data-label="' + LB[i] + '">' + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
-      '<div class="two"><div>' + head("제3자 제공") + '<p class="muted">회원 정보(동 · 호수, 성명, 연락처, 서명 등)는 LH · 시공사 · 관계기관 · 법무법인 등 외부에 제공하지 않습니다(회칙 제34조). 협의 · 민원에서 대표성을 보일 때는 동별 위임 세대 수만 알립니다.</p>' +
-      head("처리 위탁 · 국외 이전") + '<ul class="muted plain-list"><li><b>Supabase Inc.</b> (미국, support@supabase.com) — 회원 정보 · 위임동의 · 게시글 저장과 로그인 처리. 데이터는 서울(대한민국) 리전에 저장되며, 회원가입 · 이용 시 인터넷으로 전송됩니다. 보유 기간은 위 표와 같습니다.</li>' +
-      '<li><b>Google LLC</b> (미국, Gemini API) — 민원 페이지의 "AI로 글 쓰기"를 누를 때 고른 글 종류 · 상황 · 말투와 공개된 민원 요지만 보내 문장을 받습니다. 이름 · 동호수 등 회원 정보는 보내지 않습니다.</li>' +
-      '<li><b>GitHub Inc.</b> (미국) — 홈페이지 호스팅과 LH 공고문 자동 읽기. 회원 개인정보는 다루지 않으며, 접속 기록(IP 등)이 남을 수 있습니다.</li></ul>' +
-      '<p class="muted small">위 이전은 서비스 제공에 필요한 처리로, 원하지 않으면 회원가입을 하지 않거나 탈퇴하면 됩니다.</p></div>' +
-      "<div>" + head("공개 범위") + '<p class="muted">누구나 볼 수 있는 것은 동별 위임 세대수뿐입니다. 세대별 위임 여부는 승인된 회원과 운영진에게만 보입니다. 게시판 작성자는 승인된 회원에게만 "동-호"로 표시합니다.</p>' +
-      head("권리 행사") + '<p class="muted">위임동의 철회는 내 정보 화면에서 바로 할 수 있습니다. 회원 정보 열람 · 정정 · 삭제(탈퇴)는 운영진에게 요청하면 지체 없이 처리합니다.</p>' +
-      head("파기 · 안전 조치") + '<p class="muted">보유 기간이 끝나거나 철회 · 탈퇴하면 데이터베이스에서 즉시 삭제합니다. 비밀번호는 암호화해 저장합니다. 계약서는 홈페이지에서 받지 않습니다. 로그인 상태 유지를 위해 브라우저 저장소에 로그인 정보를 저장합니다.</p>' +
-      head("개인정보 보호책임자") + '<p class="muted">' + esc((S.privacyOfficer && S.privacyOfficer.role) || "협의회 운영진 대표") + (S.privacyOfficer && S.privacyOfficer.contact ? " · " + esc(S.privacyOfficer.contact) : " · 연락처는 공지사항으로 안내합니다") + '</p></div></div>' +
-      '<p class="muted small">시행일: ' + esc(S.updated) + ". 내용이 바뀌면 이 페이지와 공지사항으로 알립니다.</p>";
+    var sec = function (t, html) { return head(t) + html; };
+    C.innerHTML = '<p class="muted">고양창릉 S4블록 입주예정자협의회(구성 전에는 준비위원회, 이하 "협의회")는 「개인정보 보호법」에 따라 회원의 개인정보를 보호하고 관련 고충을 신속하게 처리하기 위해 이 처리방침을 둡니다.</p>' +
+      "<div>" + head("1. 수집 항목 · 목적 · 보유 기간") + '<div class="tablebox"><table class="spec stack"><thead><tr><th>구분</th><th>항목</th><th>목적</th><th>보유 기간</th></tr></thead><tbody>' +
+      rows.map(function (r) { return "<tr>" + r.map(function (c, i) { return '<td data-label="' + LB[i] + '">' + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>" +
+      '<p class="muted small">주민등록번호 · 계좌번호 · 계약서 사본은 홈페이지에서 받지 않습니다. 계약서 인증은 네이버 카페 등업 게시판에서 운영진만 볼 수 있게 받고, 확인 후 즉시 삭제합니다.</p></div>' +
+      '<div class="two"><div>' +
+      sec("2. 공개 범위", '<p class="muted">누구나 · 회원이 볼 수 있는 것은 <b class="fg">동별 위임 세대 수</b>뿐입니다. 세대별 위임 · 가입 여부, 성명, 서명, 연락처는 명부 관리를 맡은 운영진만 확인합니다. 회원 본인은 내 정보에서 자기 위임장만 볼 수 있습니다.</p>') +
+      sec("3. 제3자 제공", '<p class="muted">회원 정보(동 · 호수, 성명, 연락처, 서명 등)는 LH · 시공사 · 관계기관 · 법무법인 등 외부에 제공하지 않습니다(회칙 제34조). 협의 · 민원에서 대표성을 보일 때는 동별 위임 세대 수만 알립니다. 외부 제공이 꼭 필요해지면 받는 곳 · 목적 · 항목 · 보유 기간 · 거부 시 영향을 알리고 별도로 동의를 받습니다.</p>') +
+      sec("4. 처리 위탁 · 국외 이전", '<ul class="muted plain-list"><li><b>Supabase Inc.</b> (미국, support@supabase.com) — 회원 정보 · 위임동의 저장과 로그인 처리. 데이터는 서울(대한민국) 리전에 저장되며, 회원가입 · 이용 시 인터넷으로 전송됩니다. 보유 기간은 위 표와 같습니다.</li>' +
+        '<li><b>Google LLC</b> (미국, Gemini API) — 민원 페이지의 "AI로 글 쓰기"를 누를 때 고른 글 종류 · 상황 · 말투와 공개된 민원 요지만 보내 문장을 받습니다. 이름 · 동호수 등 회원 정보는 보내지 않습니다.</li>' +
+        '<li><b>GitHub Inc.</b> (미국) — 홈페이지 호스팅과 LH 공고문 자동 읽기. 회원 개인정보는 다루지 않으며, 접속 기록(IP 등)이 남을 수 있습니다.</li></ul>' +
+        '<p class="muted small">위 이전은 서비스 제공에 필요한 처리입니다. 원하지 않으면 회원가입을 하지 않거나 탈퇴하면 되고, 이 경우 서면 위임장으로 참여할 수 있습니다.</p>') +
+      sec("5. 정보주체의 권리", '<p class="muted">위임동의 철회는 내 정보 화면에서 바로 할 수 있습니다. 개인정보 열람 · 정정 · 삭제(탈퇴) · 처리정지와 선택 항목(휴대전화번호) 철회는 카페 쪽지나 공식 메일로 요청하면 지체 없이(10일 이내) 처리하고 결과를 알려 드립니다. 대리인을 통해서도 요청할 수 있습니다.</p>') +
+      "</div><div>" +
+      sec("6. 파기 절차 · 방법", '<p class="muted">보유 기간이 끝나거나 철회 · 탈퇴로 목적이 끝나면 지체 없이 파기합니다. 전자 정보는 데이터베이스에서 복구할 수 없게 삭제하고, 서면 위임장 원본 · 출력물은 분쇄하거나 소각합니다. 운영진이 내려받은 명부 파일도 같은 때 삭제합니다.</p>') +
+      sec("7. 안전성 확보 조치", '<ul class="muted plain-list"><li>명부 · 위임장 접근은 운영진 계정으로만 제한하고(서버 접근 통제), 가입 승인 · 반려 기록(세대 · 일시 · 처리자)을 남깁니다.</li><li>비밀번호는 암호화해 저장하고, 모든 통신은 암호화(HTTPS)합니다.</li><li>운영진은 명부 파일을 업무에 필요한 때만 내려받고, 외부로 보내지 않으며, 업무가 끝나면 삭제합니다.</li><li>운영진이 바뀌면 권한을 바로 회수하고, 업무 인계 시에도 집계 결과만 넘깁니다.</li><li>로그인 상태 유지를 위해 브라우저 저장소에 로그인 정보를 저장합니다. 공용 기기에서는 로그아웃해 주세요.</li></ul>') +
+      sec("8. 개인정보 보호책임자", '<p class="muted">' + esc(OFF.role || "협의회 회장 (구성 전에는 준비위원회 위원장)") + (OFF.contact ? " · " + esc(OFF.contact) : "") + ' · 네이버 카페 쪽지. 개인정보 관련 문의 · 불만 · 피해 구제를 받습니다.</p>') +
+      sec("9. 권익침해 구제 방법", '<ul class="muted plain-list"><li>개인정보 분쟁조정위원회: 1833-6972 (www.kopico.go.kr)</li><li>개인정보 침해신고센터: 국번 없이 118 (privacy.kisa.or.kr)</li><li>대검찰청: 국번 없이 1301 (www.spo.go.kr)</li><li>경찰청: 국번 없이 182 (ecrm.police.go.kr)</li></ul>') +
+      "</div></div>" +
+      '<p class="muted small">시행일: ' + esc(S.privacyDate || S.updated) + ". 내용이 바뀌면 이 페이지와 공지사항으로 알립니다.</p>";
   };
 
   /* ── 로그인 · 회원가입 ── */
@@ -1669,7 +1679,6 @@
     return '<fieldset class="consent-in"><legend>동의서 작성 <span class="tag hot">필수</span></legend>' +
       '<p class="muted small" style="margin:0 0 8px">공급계약서와 동일하게 작성해 주세요. 동 · 호수는 가입한 세대로 정해집니다.</p>' +
       '<div class="field"><label for="' + p + 'Name">계약자 성명</label><input id="' + p + 'Name" maxlength="30" autocomplete="name"></div>' +
-      '<div class="field"><label for="' + p + 'Phone">휴대전화번호</label><input id="' + p + 'Phone" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" maxlength="13"></div>' +
       '<label class="check" for="' + p + 'Co"><input type="checkbox" id="' + p + 'Co"> 공동명의 세대입니다</label>' +
       '<div id="' + p + 'CoBox" hidden>' +
         '<div class="field"><label for="' + p + 'CoName">공동명의자 성명</label><input id="' + p + 'CoName" maxlength="30"></div>' +
@@ -1677,6 +1686,8 @@
       "</div>" +
       '<label class="check" for="' + p + 'Del"><input type="checkbox" id="' + p + 'Del"> 위 구성 및 위임 내용에 동의합니다 (필수)</label>' +
       '<label class="check" for="' + p + 'Priv"><input type="checkbox" id="' + p + 'Priv"> 위 개인정보 수집 · 이용에 동의합니다 (필수)</label>' +
+      '<label class="check" for="' + p + 'Ct"><input type="checkbox" id="' + p + 'Ct"> 휴대전화번호 수집 · 이용에 동의합니다 (선택) <span class="muted small">동의하지 않아도 위임동의와 회원 이용에 제한이 없습니다</span></label>' +
+      '<div class="field" id="' + p + 'PhoneBox" hidden><label for="' + p + 'Phone">휴대전화번호 <span class="muted small">(선택) 공지 · 투표 안내 연락용</span></label><input id="' + p + 'Phone" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" maxlength="13"></div>' +
       '<div class="field"><label for="' + p + 'Sig">계약자 서명 <span class="muted small">손가락이나 마우스로 서명해 주세요 · 작성일은 제출 시각으로 자동 기록</span></label>' +
       '<div class="sigpad"><canvas id="' + p + 'Sig" width="600" height="200" aria-label="계약자 서명 칸"></canvas><span class="sig-hint" aria-hidden="true">여기에 서명해 주세요</span><button type="button" class="linkbtn" id="' + p + 'SigClear">다시 쓰기</button></div></div>' +
       '<div id="' + p + 'CoSigBox" hidden><div class="field"><label for="' + p + 'CoSig">공동명의자 서명</label><div class="sigpad"><canvas id="' + p + 'CoSig" width="600" height="200" aria-label="공동명의자 서명 칸"></canvas><span class="sig-hint" aria-hidden="true">여기에 서명해 주세요</span><button type="button" class="linkbtn" id="' + p + 'CoSigClear">다시 쓰기</button></div></div>' +
@@ -1711,11 +1722,12 @@
   function bindConsent(p) {
     SIG[p] = sigPad(p + "Sig"); SIG[p + "Co"] = sigPad(p + "CoSig");
     el(p + "Co").addEventListener("change", function () { el(p + "CoBox").hidden = !this.checked; el(p + "CoSigBox").hidden = !this.checked; });
+    el(p + "Ct").addEventListener("change", function () { el(p + "PhoneBox").hidden = !this.checked; if (this.checked) el(p + "Phone").focus(); });
   }
   function consentValues(p) {
     var co = el(p + "Co").checked;
     return { signer: el(p + "Name").value, signature: SIG[p] ? SIG[p].data() : null, delegation: el(p + "Del").checked, privacy: el(p + "Priv").checked,
-      thirdParty: false, contact: true, phone: el(p + "Phone").value, cafeNick: "", identity: true,
+      thirdParty: false, contact: el(p + "Ct").checked, phone: el(p + "Ct").checked ? el(p + "Phone").value : "", cafeNick: "", identity: true,
       coOwner: co, coName: co ? el(p + "CoName").value : "", repName: co ? el(p + "Rep").value : "", coOk: co ? el(p + "CoOk").checked : true,
       coSignature: co && SIG[p + "Co"] ? SIG[p + "Co"].data() : null };
   }
@@ -1730,11 +1742,12 @@
       "<section><h2>01 구성 및 위임 동의</h2>" + CONSENT.map(function (c) { return "<h3>" + esc(c[0]) + "</h3><p>" + esc(c[1]) + "</p>"; }).join("") +
       "<p>회칙: 고양창릉 S4블록 입주예정자협의회 회칙 (38개 조) · 홈페이지 협의회 › 회칙</p></section>" +
       "<section><h2>02 개인정보 수집 및 이용 (필수)</h2>" + consentPrivHtml("wi-priv") + "</section>" +
-      '<ul class="wi-checks"><li>' + box(!blank) + " 위 구성 및 위임 내용에 동의합니다 (필수)</li><li>" + box(!blank) + " 위 개인정보 수집 · 이용에 동의합니다 (필수)</li></ul>" +
-      "<section><h2>03 확인 및 서명</h2><p class=\"wi-oath\">" + esc(CONSENT_OATH) + "</p></section>" +
+      "<section><h2>03 개인정보 수집 및 이용 (선택)</h2>" + consentOptHtml("wi-priv") + "</section>" +
+      '<ul class="wi-checks"><li>' + box(!blank) + " 위 구성 및 위임 내용에 동의합니다 (필수)</li><li>" + box(!blank) + " 위 개인정보 수집 · 이용에 동의합니다 (필수)</li><li>" + box(!blank && a.agree_contact) + " 휴대전화번호 수집 · 이용에 동의합니다 (선택)</li></ul>" +
+      "<section><h2>04 확인 및 서명</h2><p class=\"wi-oath\">" + esc(CONSENT_OATH) + "</p></section>" +
       '<table class="wi-head"><tr><th>동 / 호수</th><td>' + (blank ? "_______ 동 _______ 호" : esc(u ? u.dong + "동 " + u.ho + "호 (" + u.type + ")" : a.unit_id)) + "</td></tr>" +
       "<tr><th>계약자 성명</th><td>" + line(a && a.signer_name) + "</td></tr>" +
-      "<tr><th>휴대전화번호</th><td>" + line(a && a.phone) + "</td></tr>" +
+      "<tr><th>휴대전화번호<br><span class=\"muted\">(선택 · 동의한 경우)</span></th><td>" + line(a && a.phone) + "</td></tr>" +
       "<tr><th>작성일</th><td>" + (blank ? "2026 년 ___ 월 ___ 일" : esc(fmtTime(a.signed_at))) + "</td></tr>" +
       "<tr><th>계약자 서명</th><td>" + sig(a && a.signature, "서면 원본 보관") + "</td></tr>" +
       "<tr><th>공동명의자 성명 · 서명<br><span class=\"muted\">(공동명의 세대, 본인 직접)</span></th><td>" + (blank ? '(성명) <span class="sigline"></span> (서명) <span class="sigline"></span>' : a.co_name ? esc(a.co_name) + " " + sig(a.co_signature, "") : "-") + "</td></tr>" +
@@ -1838,7 +1851,7 @@
       (p.status === "rejected" ? '<p class="notice-box bad">반려 사유: ' + esc(p.reject_reason || "-") + "</p>" : "") +
       '<p class="cta-row">' + (API.isAdmin ? '<a class="btn solid" href="admin.html">운영진 페이지</a>' : "") + '<button type="button" class="btn" id="logout">로그아웃</button></p></div>' + CAFEFORM + PWFORM + "</div>" +
 
-      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진이 카페 인증을 확인하면 현황판에 반영됩니다." : "") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn" id="accWi">내 위임장 보기 · 인쇄</button> ' + (API.isDelegate ? '<button type="button" class="btn" id="accChat">입주민 오픈채팅 입장</button> ' : "") + '<button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판에서 바로 빠지고 투표 · 민원 참여와 세대별 현황 보기가 중지됩니다. 게시판은 계속 쓸 수 있고, 위임동의서를 다시 내면 바로 회복됩니다.</p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
+      "<div>" + (p.status !== "rejected" ? head("위임동의") + (ag ? '<div class="panel"><p style="margin-top:0">' + fmtTime(ag.signed_at) + "에 위임동의서를 제출했습니다." + (p.status === "pending" ? " 운영진이 카페 인증을 확인하면 현황판에 반영됩니다." : "") + '</p><p class="cta-row"><a class="btn" href="agreement.html">현황판 보기</a><button type="button" class="btn" id="accWi">내 위임장 보기 · 인쇄</button> ' + (API.isDelegate ? '<button type="button" class="btn" id="accChat">입주민 오픈채팅 입장</button> ' : "") + '<button type="button" class="btn danger" id="withdraw">위임동의 철회</button></p><p class="muted small" style="margin:0">철회하면 현황판 집계에서 바로 빠지고 내 아파트 · 민원 · 오픈채팅 이용이 중지됩니다. 위임동의서를 다시 내면 바로 회복됩니다.</p><p class="notice-box" id="aMsg" role="status" hidden></p></div>'
         : delegateNote(true)) : "") +
       (p.status === "approved" ? '<div id="accDues"></div>' : "") +
       (p.status === "rejected" ? head("다시 신청하기") + '<form class="panel" id="fRe" novalidate>' +
@@ -1902,16 +1915,26 @@
   ];
   var CONSENT_PRIV_INTRO = "입예협은 다음과 같이 개인정보를 수집 · 이용합니다. 구성 전에는 준비위원회가 접수 · 관리하며, 구성 후 입예협이 동일한 목적과 범위에서 관리합니다.";
   var CONSENT_PRIV = [
-    ["수집 항목", "계약자 성명, 동 · 호수, 휴대전화번호, 서명, 동의일\n공동명의자는 직접 서명하는 경우 해당 정보 수집"],
-    ["이용 목적", "계약자 확인, 구성 · 위임 의사 확인 및 세대별 동의 집계, 회원 등록, 공지 · 의견수렴 · 투표 안내"],
-    ["보유 기간", "입주자대표회의 업무 인계 완료 시까지. 그 전에 본 동의 철회 · 회원 탈퇴 · 계약자 지위 상실로 수집 목적이 종료되면 지체 없이 파기"],
+    ["수집 항목", "계약자 성명, 동 · 호수, 서명, 동의 일시\n공동명의 세대: 공동명의자 성명 · 서명, 대표 회원 성명 (공동명의자 본인이 직접 서명하는 경우)\n서면으로 낸 경우: 위임장 사진 · 스캔본"],
+    ["이용 목적", "계약자 확인, 구성 · 위임 의사 확인 및 세대별 동의 집계, 회원 등록, 공동명의 세대의 대표 회원 확인"],
+    ["보유 기간", "입주자대표회의 업무 인계 완료 시까지. 그 전에 본 동의 철회 · 회원 탈퇴 · 계약자 지위 상실로 수집 목적이 종료되면 지체 없이 파기 (제출 · 철회 기록은 세대 · 일시만 분쟁 대비로 해산 시까지)"],
+    ["공개 범위", "외부와 회원에게는 동별 위임 세대 수만 공개합니다. 세대별 위임 여부 · 성명 · 서명은 명부 관리를 맡은 운영진만 확인합니다."],
     ["거부 권리", "동의를 거부할 수 있습니다. 거부 시 이 동의서에 의한 계약자 확인 · 회원 등록 · 위임 집계가 불가능합니다. 주요 협의 결과의 열람은 가능합니다."]
   ];
-  var CONSENT_PROTECT = ["계약 확인 자료는 성명 · 동호수 외 정보를 가려 제출하며, 확인 후 즉시 삭제합니다. 명부와 동의서는 접근 권한을 제한하여 관리하고, 주민등록번호 · 계좌번호는 수집하지 않습니다. 입주자대표회의 인계 시 개인정보 명부 대신 개인을 식별할 수 없는 집계 결과만 제공합니다.",
+  var CONSENT_OPT = [
+    ["수집 항목", "휴대전화번호"],
+    ["이용 목적", "공지 · 의견수렴 · 투표 안내 연락 (문자 · 전화)"],
+    ["보유 기간", "위 필수 항목과 같습니다. 이 항목만 따로 철회하려면 운영진에게 알려 주세요."],
+    ["거부 권리", "동의하지 않아도 위임동의와 회원 이용에 제한이 없습니다."]
+  ];
+  var CONSENT_PROTECT = ["계약서 인증은 네이버 카페 등업 게시판에서 운영진만 볼 수 있게 받고, 성명 · 동호수 외 정보는 가려 제출하며, 확인 후 즉시 삭제합니다. 명부와 동의서는 접근 권한을 운영진으로 제한하여 관리하고, 주민등록번호 · 계좌번호는 수집하지 않습니다. 입주자대표회의 인계 시 개인정보 명부 대신 개인을 식별할 수 없는 집계 결과만 제공합니다.",
     "본 동의서에는 개인정보의 제3자 제공 동의가 포함되지 않습니다. LH 등 외부기관에 명부나 서명 원본을 제공할 필요가 생기면 제공 대상 · 목적 · 항목 · 보유 기간 · 거부 시 영향을 알리고 별도 동의를 받습니다.",
     "개인정보 관리책임자 · 문의 및 철회 접수: 입예협 회장(구성 전에는 준비위원회) · 카페 쪽지 또는 협의회 공식 메일 changneung.s4@gmail.com"];
   var CONSENT_OATH = "본인은 위 내용과 별도로 제공된 회칙을 확인하고, 입예협 구성 및 명시된 범위의 위임에 동의합니다. 공동명의자는 본인이 직접 확인 · 서명하며, 미서명 공동명의자의 개별 권한까지 위임되는 것은 아닙니다.";
   var CONSENT_TO = "고양창릉 S4블록 입주예정자협의회 (구성 전 접수: 입주예정자협의회 준비위원회)";
+  function consentOptHtml(cls) {
+    return '<table class="spec ' + (cls || "c-priv") + '">' + CONSENT_OPT.map(function (r) { return "<tr><th>" + esc(r[0]) + '</th><td class="body">' + esc(r[1]) + "</td></tr>"; }).join("") + "</table>";
+  }
   function consentPrivHtml(cls) {
     return '<p>' + esc(CONSENT_PRIV_INTRO) + '</p><table class="spec ' + (cls || "c-priv") + '">' + CONSENT_PRIV.map(function (r) { return "<tr><th>" + esc(r[0]) + '</th><td class="body">' + esc(r[1]) + "</td></tr>"; }).join("") + "</table>" +
       '<div class="c-protect"><b>개인정보 보호 및 외부 제공 안내</b>' + CONSENT_PROTECT.map(function (x) { return "<p>" + esc(x) + "</p>"; }).join("") + "</div>";
@@ -1936,15 +1959,16 @@
       '<h3 class="c-step"><span>01</span> 구성 및 위임 동의</h3>' + consentSecs("h4") +
       '<p class="c-bylaw">회칙: 고양창릉 S4블록 입주예정자협의회 회칙 (38개 조) · <a href="bylaws.html" target="_blank" rel="noopener">회칙 전문 보기 →</a></p>' +
       '<h3 class="c-step"><span>02</span> 개인정보 수집 및 이용 <span class="tag hot">필수</span></h3>' + consentPrivHtml() +
-      '<h3 class="c-step"><span>03</span> 확인 및 서명</h3><p class="c-oath">' + esc(CONSENT_OATH) + '</p><p class="c-to">' + esc(CONSENT_TO) + "</p>" +
+      '<h3 class="c-step"><span>03</span> 개인정보 수집 및 이용 <span class="tag">선택</span></h3>' + consentOptHtml() +
+      '<h3 class="c-step"><span>04</span> 확인 및 서명</h3><p class="c-oath">' + esc(CONSENT_OATH) + '</p><p class="c-to">' + esc(CONSENT_TO) + "</p>" +
       '<p class="cta-row" style="margin:8px 0 0"><button type="button" class="btn" id="docPdf">동의서 PDF로 저장</button></p></article>' +
       '<div class="panel paper-box"><b>온라인이 어려우신가요?</b><p class="muted small" style="margin:6px 0 10px">공급계약을 마친 뒤 서면 위임장 양식을 인쇄해 작성 · 서명하고, 사진이나 스캔본을 협의회 공식 메일 <b>changneung.s4@gmail.com</b> 으로 보내 주세요. 운영진이 확인해 등록합니다. 주민등록번호는 적지 마세요.</p><button type="button" class="btn" id="blankForm">서면 양식 인쇄 · PDF 저장</button></div>';
     function bindBlank() {
       var b = el("blankForm"); if (b) b.addEventListener("click", window.S4_showBlankForm);
       var d = el("docPdf"); if (d) d.addEventListener("click", function () {
         showPrint('<article class="wi-doc"><h1>' + esc(CONSENT_TITLE) + "</h1><p>" + esc(CONSENT_INTRO) + "</p><section><h2>01 구성 및 위임 동의</h2>" +
-          CONSENT.map(function (c) { return "<h3>" + esc(c[0]) + "</h3><p>" + esc(c[1]) + "</p>"; }).join("") + "</section><section><h2>02 개인정보 수집 및 이용</h2>" + consentPrivHtml("wi-priv") + "</section>" +
-          '<section><h2>03 확인 및 서명</h2><p class="wi-oath">' + esc(CONSENT_OATH) + '</p></section><p class="wi-to">' + esc(CONSENT_TO) + "</p></article>", "동의서 전문");
+          CONSENT.map(function (c) { return "<h3>" + esc(c[0]) + "</h3><p>" + esc(c[1]) + "</p>"; }).join("") + "</section><section><h2>02 개인정보 수집 및 이용 (필수)</h2>" + consentPrivHtml("wi-priv") + "</section><section><h2>03 개인정보 수집 및 이용 (선택)</h2>" + consentOptHtml("wi-priv") + "</section>" +
+          '<section><h2>04 확인 및 서명</h2><p class="wi-oath">' + esc(CONSENT_OATH) + '</p></section><p class="wi-to">' + esc(CONSENT_TO) + "</p></article>", "동의서 전문");
       });
     }
     if (!LIVE) { C.innerHTML = consentLayout(form, gate("member")); bindBlank(); return; }
@@ -2456,10 +2480,11 @@
             '<p class="cta-row" style="margin:8px 0 0"><button type="button" class="btn" id="wdAll">모두 확인</button></p></div>' : "";
           B.innerHTML = wdBox + '<div class="toolbar"><b>' + n(A.filter(counted).length) + "세대 반영</b> <span class=\"muted small\">(제출 " + n(A.length) + "세대 · 서면 " + n(A.filter(function (a) { return a.source === "paper"; }).length) + ')</span>' +
             '<div class="cta-row" style="margin:0"><button type="button" class="btn" id="wiAll">기관 제출용 위임 현황 (이름 없이 동별 집계)</button><button type="button" class="btn" id="csvCopy">CSV 복사</button><button type="button" class="btn" id="csvDl">CSV 내려받기</button></div></div>' +
+            '<p class="notice-box small" style="margin:0 0 12px">이 명단에는 성명 · 서명 · 연락처 같은 개인정보가 들어 있습니다. 복사 · 내려받은 파일은 업무가 끝나면 바로 삭제하고, 카톡 · 메일 등으로 외부에 보내지 마세요. 외부 기관에는 \'기관 제출용 위임 현황\'(이름 없음)만 냅니다.</p>' +
             '<details class="panel lh-more" id="paperBox"><summary>서면 위임장 등록 <span class="muted small">공식 메일로 받은 위임장</span></summary><form id="fPaper" novalidate style="margin-top:12px">' + unitPicker("pp") +
             '<div class="two" style="gap:12px"><div class="field"><label for="ppName">계약자 성명</label><input id="ppName" maxlength="30"></div><div class="field"><label for="ppDate">서명일</label><input id="ppDate" type="date"></div></div>' +
             '<div class="field"><label for="ppFile">위임장 스캔본 <span class="muted small">사진 · PDF, 10MB 이하 · 주민등록번호가 보이면 등록하지 말고 다시 받으세요</span></label><input id="ppFile" type="file" accept="image/*,application/pdf"></div>' +
-            '<label class="check"><input type="checkbox" id="ppContact"> 위임장에 휴대전화번호가 적혀 있음</label>' +
+            '<label class="check"><input type="checkbox" id="ppContact"> 선택 항목(휴대전화번호)에 동의하고 번호를 적음</label>' +
             '<div class="field" id="ppPhoneBox" hidden><label for="ppPhone">휴대전화</label><input id="ppPhone" inputmode="tel" placeholder="010-0000-0000" maxlength="13"></div>' +
             '<button class="btn solid" type="submit">서면 위임장 등록</button></form></details>' +
             '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>성명</th><th>방식</th><th>제출</th><th>연락처</th><th></th></tr></thead><tbody id="agList">' +
