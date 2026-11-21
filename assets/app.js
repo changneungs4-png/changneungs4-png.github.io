@@ -2482,11 +2482,12 @@
         }
         if (cur === "agreements") {
           var A = await API.admin.agreements(), lg = await API.admin.log(), PS = {}, WD = await API.admin.withdrawals().catch(function () { return []; });
-          try { arr(await API.admin.profiles()).forEach(function (p) { PS[p.id] = p.status; }); } catch (e) {}
+          var NK = {}; try { arr(await API.admin.profiles()).forEach(function (p) { PS[p.id] = p.status; NK[p.id] = p.cafe_nick || ""; }); } catch (e) {}
+          var nick = function (a) { return a.source === "paper" ? "" : NK[a.user_id] || a.cafe_nick || ""; };
           var counted = function (a) { return a.source === "paper" || PS[a.user_id] === "approved"; };
           var how = function (a) { return a.source === "paper" ? "서면" : "온라인"; };
-          var rows = [["세대", "동", "호", "타입", "계약자 성명", "방식", "제출일시", "현황 반영", "휴대전화", "공동명의자", "대표 회원", "문서 번호"]].concat(A.map(function (a) { var u = UNIT[a.unit_id] || {};
-            return [a.unit_id, u.dong, u.ho, u.type, a.signer_name || "", how(a), fmtTime(a.signed_at), counted(a) ? "반영" : "승인 전", a.agree_contact ? a.phone || "" : "", a.co_name || "", a.rep_name || "", String(a.doc_hash || "").slice(0, 16)]; }));
+          var rows = [["세대", "동", "호", "타입", "카페 닉네임", "계약자 성명", "방식", "제출일시", "현황 반영", "휴대전화", "공동명의자", "대표 회원", "문서 번호"]].concat(A.map(function (a) { var u = UNIT[a.unit_id] || {};
+            return [a.unit_id, u.dong, u.ho, u.type, nick(a), a.signer_name || "", how(a), fmtTime(a.signed_at), counted(a) ? "반영" : "승인 전", a.agree_contact ? a.phone || "" : "", a.co_name || "", a.rep_name || "", String(a.doc_hash || "").slice(0, 16)]; }));
           var text = csv(rows), OK3 = A.filter(function (a) { return counted(a) && a.agree_third_party; });
           var wdBox = WD.length ? '<div class="panel wd-box"><h3 style="margin-bottom:6px">확인하지 않은 위임동의 철회 <span class="cnt-b">' + WD.length + '</span></h3><p class="muted small" style="margin:0 0 8px">철회가 있으면 오픈채팅 비밀번호를 바꾸는 것을 권장합니다(회원 탭).</p>' +
             '<ul class="wd-list">' + WD.map(function (w) { return '<li><b class="num">' + esc(w.unit_id) + '</b><span class="muted small">' + esc(unitLabel(w.unit_id)) + " · " + fmtTime(w.at) + (w.by_self ? " · 본인 철회" : "") + '</span><button type="button" class="linkbtn wdack" data-id="' + w.id + '">확인</button></li>'; }).join("") + "</ul>" +
@@ -2500,11 +2501,11 @@
             '<label class="check"><input type="checkbox" id="ppContact"> 선택 항목(휴대전화번호)에 동의하고 번호를 적음</label>' +
             '<div class="field" id="ppPhoneBox" hidden><label for="ppPhone">휴대전화</label><input id="ppPhone" inputmode="tel" placeholder="010-0000-0000" maxlength="13"></div>' +
             '<button class="btn solid" type="submit">서면 위임장 등록</button></form></details>' +
-            '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>성명</th><th>방식</th><th>제출</th><th>연락처</th><th></th></tr></thead><tbody id="agList">' +
+            '<div class="tablebox"><table class="spec"><thead><tr><th>세대</th><th>카페 닉네임</th><th>성명</th><th>방식</th><th>제출</th><th>연락처</th><th></th></tr></thead><tbody id="agList">' +
             (A.map(function (a) { var u = UNIT[a.unit_id] || {};
-              return '<tr' + (counted(a) ? "" : ' class="muted"') + '><td class="num">' + esc(a.unit_id) + ' <span class="muted small">' + esc(u.type || "") + "</span></td><td>" + esc(a.signer_name || "-") + "</td><td>" + how(a) + (counted(a) ? "" : " · 승인 전") + '</td><td class="num">' + fmtTime(a.signed_at) + '</td><td class="num">' + (a.agree_contact ? esc(a.phone || "") : "-") + "</td><td>" +
+              return '<tr' + (counted(a) ? "" : ' class="muted"') + '><td class="num">' + esc(a.unit_id) + ' <span class="muted small">' + esc(u.type || "") + "</span></td><td>" + (nick(a) ? esc(nick(a)) : '<span class="muted">' + (a.source === "paper" ? "서면" : "없음") + "</span>") + "</td><td>" + esc(a.signer_name || "-") + "</td><td>" + how(a) + (counted(a) ? "" : " · 승인 전") + '</td><td class="num">' + fmtTime(a.signed_at) + '</td><td class="num">' + (a.agree_contact ? esc(a.phone || "") : "-") + "</td><td>" +
                 '<button type="button" class="linkbtn wiOne" data-u="' + esc(a.unit_id) + '">위임장</button>' + (a.paper_path ? ' <button type="button" class="linkbtn paperView" data-u="' + esc(a.unit_id) + '">원본</button>' : "") +
-                (a.source === "paper" ? ' <button type="button" class="linkbtn paperDel" data-u="' + esc(a.unit_id) + '">서면 철회</button>' : "") + "</td></tr>"; }).join("") || '<tr><td colspan="7" class="muted">아직 제출된 위임동의서가 없습니다.</td></tr>') +
+                (a.source === "paper" ? ' <button type="button" class="linkbtn paperDel" data-u="' + esc(a.unit_id) + '">서면 철회</button>' : "") + "</td></tr>"; }).join("") || '<tr><td colspan="8" class="muted">아직 제출된 위임동의서가 없습니다.</td></tr>') +
             "</tbody></table></div>" + head("최근 기록", '<span class="note">제출 · 철회 최근 50건</span>') + '<div class="tablebox"><table class="spec"><tbody>' + (lg.slice(0, 50).map(function (x) { return '<tr><td class="num">' + fmtTime(x.at) + '</td><td class="num">' + esc(x.unit_id) + "</td><td>" + (x.action === "sign" ? "제출" : "철회") + '</td><td class="muted small">' + (!x.by_user ? "시스템" : x.by_user === x.user_id ? "본인" : "운영진") + "</td></tr>"; }).map(moreRow).join("") + moreBtn(Math.min(lg.length, 50)) || '<tr><td class="muted">기록이 없습니다.</td></tr>') + "</tbody></table></div>" +
             '<textarea class="out" id="csvOut" readonly hidden aria-label="CSV"></textarea>';
           var byU = {}; A.forEach(function (a) { byU[a.unit_id] = a; });
