@@ -338,12 +338,12 @@
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function boardText(B) {
-    var order = shuffle([0, 1, 2, 3]);
+    var order = shuffle(B.paras.map(function (_, i) { return i; })).slice(0, 4);   // 논거 중 4개를 골라 순서 섞기
     return pick(B.intros) + "\n\n" + order.map(function (pi, i) { return (i + 1) + ". " + pick(B.paras[pi]); }).join("\n\n") + "\n\n" + pick(B.outros);
   }
   var PT_KINDS = [["sns1", "SNS 댓글", "페이스북 · 인스타 · 유튜브"], ["sns2", "짧은 댓글", "스레드 · X"], ["sns3", "의원 DM · 문자", "메시지 · 문자"], ["board", "민원 · 이메일 본문", "게시판 · 국민신문고 · 메일"], ["title", "민원 제목", "게시판 · 메일 제목"]];
   var PT_TONES = [["정중하게", "정중하고 차분하게"], ["간결하게", "핵심만 짧고 간결하게"], ["간곡하게", "간절하지만 예의 바르게"]];
-  var PT_CHECKS = [["sns", "의원 · 기관 SNS에 댓글 남기기"], ["dm", "지역구 의원에게 DM · 문자 보내기"], ["board", "공식 민원 게시판에 접수하기"], ["mail", "의원 이메일로 보내기"]];
+  var PT_CHECKS = [["ggc", "경기도의회 진정민원 접수 (지역: 흥도동)"], ["goyang", "고양시청 전자민원 접수"], ["epeople", "국민신문고 접수 (지방자치단체 → 경기도)"], ["lh", "LH 고객의 소리 접수"], ["dm", "시장 · 의원에게 문자 · 전화"], ["sns", "의원 · 기관 SNS에 댓글 남기기"]];
   var SNS_ICON = { fb: "페이스북", ig: "인스타", th: "스레드", x: "X", yt: "유튜브" };
   function ptExample(K, kind) { return kind === "board" ? boardText(K.board) : kind === "title" ? pick(K.titles) : pick(K[kind]); }
   function ptDday(d) { if (!d) return ""; var x = Math.ceil((new Date(d + "T23:59:59+09:00") - new Date()) / 864e5); return x > 0 ? "D-" + x : x === 0 ? "D-DAY" : ""; }
@@ -356,6 +356,7 @@
     return '<article class="pt2" id="pt-' + esc(x.id) + '">' +
       '<section class="pt2-hero"><div class="pt2-top"><span class="tag hot">' + esc(x.tag || "민원 참여") + "</span>" + (dd ? '<span class="pt2-dd num">확정까지 ' + dd + "</span>" : "") + "</div>" +
         "<h2>" + esc(x.title) + "</h2><p>" + esc(x.lead || "") + "</p>" +
+        (x.howTo ? '<ul class="pt2-how">' + arr(x.howTo).map(function (h) { return "<li><span>" + esc(h[0]) + "</span><b>" + esc(h[1]) + "</b></li>"; }).join("") + "</ul>" : "") +
         '<ul class="pt2-stats">' + arr(x.stats).map(function (t) { return "<li><b class=\"num\">" + esc(t[0]) + "</b><span>" + esc(t[1]) + "</span></li>"; }).join("") + "</ul>" +
         '<details class="pt2-why"><summary>우리가 요청하는 것</summary><ul>' + arr(K.facts).map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></details></section>" +
       (x.privateKey ? '<div class="pt-private" data-key="' + esc(x.privateKey) + '">' + (member ? '<p class="muted small">회원 전용 안내를 불러오는 중…</p>'
@@ -363,6 +364,12 @@
       '<nav class="pt2-nav" role="tablist" aria-label="참여 순서"><button type="button" role="tab" data-tab="ptWrite" aria-selected="true"><b>1</b>글 쓰기</button><button type="button" role="tab" data-tab="ptSend" aria-selected="false"><b>2</b>보내기</button><button type="button" role="tab" data-tab="ptCheck" aria-selected="false"><b>3</b>참여 체크</button></nav>' +
       // 1. 글 쓰기
       '<section class="panel pt2-sec" id="ptWrite"><h3><span class="pt2-no">1</span>보낼 글 만들기</h3>' +
+        (arr(K.forms).length ? '<div class="pt2-forms"><div class="pt2-field"><span class="lbl">추천 · 반박 민원 양식 <span class="tag">' + K.forms.length + '개</span> <small class="muted">하나 고르면 아래 칸에 들어갑니다. 내 말로 조금 고쳐 쓰면 같은 글로 묶이지 않습니다</small></span>' +
+          '<ol class="pt2-flist" id="ptForms">' + K.forms.map(function (f, i) { return '<li><button type="button" class="pt2-f" data-f="' + i + '" aria-pressed="false"><b>' + esc(f.t) + "</b><span>" + esc(f.b.slice(0, 58)) + "…</span></button></li>"; }).join("") + "</ol></div></div>" : "") +
+        (x.guide ? '<details class="pt2-guide"><summary>외부 가이드로 만들기 <small class="muted">' + esc(x.guide.by || "") + "</small></summary>" +
+          '<ol class="pt2-gsteps">' + arr(x.guide.steps).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ol>" +
+          '<a class="btn" href="' + esc(safeUrl(x.guide.url)) + '" target="_blank" rel="noopener">' + esc(x.guide.label || "가이드 열기") + " ↗</a></details>" : "") +
+        '<p class="pt2-or muted small">또는 직접 만들기</p>' +
         '<div class="pt2-field"><span class="lbl">어디에 쓸 글인가요?</span><div class="chips pt2-kinds" id="ptKind">' + PT_KINDS.map(function (k, i) { return '<button type="button" class="chip" data-kind="' + k[0] + '" aria-pressed="' + (i === 0) + '"><b>' + esc(k[1]) + "</b><small>" + esc(k[2]) + "</small></button>"; }).join("") + "</div></div>" +
         '<div class="pt2-field"><span class="lbl">내 상황 <small class="muted">선택 · 글에 한 줄 들어가 사람마다 다른 글이 됩니다</small></span><div class="chips" id="ptPersona">' + arr(K.personas).map(function (p, i) { return chip("p", i, p[1], i === 0); }).join("") + "</div></div>" +
         '<div class="pt2-field"><span class="lbl">말투</span><div class="chips" id="ptTone">' + PT_TONES.map(function (t, i) { return chip("t", i, t[0], i === 0); }).join("") + "</div></div>" +
@@ -376,7 +383,7 @@
       // 2. 보내기
       '<button type="button" class="btn solid wide pt2-next" data-go="ptSend">다음: 보내기 →</button>' +
       '<section class="panel pt2-sec" id="ptSend"><h3><span class="pt2-no">2</span>보내기</h3>' +
-        '<h4>공식 민원 게시판</h4><p class="muted small">정식 접수 번호가 남는 곳입니다. "민원 · 이메일 본문"과 "민원 제목"을 만들어 붙여 넣으세요.</p>' +
+        '<h4>공식 민원 접수</h4><p class="muted small">정식 접수 번호가 남는 곳입니다. 1단계에서 만든 글을 붙여 넣으세요. 시장 · 의원 문자 번호는 위 회원 전용 안건 정보에 있습니다.</p>' +
         '<div class="pt2-boards">' + arr(K.boards).map(function (b) {
           return '<a class="pt2-board" href="' + esc(safeUrl(b.url)) + '" target="_blank" rel="noopener"><b>' + esc(b.org) + "</b><span>" + esc(b.what) + '</span><i aria-hidden="true">↗</i></a>'; }).join("") + "</div>" +
         (depts.length ? '<details class="pt2-dept"><summary>담당 부서 연락처</summary><ul class="pt2-list">' + depts.map(function (c) {
@@ -405,7 +412,7 @@
         '<p class="muted small" id="ptDone" hidden>모두 마쳤습니다. 감사합니다! 주변 입주예정자에게도 이 페이지를 알려 주세요.</p>' +
       "</section>" +
       '<p class="kit-note small">⚖️ ' + esc(K.notice) + "</p>" +
-      '<p class="muted small">민원 요지 · 예시 문구 · 연락처는 ' + esc(K.source.by) + '의 <a href="' + esc(safeUrl(K.source.url)) + '" target="_blank" rel="noopener">' + esc(K.source.label) + " ↗</a>(" + esc(K.asOf) + " 기준)을 바탕으로 정리했습니다.</p>" +
+      '<p class="muted small">추천 양식은 입예협이 ' + esc(K.asOf) + ' 정리했습니다. 의원 SNS · 이메일은 ' + esc(K.source.by) + '의 <a href="' + esc(safeUrl(K.source.url)) + '" target="_blank" rel="noopener">' + esc(K.source.label) + " ↗</a>을 바탕으로 정리한 공개 정보입니다.</p>" +
       "</article>";
   }
   function ptTab(root, id, scroll) {
@@ -425,6 +432,12 @@
     function example() { last[kind] = last[kind] || ptExample(K, kind); setText(last[kind], "예시 문구 · " + PT_KINDS.filter(function (k) { return k[0] === kind; })[0][1]); }
     function seg(id, attr, fn) { el(id).addEventListener("click", function (e) { var c = e.target.closest(".chip"); if (!c) return; el(id).querySelectorAll(".chip").forEach(function (b) { b.setAttribute("aria-pressed", b === c ? "true" : "false"); }); fn(c.getAttribute("data-" + attr)); }); }
     seg("ptKind", "kind", function (v) { kind = v; example(); });
+    if (el("ptForms")) el("ptForms").addEventListener("click", function (e) {
+      var b = e.target.closest(".pt2-f"); if (!b) return; var f = K.forms[+b.dataset.f];
+      this.querySelectorAll(".pt2-f").forEach(function (c) { c.setAttribute("aria-pressed", c === b ? "true" : "false"); });
+      setText(f.t + "\n\n" + f.b, "추천 양식 " + (+b.dataset.f + 1) + " · 고쳐 쓴 뒤 복사하세요");
+      el("ptText").scrollIntoView({ block: "center", behavior: "smooth" });
+    });
     seg("ptPersona", "p", function (v) { persona = Number(v); });
     seg("ptTone", "t", function (v) { tone = Number(v); });
     T.addEventListener("input", function () { el("ptLen").textContent = n(T.value.length) + "자"; fitT(); });
