@@ -355,6 +355,10 @@
         must(await sb.from("profiles").update({ status: "rejected", reject_reason: reason.trim(), contract_path: null }).eq("id", p.id));
         if (p.contract_path) await sb.storage.from("contracts").remove([p.contract_path]);
       },
+      resetPassword: async function (p, pw) {
+        need(); if (!pw || pw.length < 8) throw new Error("임시 비밀번호는 8자 이상으로 넣어 주세요.");
+        must(await sb.rpc("admin_reset_password", { p_user: p.id, p_pw: pw }));
+      },
       revoke: async function (p, reason) {
         need();
         if (!reason || !reason.trim()) throw new Error("승인 취소 사유를 입력하세요.");

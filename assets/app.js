@@ -1798,7 +1798,7 @@
       unitPicker("l") +
       '<div class="field"><label for="lPw">비밀번호</label><input id="lPw" type="password" autocomplete="current-password" required></div>' +
       '<button class="btn solid wide" type="submit">로그인</button><p class="notice-box" id="lMsg" role="alert" hidden></p>' +
-      '<p class="muted small" style="margin:12px 0 0">비밀번호를 잊었다면 운영진에게 문의하세요. 본인 확인 후 다시 가입할 수 있게 도와드립니다.</p></form>' +
+      '<p class="muted small" style="margin:12px 0 0">비밀번호를 잊었다면 네이버 카페 쪽지로 운영진에게 알려 주세요. 카페 닉네임으로 본인을 확인한 뒤 임시 비밀번호를 드리며, 로그인 후 “내 정보”에서 바꾸시면 됩니다.</p></form>' +
 
       (closed ? '<div class="panel" id="fSignup"' + (tab === "signup" ? "" : " hidden") + '><div class="empty" style="border:0;padding:8px 0"><b>가입은 ' + esc(signupOpenLabel()) + ' 공급계약 시작과 함께 받습니다</b><span>계약을 마친 계약자만 가입하도록 해, 계약을 포기한 세대가 섞이지 않게 하려는 것입니다. 계약서 인증은 네이버 카페에서 합니다. 그 전에도 공지 · LH 공고 · 일정 · FAQ · 계산기는 누구나 볼 수 있습니다.</span><p class="cta-row" style="margin-top:8px"><a class="btn" href="notice.html">공지사항 보기</a><a class="btn" href="faq.html">FAQ</a></p></div></div></div>' :
       '<form class="panel" id="fSignup"' + (tab === "signup" ? "" : " hidden") + ' novalidate>' +
@@ -2440,7 +2440,7 @@
             '<p class="cta-row" style="margin:0"><button class="btn solid" type="submit">저장</button>' + (CI.updated_at ? '<span class="muted small">마지막 변경 ' + fmtTime(CI.updated_at) + "</span>" : "") + '</p></form>' + "</div>";
           el("fChat").addEventListener("submit", async function (e) { e.preventDefault(); try { await API.admin.setChatInfo(el("chUrl").value, el("chPw").value); say("admMsg", "오픈채팅 입장 정보를 저장했습니다. 위임 세대의 카페 · 바로가기 화면에 바로 나옵니다."); } catch (er) { err(er); } });
           var sf = "", WHO = {}; M.forEach(function (p) { WHO[p.id] = p.unit_id; });
-          var ACT = { signup: "가입 신청", approve: "승인", reject: "반려", reapply: "재신청", revoke: "승인 취소", admin_on: "운영진 지정", admin_off: "운영진 해제", "delete": "계정 삭제" };
+          var ACT = { signup: "가입 신청", approve: "승인", reject: "반려", reapply: "재신청", revoke: "승인 취소", pw_reset: "비밀번호 초기화", admin_on: "운영진 지정", admin_off: "운영진 해제", "delete": "계정 삭제" };
           API.admin.memberLog().then(function (L) {
             var lim = 15, rows = L.slice(0, 100);
             var drawLog = function () { el("mLog").innerHTML = rows.slice(0, lim).map(function (x) {
@@ -2461,6 +2461,7 @@
                 (p.unit_id === OWNER ? '<span class="muted small">다른 운영진이 바꿀 수 없음</span>' : "") +
                 (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER ? '<button type="button" class="linkbtn revoke" data-id="' + p.id + '">승인 취소</button>' : "") +
                 (p.status === "approved" && p.id !== API.session.user.id && p.unit_id !== OWNER && (meOwner || !OWNER) ? ' <button type="button" class="linkbtn setadm" data-id="' + p.id + '" data-on="' + (p.is_admin ? "0" : "1") + '">' + (p.is_admin ? "운영진 해제" : "운영진 지정") + "</button>" : "") +
+                (p.id !== API.session.user.id && (!p.is_admin || meOwner) ? ' <button type="button" class="linkbtn resetpw" data-id="' + p.id + '">비밀번호 초기화</button>' : "") +
                 (!p.is_admin && p.id !== API.session.user.id ? ' <button type="button" class="linkbtn delacct" data-id="' + p.id + '">계정 삭제</button>' : "") + "</td></tr>";
             }).join("") || '<tr><td colspan="7" class="muted">해당하는 회원이 없습니다.</td></tr>';
           }
@@ -2478,6 +2479,19 @@
               var ps = M.filter(function (x) { return x.id === sa.dataset.id; })[0], on = sa.dataset.on === "1";
               if (sa.dataset.confirm !== "1") { sa.dataset.confirm = "1"; sa.textContent = "한 번 더 누르면 " + (on ? "지정" : "해제"); return; }
               try { await API.admin.setAdmin(ps, on); await show(); say("admMsg", ps.unit_id + (on ? " 회원을 운영진으로 지정했습니다." : " 회원의 운영진 권한을 해제했습니다.")); } catch (er) { err(er); }
+              return;
+            }
+            var rp = e.target.closest(".resetpw");
+            if (rp) {
+              var pr = M.filter(function (x) { return x.id === rp.dataset.id; })[0];
+              if (rp.dataset.confirm !== "1") {
+                rp.dataset.confirm = "1"; rp.textContent = "임시 비밀번호로 초기화";
+                var tp = document.createElement("input"); tp.className = "reason"; tp.setAttribute("aria-label", "임시 비밀번호"); tp.maxLength = 40;
+                var cs = "abcdefghjkmnpqrstuvwxyz23456789", rb = new Uint32Array(8); crypto.getRandomValues(rb);
+                tp.value = Array.prototype.map.call(rb, function (n) { return cs[n % cs.length]; }).join(""); rp.before(tp); return;
+              }
+              var pw = rp.previousSibling.value.trim();
+              try { await API.admin.resetPassword(pr, pw); await show(); say("admMsg", pr.unit_id + " 임시 비밀번호: " + pw + " — 카페 쪽지로 본인에게만 알려 주세요. 로그인 후 '내 정보 › 비밀번호 바꾸기'에서 바꾸도록 안내해 주세요(기존 로그인은 모두 끊겼습니다)."); } catch (er) { err(er); }
               return;
             }
             var d = e.target.closest(".delacct");
